@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308014673509",
+    "project_id": "gigglam-5ccf5",
+    "storage_bucket": "gigglam-5ccf5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308014673509:android:ce644e09e2c2da584a608c",
+        "android_client_info": {
+          "package_name": "com.gigglam"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCg7Zgpdwbj5ybHAsWPLVaWWWowrbeF_nc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

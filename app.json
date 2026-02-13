@@ -1,0 +1,122 @@
+{
+  "expo": {
+    "name": "Ar-Chitram",
+    "slug": "architram",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/adaptive-icon.png",
+    "scheme": "architram",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Ar-Chitram needs access to your photo library so you can share images with friends in collaborative rooms.",
+        "NSCameraUsageDescription": "Ar-Chitram needs camera access to let you take and share photos directly in your rooms.",
+        "NSContactsUsageDescription": "Ar-Chitram needs access to your contacts so you can easily invite friends to collaborative rooms by phone number.",
+        "NSUserTrackingUsageDescription": "This helps us provide you with a personalized experience and relevant content.",
+        "LSApplicationQueriesSchemes": [
+          "fb",
+          "instagram",
+          "whatsapp"
+        ]
+      },
+      "bundleIdentifier": "com.architram"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.architram",
+      "permissions": [
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_PHONE_NUMBERS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.WRITE_CONTACTS"
+      ],
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
+    },
+    "plugins": [
+      "./app.plugin.js",
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ar-Chitram needs access to your photo library so you can share images with friends in collaborative rooms and add fun emojis together.",
+          "cameraPermission": "Ar-Chitram needs camera access to let you take and share photos directly in your rooms."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Ar-Chitram needs access to your photos so you can share them in collaborative rooms with friends.",
+          "savePhotosPermission": "Ar-Chitram needs permission to save photos so you can keep the fun images you create with friends.",
+          "isAccessMediaLocationEnabled": true,
+          "granularPermissions": [
+            "photo"
+          ]
+        }
+      ],
+      [
+        "react-native-edge-to-edge",
+        {
+          "android": {
+            "parentTheme": "Default",
+            "enforceNavigationBarContrast": false
+          }
+        }
+      ],
+      [
+        "react-native-share",
+        {
+          "ios": [
+            "fb",
+            "instagram",
+            "whatsapp"
+          ],
+          "android": [
+            "com.facebook.katana",
+            "com.instagram.android",
+            "com.whatsapp",
+            "com.snapchat.android"
+          ],
+          "enableBase64ShareAndroid": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
+          },
+          "ios": {}
+        }
+      ],
+      "expo-font",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
