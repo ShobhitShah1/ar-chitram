@@ -5,6 +5,7 @@ import {
   ic_signature,
   ic_upload_home,
 } from "@/assets/icons";
+import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import React from "react";
@@ -18,6 +19,7 @@ interface BottomBarProps {
   onPattern: () => void;
   onStroke: () => void;
   onPreview: () => void;
+  onPreviewLongPress?: () => void;
   selectedTool?: ToolType;
   previewBadge?: number;
 }
@@ -28,6 +30,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   onPattern,
   onStroke,
   onPreview,
+  onPreviewLongPress,
   selectedTool = "gallery",
   previewBadge = 0,
 }) => {
@@ -88,7 +91,11 @@ export const BottomBar: React.FC<BottomBarProps> = ({
       </Pressable>
 
       {/* Preview */}
-      <Pressable onPress={onPreview} style={styles.btn}>
+      <Pressable
+        onPress={onPreview}
+        onLongPress={onPreviewLongPress}
+        style={styles.btn}
+      >
         <View style={[styles.iconContainer, getIconContainerStyle("preview")]}>
           <Image
             source={ic_preview_eye}
@@ -129,21 +136,19 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    top: -5,
+    top: -13,
     right: -5,
     backgroundColor: "#007AFF", // Blue badge
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 500,
+    width: 23,
+    height: 23,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: "#fff",
   },
   badgeText: {
     color: "#fff",
     fontSize: 10,
-    fontWeight: "bold",
+    fontFamily: FontFamily.bold,
   },
 });

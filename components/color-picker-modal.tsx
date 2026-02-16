@@ -1,10 +1,9 @@
-import { ACCENT_COLOR } from "@/constants/colors";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useState } from "react";
-import { Dimensions, Modal, StyleSheet, View } from "react-native";
+import { Dimensions, Modal, ScrollView, StyleSheet, View } from "react-native";
 import {
   Gesture,
   GestureDetector,
@@ -15,12 +14,9 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { runOnJS as runOnJSReanimated } from "react-native-reanimated"; // Keep if needed or remove
-import { scheduleOnRN } from "react-native-worklets";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Text, Pressable } from "./themed"; // Assuming themed exports Text and Pressable
-import { ScrollView } from "react-native";
-import { Image } from "expo-image";
+import { scheduleOnRN } from "react-native-worklets";
+import { Pressable, Text } from "./themed"; // Assuming themed exports Text and Pressable
 
 // import { ic_check } from "@/assets/icons"; // Removed as likely missing, using Ionicons instead
 

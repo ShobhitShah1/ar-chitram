@@ -1,12 +1,11 @@
 import React from "react";
-import { StyleSheet, View, Dimensions } from "react-native";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  runOnJS,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  SharedValue,
 } from "react-native-reanimated";
 
 interface OpacitySliderProps {

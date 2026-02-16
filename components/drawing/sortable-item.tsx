@@ -1,18 +1,17 @@
+import { useTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";
-import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  Easing,
-  runOnJS,
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
-  SharedValue,
 } from "react-native-reanimated";
-import { useTheme } from "@/context/theme-context";
+import { scheduleOnRN } from "react-native-worklets";
 import { Pressable } from "../themed";
 
 const { width } = Dimensions.get("window");
@@ -126,9 +125,8 @@ export const SortableItem = ({
     .onEnd(() => {
       isGestureActive.value = false;
       activeId.value = null;
-      translationX.value = withTiming(0);
       translationY.value = withTiming(0);
-      runOnJS(onDragEnd)();
+      scheduleOnRN(onDragEnd);
     });
 
   const rStyle = useAnimatedStyle(() => {

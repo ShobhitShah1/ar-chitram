@@ -1,5 +1,12 @@
 import { create } from "zustand";
 
+export interface DrawingPath {
+  id: string;
+  path: string; // SVG Path data
+  color: string;
+  strokeWidth: number;
+}
+
 export interface VirtualLayer {
   id: string;
   type: "image" | "drawing" | "text";
@@ -13,6 +20,7 @@ export interface VirtualLayer {
   opacity: number;
   zIndex: number;
   color?: string;
+  paths?: DrawingPath[]; // For drawing layers or coloring on images
 }
 
 interface HistoryState {

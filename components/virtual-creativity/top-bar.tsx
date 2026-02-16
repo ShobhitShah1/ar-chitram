@@ -18,12 +18,13 @@ interface TopBarProps {
   onRedo: () => void;
   onBringToFront?: () => void;
   onSendToBack?: () => void;
-  onResize?: () => void;
+  onZoomToggle?: () => void;
   onDelete?: () => void;
   onNext?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   hasSelection?: boolean;
+  isZoomActive?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -31,12 +32,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   onRedo,
   onBringToFront,
   onSendToBack,
-  onResize,
+  onZoomToggle,
   onDelete,
   onNext,
   canUndo = false,
   canRedo = false,
   hasSelection = false,
+  isZoomActive = false,
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -111,18 +113,27 @@ export const TopBar: React.FC<TopBarProps> = ({
           />
         </Pressable>
 
-        {/* Resize / Zoom */}
+        {/* Zoom Toggle */}
         <Pressable
-          onPress={onResize}
+          onPress={onZoomToggle}
           style={({ pressed }) => [
             styles.btn,
-            !hasSelection && styles.disabled,
+            isZoomActive && styles.activeBtn,
             pressed && styles.pressed,
-            { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
+            {
+              backgroundColor: isZoomActive
+                ? theme.accent
+                : isDark
+                  ? "#D5D5D5"
+                  : "#EBEBEB",
+            },
           ]}
-          disabled={!hasSelection}
         >
-          <Image source={ic_zoom} style={styles.icon} contentFit="contain" />
+          <Image
+            source={ic_zoom}
+            style={[styles.icon, isZoomActive && { tintColor: "#fff" }]}
+            contentFit="contain"
+          />
         </Pressable>
 
         {/* Delete */}
@@ -172,6 +183,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  activeBtn: {
+    // Style handled inline via backgroundColor for now
   },
   pressed: {
     opacity: 0.7,

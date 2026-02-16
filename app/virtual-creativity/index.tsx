@@ -8,19 +8,20 @@ import { TopBar } from "@/components/virtual-creativity/top-bar";
 import { useTheme } from "@/context/theme-context";
 import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  Image as RNImage,
-} from "react-native";
+import React, { useState, useRef } from "react";
+import { StyleSheet, Text, View, Dimensions } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { CanvasLayer } from "@/components/virtual-creativity/canvas-layer";
 import { FontFamily } from "@/constants/fonts";
-import { Image } from "expo-image";
+import { CanvasViewer } from "@/components/virtual-creativity/canvas-viewer";
+import { captureRef } from "react-native-view-shot";
+import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-animation";
+import {
+  CapturePreviewModal,
+  Snapshot,
+} from "@/components/drawing/capture-preview-modal";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function VirtualCreativityScreen() {
   const { theme, isDark } = useTheme();
@@ -32,7 +33,6 @@ export default function VirtualCreativityScreen() {
     history,
     undo,
     redo,
-    reset,
     removeLayer,
     updateLayer,
     addLayer,
@@ -45,6 +45,17 @@ export default function VirtualCreativityScreen() {
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<"color" | "gradient">("color");
   const [selectedTool, setSelectedTool] = useState<ToolType>("gallery");
+
+  // Canvas & Zoom State
+  const [isZoomMode, setIsZoomMode] = useState(false);
+  const [selectedColor, setSelectedColor] = useState("#000000");
+
+  // Snapshot State
+  const viewShotRef = useRef<View>(null);
+  const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
+  const [showSnapshotAnim, setShowSnapshotAnim] = useState(false);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const handleBack = () => router.back();
 
@@ -63,8 +74,8 @@ export default function VirtualCreativityScreen() {
     }
   };
 
-  const handleResize = () => {
-    console.log("Resize clicked");
+  const handleZoomToggle = () => {
+    setIsZoomMode(!isZoomMode);
   };
 
   const handleDelete = () => {
@@ -79,15 +90,15 @@ export default function VirtualCreativityScreen() {
   const handleGallery = () => {
     setSelectedTool("gallery");
     console.log("Gallery clicked");
-    // Pseudo implementation
+
     const testLayer = {
       id: Date.now().toString(),
       type: "image" as const,
-      uri: "https://picsum.photos/200/300",
-      x: 100,
-      y: 100,
-      width: 150,
-      height: 200,
+      uri: "https://picsum.photos/1080/1920",
+      x: 0,
+      y: 0,
+      width: 1080,
+      height: 1920,
       rotation: 0,
       scale: 1,
       opacity: 1,
@@ -112,16 +123,44 @@ export default function VirtualCreativityScreen() {
     console.log("Stroke clicked");
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     setSelectedTool("preview");
-    console.log("Preview clicked");
+    try {
+      if (viewShotRef.current) {
+        const uri = await captureRef(viewShotRef, {
+          format: "png",
+          quality: 0.9,
+        });
+
+        const newSnap: Snapshot = {
+          id: Date.now().toString(),
+          uri: uri,
+          timestamp: Date.now(),
+        };
+
+        setSnapshotUri(uri);
+        setSnapshots((prev) => [...prev, newSnap]);
+        setShowSnapshotAnim(true);
+      }
+    } catch (e) {
+      console.error("Snapshot failed:", e);
+    }
+  };
+
+  const handlePreviewLongPress = () => {
+    setShowPreviewModal(true);
   };
 
   const onSelectColor = (color: string) => {
-    if (selectedLayerId) {
-      updateLayer(selectedLayerId, { color });
-    }
+    setSelectedColor(color);
   };
+
+  const handleSelectLayer = (id: string) => {
+    selectLayer(id);
+  };
+
+  // Display only the select layer
+  const displayedLayer = layers.find((l) => l.id === selectedLayerId);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -139,29 +178,29 @@ export default function VirtualCreativityScreen() {
           onRedo={handleRedo}
           onBringToFront={handleBringToFront}
           onSendToBack={handleSendToBack}
-          onResize={handleResize}
+          onZoomToggle={handleZoomToggle}
           onDelete={handleDelete}
           onNext={handleNext}
           canUndo={history.past.length > 0}
           canRedo={history.future.length > 0}
           hasSelection={!!selectedLayerId}
+          isZoomActive={isZoomMode}
         />
-        <View style={styles.canvasContainer}>
-          {/* Render Layers */}
-          {layers.map((layer) => (
-            <CanvasLayer
-              key={layer.id}
-              layer={layer}
-              isSelected={layer.id === selectedLayerId}
-              onSelect={() => selectLayer(layer.id)}
-            />
-          ))}
+
+        {/* Canvas Viewer Container for Snapshot */}
+        <View style={{ flex: 1 }} ref={viewShotRef} collapsable={false}>
+          <CanvasViewer
+            layer={displayedLayer}
+            isZoomMode={isZoomMode}
+            currentColor={selectedColor}
+          />
         </View>
+
         {/* Layer Thumbnails Strip */}
         <LayerStrip
           layers={layers}
           selectedLayerId={selectedLayerId}
-          onSelectLayer={selectLayer}
+          onSelectLayer={handleSelectLayer}
         />
         <BottomBar
           onGallery={handleGallery}
@@ -169,7 +208,9 @@ export default function VirtualCreativityScreen() {
           onPattern={handlePattern}
           onStroke={handleStroke}
           onPreview={handlePreview}
+          onPreviewLongPress={handlePreviewLongPress}
           selectedTool={selectedTool}
+          previewBadge={snapshots.length}
         />
         <ColorPickerModal
           visible={colorPickerVisible}
@@ -177,6 +218,22 @@ export default function VirtualCreativityScreen() {
           onSelectColor={onSelectColor}
           mode={pickerMode}
           onSelectGradient={(colors) => console.log("Gradient:", colors)}
+        />
+        <ScreenshotCaptureAnimation
+          visible={showSnapshotAnim}
+          imageUri={snapshotUri}
+          targetPosition={{ x: SCREEN_WIDTH - 60, y: SCREEN_HEIGHT - 100 }}
+          onAnimationComplete={() => setShowSnapshotAnim(false)}
+        />
+        <CapturePreviewModal
+          visible={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          snapshots={snapshots}
+          onDelete={(id) =>
+            setSnapshots((prev) => prev.filter((s) => s.id !== id))
+          }
+          onUpdateSnapshots={setSnapshots}
+          onReorder={() => {}}
         />
       </SafeAreaView>
     </GestureHandlerRootView>
@@ -195,13 +252,5 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontFamily: FontFamily.bold,
-  },
-  canvasContainer: {
-    flex: 1,
-    backgroundColor: "#e0e0e0", // Placeholder bg
-    overflow: "hidden",
-    marginHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 10,
   },
 });

@@ -66,23 +66,16 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 50,
     marginBottom: 0,
   },
   scrollContent: {
     paddingHorizontal: 24,
     alignItems: "center",
-    paddingVertical: 5, // Small vertical padding for shadow/selection
   },
   thumbnailWrapper: {
     width: 40,
     height: 40,
     borderRadius: 8,
-    // shadowColor: "#000",
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 3,
-    // elevation: 3,
   },
   selectedWrapper: {
     borderWidth: 1,

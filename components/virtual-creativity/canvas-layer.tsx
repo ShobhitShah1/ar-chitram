@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  SharedValue,
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { Image } from "expo-image";
@@ -17,10 +18,12 @@ interface CanvasLayerProps {
   layer: VirtualLayer;
   isSelected?: boolean;
   onSelect?: () => void;
+  gesturesEnabled?: boolean;
+  zoomScale?: SharedValue<number>;
 }
 
 export const CanvasLayer = React.memo<CanvasLayerProps>(
-  ({ layer, isSelected, onSelect }) => {
+  ({ layer, isSelected, onSelect, gesturesEnabled = true, zoomScale }) => {
     const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
 
     const translateX = useSharedValue(layer.x);
@@ -45,6 +48,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     }, [layer.x, layer.y, layer.scale, layer.rotation]); // Sync on prop change
 
     const panGesture = Gesture.Pan()
+      .enabled(gesturesEnabled)
       .onStart(() => {
         startX.value = translateX.value;
         startY.value = translateY.value;
@@ -53,8 +57,9 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         }
       })
       .onUpdate((e) => {
-        translateX.value = startX.value + e.translationX;
-        translateY.value = startY.value + e.translationY;
+        const currentZoom = zoomScale ? zoomScale.value : 1;
+        translateX.value = startX.value + e.translationX / currentZoom;
+        translateY.value = startY.value + e.translationY / currentZoom;
       })
       .onEnd(() => {
         scheduleOnRN(updateLayer, layer.id, {
@@ -64,6 +69,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       });
 
     const pinchGesture = Gesture.Pinch()
+      .enabled(gesturesEnabled)
       .onStart(() => {
         startScale.value = scale.value;
         if (onSelect) {
@@ -78,6 +84,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       });
 
     const rotationGesture = Gesture.Rotation()
+      .enabled(gesturesEnabled)
       .onStart(() => {
         startRotation.value = rotation.value;
         if (onSelect) {
