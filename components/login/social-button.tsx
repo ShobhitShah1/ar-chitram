@@ -1,5 +1,5 @@
 import { Theme } from "@/constants/colors";
-import { FontFamily, typography } from "@/constants/fonts";
+import { FontFamily } from "@/constants/fonts";
 import { useThemedStyles } from "@/context/theme-context";
 import React from "react";
 import {
@@ -7,7 +7,6 @@ import {
   ImageSourcePropType,
   StyleSheet,
   Text,
-  TouchableOpacity,
   ViewStyle,
 } from "react-native";
 import { Pressable } from "../themed";
@@ -40,25 +39,22 @@ export default SocialButton;
 const styleCreator = (theme: Theme) =>
   StyleSheet.create({
     container: {
+      height: 60,
+      width: 300,
+      gap: 12,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.modalBackground,
-      height: 60,
-      paddingHorizontal: 24,
+      backgroundColor: "#fff",
       borderRadius: 40,
-      width: "80%",
       marginBottom: 10,
-      gap: 12,
       boxShadow: "0px 0px 25px 0px rgba(0, 0, 0, 0.05)",
     },
     text: {
-      ...typography.button,
-      fontFamily: FontFamily.bold,
-      color: theme.textPrimary,
       fontSize: 14,
+      color: theme.textPrimary,
       textTransform: "uppercase",
-      letterSpacing: 1,
+      fontFamily: FontFamily.semibold,
     },
     icon: {
       width: 24,

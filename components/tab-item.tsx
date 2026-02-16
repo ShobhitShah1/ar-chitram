@@ -1,6 +1,7 @@
-import { ic_customize_home, ic_plus } from "@/assets/icons";
+import { ic_customize_home } from "@/assets/icons";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { memo, useEffect } from "react";
 import { StyleSheet } from "react-native";
@@ -11,7 +12,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Pressable, Text } from "./themed";
-import { Image } from "expo-image";
 
 interface TabItemProps {
   label: string;
@@ -91,7 +91,7 @@ const TabItem: React.FC<TabItemProps> = memo(
         >
           <LinearGradient
             colors={
-              isCenter && isDark
+              isCenter
                 ? (theme.centerTabBubbleGradient as [
                     string,
                     string,
@@ -115,12 +115,7 @@ const TabItem: React.FC<TabItemProps> = memo(
         </Animated.View>
 
         {isFocused && (
-          <Text
-            style={[
-              styles.tabLabel,
-              { color: theme.textPrimary, fontSize: 12.5 },
-            ]}
-          >
+          <Text style={[styles.tabLabel, { color: "#000", fontSize: 12.5 }]}>
             {label}
           </Text>
         )}

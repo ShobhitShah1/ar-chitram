@@ -1,45 +1,49 @@
-import { StatusBar, StyleSheet, Text, View } from "react-native";
-import React from "react";
-import { Image } from "expo-image";
-import { welcome } from "@/assets/images";
 import { ic_welcome_facebook, ic_welcome_google } from "@/assets/icons";
-import { FontFamily, typography } from "@/constants/fonts";
+import { welcome } from "@/assets/images";
 import SocialButton from "@/components/login/social-button";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme, useThemedStyles } from "@/context/theme-context";
-import { Theme } from "@/constants/colors";
+import { FontFamily } from "@/constants/fonts";
+import { ImageBackground } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import React from "react";
+import { StatusBar, StyleSheet, Text, View } from "react-native";
 
-const Login = () => {
-  const { isDark } = useTheme();
-
-  const insets = useSafeAreaInsets();
-  const styles = useThemedStyles(styleCreator);
-
+export default function Login() {
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-
-      <View style={styles.titleContainer}>
+    <ImageBackground
+      source={welcome}
+      contentFit="cover"
+      style={styles.conatiner}
+      imageStyle={[
+        styles.imageStyle,
+        { top: (StatusBar.currentHeight ?? 0) + 90 },
+      ]}
+    >
+      <View
+        style={[
+          styles.titleContainer,
+          { paddingTop: (StatusBar.currentHeight ?? 0) + 20 },
+        ]}
+      >
         <Text style={styles.appTitle}>AR Chitram</Text>
       </View>
 
-      <View style={styles.imageContainer}>
-        <Image source={welcome} contentFit="fill" style={styles.image} />
-      </View>
-
       <View
-        style={[
-          styles.bottomContainer,
-          { paddingBottom: Math.max(insets.bottom, 40) },
-        ]}
+        style={{
+          flex: 1,
+          zIndex: 9999,
+          justifyContent: "flex-end",
+          alignItems: "center",
+          height: "100%",
+          paddingVertical: 15,
+        }}
       >
-        <View style={styles.headerTextContainer}>
+        <View style={{ paddingBottom: 30, gap: 3 }}>
           <Text style={styles.loginTitle}>Login</Text>
           <Text style={styles.subtitle}>Sign in to continue</Text>
         </View>
 
-        <View style={styles.buttonsContainer}>
+        <View style={{ gap: 5, paddingBottom: 50 }}>
           <SocialButton
             title="Login with Google"
             imageSource={ic_welcome_google}
@@ -61,83 +65,66 @@ const Login = () => {
           </View>
         </View>
       </View>
-    </View>
+
+      <LinearGradient
+        colors={[
+          "rgba(255,255,255,0.1)",
+          "rgba(255,255,255,0.1)",
+          "rgba(255,255,255,1)",
+          "rgba(255,255,255,1)",
+          "rgba(255,255,255,1)",
+        ]}
+        style={styles.gradient}
+      />
+    </ImageBackground>
   );
-};
+}
 
-export default Login;
+const styles = StyleSheet.create({
+  conatiner: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  imageStyle: {
+    width: "100%",
+    height: "100%",
+  },
+  titleContainer: {
+    marginTop: 20,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  appTitle: {
+    fontFamily: FontFamily.pattaya,
+    fontSize: 42,
+  },
+  gradient: {
+    flex: 1,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+  },
 
-const styleCreator = (theme: Theme) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-      alignItems: "center",
-    },
-    titleContainer: {
-      marginTop: 20,
-      alignItems: "center",
-      zIndex: 10,
-    },
-    appTitle: {
-      fontFamily: FontFamily.pattaya,
-      fontSize: 42,
-      color: theme.textPrimary,
-    },
-    imageContainer: {
-      flex: 1,
-      top: 60,
-      width: "100%",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    image: {
-      width: "90%",
-      height: "170%",
-    },
-    bottomContainer: {
-      width: "100%",
-      paddingHorizontal: 24,
-      alignItems: "center",
-      paddingBottom: 20,
-    },
-    headerTextContainer: {
-      alignItems: "center",
-      marginBottom: 20,
-    },
-    loginTitle: {
-      ...typography.h2,
-      fontSize: 28,
-      color: theme.textPrimary,
-      marginBottom: 3,
-    },
-    subtitle: {
-      ...typography.body,
-      color: "rgba(5, 5, 5, 1)",
-    },
-    buttonsContainer: {
-      gap: 0,
-      width: "100%",
-      marginBottom: 50,
-      alignItems: "center",
-    },
-    footer: {
-      marginTop: 20,
-      alignItems: "center",
-    },
-    footerText: {
-      ...typography.caption,
-      color: "rgba(43, 43, 43, 1)",
-      textAlign: "center",
-    },
-    termsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    linkText: {
-      ...typography.caption,
-      color: theme.textPrimary,
-      fontFamily: FontFamily.bold,
-      textDecorationLine: "underline",
-    },
-  });
+  footer: {},
+  footerText: {
+    color: "rgba(43, 43, 43, 1)",
+    textAlign: "center",
+  },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  linkText: {
+    fontFamily: FontFamily.bold,
+    textDecorationLine: "underline",
+  },
+
+  loginTitle: {
+    fontSize: 25,
+    textAlign: "center",
+    fontFamily: FontFamily.bold,
+    color: "rgba(43, 43, 43, 1)",
+  },
+  subtitle: { fontSize: 15, textAlign: "center", color: "rgba(43, 43, 43, 1)" },
+});

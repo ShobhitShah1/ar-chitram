@@ -6,7 +6,7 @@ export const useCommonHeaderOptions = () => {
   const { theme } = useTheme();
 
   return {
-    headerShown: true,
+    headerShown: false,
     headerStyle: {
       backgroundColor: theme.background,
       borderBottomWidth: 0.5,

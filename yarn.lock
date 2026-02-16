@@ -3320,6 +3320,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"base64-arraybuffer@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "base64-arraybuffer@npm:1.0.2"
+  checksum: 10c0/3acac95c70f9406e87a41073558ba85b6be9dbffb013a3d2a710e3f2d534d506c911847d5d9be4de458af6362c676de0a5c4c2d7bdf4def502d00b313368e72f
+  languageName: node
+  linkType: hard
+
 "base64-js@npm:^1.2.3, base64-js@npm:^1.3.1, base64-js@npm:^1.5.1":
   version: 1.5.1
   resolution: "base64-js@npm:1.5.1"
@@ -3892,6 +3899,15 @@ __metadata:
   version: 1.0.0
   resolution: "css-color-keywords@npm:1.0.0"
   checksum: 10c0/af205a86c68e0051846ed91eb3e30b4517e1904aac040013ff1d742019b3f9369ba5658ba40901dbbc121186fc4bf0e75a814321cc3e3182fbb2feb81c6d9cb7
+  languageName: node
+  linkType: hard
+
+"css-line-break@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "css-line-break@npm:2.1.0"
+  dependencies:
+    utrie: "npm:^1.0.2"
+  checksum: 10c0/b2222d99d5daf7861ecddc050244fdce296fad74b000dcff6bdfb1eb16dc2ef0b9ffe2c1c965e3239bd05ebe9eadb6d5438a91592fa8648d27a338e827cf9048
   languageName: node
   linkType: hard
 
@@ -4549,6 +4565,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-camera@npm:~17.0.10":
+  version: 17.0.10
+  resolution: "expo-camera@npm:17.0.10"
+  dependencies:
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+    react-native-web: "*"
+  peerDependenciesMeta:
+    react-native-web:
+      optional: true
+  checksum: 10c0/7b43443f5a158845e7a5333f0bd5ddbf05315df9e5fc1ded1bed620d0b82a373147cf0f1b9a73d53a517b9ecf7e5588c15032c503c0eb57484aab8aa70e96127
+  languageName: node
+  linkType: hard
+
 "expo-constants@npm:~18.0.12":
   version: 18.0.12
   resolution: "expo-constants@npm:18.0.12"
@@ -4830,6 +4863,17 @@ __metadata:
     react-native-web:
       optional: true
   checksum: 10c0/316882a2fd55c63d46d1c05b15b13764c001c10cd283ae96b7e2dce735a31f21c984fd5a4c01b6bb5fe8588c4acd27709c7b31a57fcd45b6b9b0dac1be9e86c6
+  languageName: node
+  linkType: hard
+
+"expo-video@npm:~3.0.16":
+  version: 3.0.16
+  resolution: "expo-video@npm:3.0.16"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/b0f9e7c2597f2c44515eb34c16fbd0e79f19bcc4227c99788f9a98833832418a0717fcf2d06f66d2aba3ceb8e08733b28c2b6d662da304eccd728e6aa12a7ef2
   languageName: node
   linkType: hard
 
@@ -5159,6 +5203,7 @@ __metadata:
     expo-asset: "npm:~12.0.12"
     expo-blur: "npm:~15.0.8"
     expo-build-properties: "npm:~1.0.10"
+    expo-camera: "npm:~17.0.10"
     expo-constants: "npm:~18.0.13"
     expo-device: "npm:~8.0.10"
     expo-file-system: "npm:~19.0.21"
@@ -5173,6 +5218,7 @@ __metadata:
     expo-splash-screen: "npm:~31.0.13"
     expo-store-review: "npm:~9.0.9"
     expo-system-ui: "npm:~6.0.9"
+    expo-video: "npm:~3.0.16"
     jest: "npm:^29.2.1"
     jest-expo: "npm:~54.0.17"
     lottie-react-native: "npm:^7.3.4"
@@ -5192,6 +5238,7 @@ __metadata:
     react-native-share: "npm:^12.2.0"
     react-native-svg: "npm:15.12.1"
     react-native-toast-message: "npm:^2.3.3"
+    react-native-view-shot: "npm:4.0.3"
     react-native-worklets: "npm:0.5.1"
     react-test-renderer: "npm:19.0.0"
     typescript: "npm:~5.9.2"
@@ -5349,6 +5396,16 @@ __metadata:
   version: 2.0.2
   resolution: "html-escaper@npm:2.0.2"
   checksum: 10c0/208e8a12de1a6569edbb14544f4567e6ce8ecc30b9394fcaa4e7bb1e60c12a7c9a1ed27e31290817157e8626f3a4f29e76c8747030822eb84a6abb15c255f0a0
+  languageName: node
+  linkType: hard
+
+"html2canvas@npm:^1.4.1":
+  version: 1.4.1
+  resolution: "html2canvas@npm:1.4.1"
+  dependencies:
+    css-line-break: "npm:^2.1.0"
+    text-segmentation: "npm:^1.0.3"
+  checksum: 10c0/6de86f75762b00948edf2ea559f16da0a1ec3facc4a8a7d3f35fcec59bb0c5970463478988ae3d9082152e0173690d46ebf4082e7ac803dd4817bae1d355c0db
   languageName: node
   linkType: hard
 
@@ -7928,6 +7985,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-native-view-shot@npm:4.0.3":
+  version: 4.0.3
+  resolution: "react-native-view-shot@npm:4.0.3"
+  dependencies:
+    html2canvas: "npm:^1.4.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/e172507eb7de8760a8a557a5e8632bdc248b60b89770cc941690c8fe6c788d28be1efd8259236fbc768eba3b33aaec8b7a833476b566dfef5b754618060edbec
+  languageName: node
+  linkType: hard
+
 "react-native-worklets@npm:0.5.1":
   version: 0.5.1
   resolution: "react-native-worklets@npm:0.5.1"
@@ -8945,6 +9014,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"text-segmentation@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "text-segmentation@npm:1.0.3"
+  dependencies:
+    utrie: "npm:^1.0.2"
+  checksum: 10c0/8b9ae8524e3a332371060d0ca62f10ad49a13e954719ea689a6c3a8b8c15c8a56365ede2bb91c322fb0d44b6533785f0da603e066b7554d052999967fb72d600
+  languageName: node
+  linkType: hard
+
 "thenify-all@npm:^1.0.0":
   version: 1.6.0
   resolution: "thenify-all@npm:1.6.0"
@@ -9265,6 +9343,15 @@ __metadata:
   version: 1.0.1
   resolution: "utils-merge@npm:1.0.1"
   checksum: 10c0/02ba649de1b7ca8854bfe20a82f1dfbdda3fb57a22ab4a8972a63a34553cf7aa51bc9081cf7e001b035b88186d23689d69e71b510e610a09a4c66f68aa95b672
+  languageName: node
+  linkType: hard
+
+"utrie@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "utrie@npm:1.0.2"
+  dependencies:
+    base64-arraybuffer: "npm:^1.0.2"
+  checksum: 10c0/eaffe645bd81a39e4bc3abb23df5895e9961dbdd49748ef3b173529e8b06ce9dd1163e9705d5309a1c61ee41ffcb825e2043bc0fd1659845ffbdf4b1515dfdb4
   languageName: node
   linkType: hard
 

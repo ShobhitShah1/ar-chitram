@@ -1,6 +1,7 @@
 import { HorizontalGallery } from "@/components/horizontal-gallery";
 import { StoryRow } from "@/components/story/story-row";
-import { Text, View } from "@/components/themed";
+import TabsHeader from "@/components/tabs-header";
+import { View } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import React from "react";
@@ -11,8 +12,8 @@ import Animated from "react-native-reanimated";
 export default function Home() {
   const { theme } = useTheme();
 
-  const contestStoryData = [];
-  const galleryImages = [];
+  const contestStoryData: any[] = [];
+  const galleryImages: any[] = [];
 
   const handleLikePress = () => {};
 
@@ -22,9 +23,7 @@ export default function Home() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <Text style={[styles.gigglamText, { color: theme.textPrimary }]}>
-          AR Chitram
-        </Text>
+        <TabsHeader />
 
         <Animated.ScrollView
           style={styles.scrollView}
@@ -120,10 +119,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
-  },
-  gigglamText: {
-    fontFamily: FontFamily.galada,
-    fontSize: 23,
-    marginHorizontal: 18,
   },
 });

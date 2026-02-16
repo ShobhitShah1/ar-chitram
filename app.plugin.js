@@ -14,11 +14,17 @@ function withShareFileProvider(config) {
     const application = manifest.application[0];
     const applicationId = config.android?.package || 'com.gigglam';
 
+    // Ensure tools namespace exists
+    if (!manifest.$['xmlns:tools']) {
+      manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    }
+
     // Add MLKit Subject Segmentation meta-data for automatic model download
     const mlkitMetaData = {
       $: {
         'android:name': 'com.google.mlkit.vision.DEPENDENCIES',
         'android:value': 'subject_segment',
+        'tools:replace': 'android:value',
       },
     };
 
@@ -32,10 +38,8 @@ function withShareFileProvider(config) {
     );
 
     if (existingMLKitIndex !== -1) {
-      // If it exists but is wrong or just to be safe, update/overwrite it
       application['meta-data'][existingMLKitIndex] = mlkitMetaData;
     } else {
-      // Add if not present
       application['meta-data'].push(mlkitMetaData);
     }
 

@@ -126,7 +126,6 @@ export const useRegisterUser = () => {
         bypassOTP: BYPASS_OTP,
       });
 
-      // Step 1: Register user and get token
       const registerResponse = await registerUser(mobileNo);
 
       if (registerResponse.code !== 200 || !registerResponse.data.token) {
@@ -134,10 +133,7 @@ export const useRegisterUser = () => {
       }
 
       const token = registerResponse.data.token;
-      debugLog.info("Registration successful, got token");
 
-      // Step 2: Fetch account to get user ID
-      debugLog.info("🔍 Fetching account to get user ID");
       const accountResponse = await fetchAccounts(mobileNo);
 
       if (accountResponse.code !== 200 || !accountResponse.data?.data?.length) {
@@ -145,17 +141,14 @@ export const useRegisterUser = () => {
       }
 
       const userId = accountResponse.data.data[0]._id;
-      debugLog.info("Account fetched successfully", { userId });
 
       return { token, userId };
     },
     onSuccess: async (data, mobileNo) => {
       try {
-        // Store token and user ID securely
         await saveToSecureStore("userToken", data.token);
         await saveToSecureStore("userId", data.userId);
 
-        // Set auth token for API requests
         setApiAuthToken(data.token);
 
         debugLog.info("Complete registration flow successful", {
@@ -165,7 +158,6 @@ export const useRegisterUser = () => {
           userId: data.userId,
         });
 
-        // Invalidate and refetch user-related queries
         queryClient.invalidateQueries({ queryKey: authQueryKeys.user });
       } catch (error) {
         debugLog.error("Error storing registration data", error);
@@ -174,90 +166,6 @@ export const useRegisterUser = () => {
     },
     onError: (error) => {
       debugLog.error("Complete registration flow error", error);
-    },
-  });
-};
-
-/**
- * Hook to send OTP
- * Note: Currently bypassed but preserved for future use
- */
-export const useSendOTP = () => {
-  return useMutation({
-    mutationFn: async (
-      mobileNo: string,
-    ): Promise<ApiResponse<SendOTPResponse>> => {
-      if (BYPASS_OTP) {
-        debugLog.info("OTP sending bypassed");
-        // Return a mock success response
-        return {
-          code: 200,
-          data: { success: true, message: "OTP bypassed for testing" },
-          message: "OTP sent successfully (bypassed)",
-        };
-      }
-
-      debugLog.info("📱 Sending OTP", { mobileNo });
-      return await sendOTP(mobileNo);
-    },
-    onSuccess: (data, mobileNo) => {
-      debugLog.info("OTP sent successfully", {
-        mobileNo,
-        bypassed: BYPASS_OTP,
-      });
-    },
-    onError: (error) => {
-      debugLog.error("OTP sending error", error);
-    },
-  });
-};
-
-/**
- * Hook to verify OTP
- * Note: Currently bypassed but preserved for future use
- */
-export const useVerifyOTP = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      mobileNo,
-      otp,
-    }: {
-      mobileNo: string;
-      otp: string;
-    }): Promise<ApiResponse<VerifyOTPResponse>> => {
-      if (BYPASS_OTP) {
-        debugLog.info("OTP verification bypassed", { mobileNo, otp });
-        // Return a mock success response that will trigger registration
-        return {
-          code: 200,
-          data: {
-            success: true,
-            token: "bypassed",
-            message: "OTP bypassed for testing",
-          },
-          message: "OTP verified successfully (bypassed)",
-        };
-      }
-
-      debugLog.info("🔐 Verifying OTP", {
-        mobileNo,
-        otp: otp.replace(/./g, "*"),
-      });
-      return await verifyOTP(mobileNo, otp);
-    },
-    onSuccess: async (data, { mobileNo, otp }) => {
-      debugLog.info("OTP verified successfully", {
-        mobileNo,
-        bypassed: BYPASS_OTP,
-      });
-
-      // Invalidate user queries after successful verification
-      queryClient.invalidateQueries({ queryKey: authQueryKeys.user });
-    },
-    onError: (error) => {
-      debugLog.error("OTP verification error", error);
     },
   });
 };
@@ -299,56 +207,16 @@ export const useEnsureAuth = () => {
  */
 export const useRegistrationFlow = () => {
   const registerMutation = useRegisterUser();
-  const sendOTPMutation = useSendOTP();
 
   const handleRegistration = async (mobileNo: string) => {
-    if (BYPASS_OTP) {
-      // Direct registration bypass
-      return await registerMutation.mutateAsync(mobileNo);
-    } else {
-      // Normal flow: send OTP first, then registration happens in OTP verification
-      await sendOTPMutation.mutateAsync(mobileNo);
-      return null; // OTP screen will handle the rest
-    }
+    return await registerMutation.mutateAsync(mobileNo);
   };
 
   return {
     handleRegistration,
-    isLoading: registerMutation.isPending || sendOTPMutation.isPending,
-    error: registerMutation.error || sendOTPMutation.error,
+    isLoading: registerMutation.isPending,
+    error: registerMutation.error,
     isSuccess: registerMutation.isSuccess,
     data: registerMutation.data,
   };
-};
-
-/**
- * Hook to update user phone number
- */
-export const useUpdatePhoneNumber = () => {
-  return useMutation({
-    mutationFn: async ({
-      userId,
-      newPhoneNumber,
-    }: {
-      userId: string;
-      newPhoneNumber: string;
-    }) => {
-      debugLog.info("📞 Updating phone number", { userId, newPhoneNumber });
-      return await updatePhoneNumber(userId, newPhoneNumber);
-    },
-    onSuccess: (data, variables) => {
-      debugLog.info("Phone number updated successfully", {
-        userId: variables.userId,
-        newPhoneNumber: variables.newPhoneNumber,
-        response: data,
-      });
-    },
-    onError: (error, variables) => {
-      debugLog.error("Failed to update phone number", {
-        error,
-        userId: variables.userId,
-        newPhoneNumber: variables.newPhoneNumber,
-      });
-    },
-  });
 };

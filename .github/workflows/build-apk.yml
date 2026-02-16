@@ -1,0 +1,82 @@
+name: Build AR-Chitram APK
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo apt-get clean
+          df -h
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: yarn install --check-files
+
+      - name: Expo prebuild
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Clean Android build
+        working-directory: android
+        run: ./gradlew clean
+
+      - name: Build Release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ar-chitram-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "AR-Chitram Android Release APK – ${{ github.ref_name }}"
+          to: "shobhit942003@gmail.com"
+          from: "AR-Chitram CI <${{ secrets.SMTP_USER }}>"
+          body: |
+            Hello,
+
+            The Android release build for AR-Chitram has completed successfully.
+
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+
+            Download APK:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Regards,
+            AR-Chitram CI

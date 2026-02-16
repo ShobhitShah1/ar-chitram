@@ -8,6 +8,7 @@ import {
   Text as DefaultText,
   TextInput as DefaultTextInput,
   View as DefaultView,
+  StatusBar,
   StyleProp,
   TextStyle,
   ViewStyle,
@@ -19,7 +20,7 @@ import {
 
 // Helper function to create themed styles
 export const createThemedStyles = <T extends Record<string, any>>(
-  styleCreator: (theme: Theme) => T
+  styleCreator: (theme: Theme) => T,
 ) => {
   return (theme: Theme): T => styleCreator(theme);
 };
@@ -160,7 +161,10 @@ export function SafeAreaView(props: ThemedSafeAreaViewProps) {
 }
 
 // Themed Pressable Component
-export function Pressable(props: ThemedPressableProps) {
+export const Pressable = React.forwardRef<
+  React.ElementRef<typeof DefaultPressable>,
+  ThemedPressableProps
+>((props, ref) => {
   const { style, variant, ...otherProps } = props;
   const { theme } = useTheme();
 
@@ -175,22 +179,26 @@ export function Pressable(props: ThemedPressableProps) {
           alignItems: "center",
         }
       : variant === "secondary"
-      ? {
-          backgroundColor: theme.cardBackground,
-          borderColor: theme.borderPrimary,
-          borderWidth: 1,
-          borderRadius: 8,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          justifyContent: "center",
-          alignItems: "center",
-        }
-      : {};
+        ? {
+            backgroundColor: theme.cardBackground,
+            borderColor: theme.borderPrimary,
+            borderWidth: 1,
+            borderRadius: 8,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            justifyContent: "center",
+            alignItems: "center",
+          }
+        : {};
 
   return (
-    <DefaultPressable style={[pressableStyle, style as any]} {...otherProps} />
+    <DefaultPressable
+      ref={ref}
+      style={[pressableStyle, style as any]}
+      {...otherProps}
+    />
   );
-}
+});
 
 // Themed Modal Component
 export function Modal(props: ThemedModalProps) {
@@ -236,6 +244,7 @@ export const commonThemedStyles = createThemedStyles((theme: Theme) => ({
   container: {
     flex: 1,
     backgroundColor: theme.background,
+    paddingTop: (StatusBar.currentHeight ?? 0) + 10,
   },
   modalBackground: {
     backgroundColor: theme.modalBackground,

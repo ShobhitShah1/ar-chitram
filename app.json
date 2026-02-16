@@ -36,17 +36,13 @@
       "edgeToEdgeEnabled": true,
       "package": "com.architram",
       "permissions": [
-        "android.permission.READ_PHONE_STATE",
-        "android.permission.READ_PHONE_NUMBERS",
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.READ_CONTACTS",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.ACCESS_MEDIA_LOCATION",
-        "android.permission.WRITE_CONTACTS"
+        "android.permission.ACCESS_MEDIA_LOCATION"
       ],
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID",
@@ -112,8 +108,17 @@
           "ios": {}
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
+        }
+      ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

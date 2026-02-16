@@ -1,5 +1,4 @@
 import { SERVER_URL } from "@/constants/server";
-import { RoomInfo } from "@/types";
 import { AuthResponse, LoginRequest, RegisterRequest } from "@/types/auth";
 import {
   deleteFromSecureStore,
@@ -40,7 +39,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor for error handling
@@ -54,7 +53,7 @@ api.interceptors.response.use(
       // You can emit an event here to redirect to login screen
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // Utility function to handle API errors
@@ -97,41 +96,5 @@ export const authApi = {
       await deleteFromSecureStore("userToken");
       await deleteFromSecureStore("user");
     }
-  },
-};
-
-// Rooms API functions
-export const roomsApi = {
-  fetchRooms: async (): Promise<RoomInfo[]> => {
-    const response = await api.get<{ rooms: RoomInfo[] }>("/rooms");
-    return response.data.rooms;
-  },
-
-  createRoom: async (data: {
-    name: string;
-    description?: string;
-  }): Promise<RoomInfo> => {
-    const response = await api.post<{ room: RoomInfo }>("/rooms", data);
-    return response.data.room;
-  },
-
-  updateRoom: async (
-    roomId: string,
-    data: { name?: string; description?: string }
-  ): Promise<RoomInfo> => {
-    const response = await api.put<{ room: RoomInfo }>(
-      `/rooms/${roomId}`,
-      data
-    );
-    return response.data.room;
-  },
-
-  deleteRoom: async (roomId: string): Promise<void> => {
-    await api.delete(`/rooms/${roomId}`);
-  },
-
-  getRoom: async (roomId: string): Promise<RoomInfo> => {
-    const response = await api.get<{ room: RoomInfo }>(`/rooms/${roomId}`);
-    return response.data.room;
   },
 };

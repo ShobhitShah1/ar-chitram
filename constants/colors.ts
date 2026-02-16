@@ -31,12 +31,17 @@ export interface Theme {
   tabIconSelected: string;
 
   buttonGradientColor?: string[];
+  drawingButton: string[];
 
   // Tab bar gradients
   tabBarGradient: string[];
   tabBarBorderGradient: string[];
   tabBubbleGradient: string[];
   centerTabBubbleGradient: string[];
+
+  // Drawing Card
+  drawingCardBackground: string;
+  drawingCardShadow: string;
 }
 
 // Light theme (current/default)
@@ -50,7 +55,7 @@ export const lightTheme: Theme = {
 
   // Text colors
   textPrimary: "#1C1C1E",
-  textSecondary: "#8E8E93",
+  textSecondary: "#B4B4B4",
 
   // Border colors
   borderPrimary: "#E5E5EA",
@@ -73,6 +78,7 @@ export const lightTheme: Theme = {
   tabIconSelected: "#2f95dc",
 
   buttonGradientColor: ["rgba(0, 243, 248, 1)", "rgba(0, 73, 191, 1)"],
+  drawingButton: ["rgba(94,94,94,1)", "rgba(62,62,62,1)", "rgba(31,31,31,1)"],
 
   // Tab bar gradients
   tabBarGradient: [
@@ -96,20 +102,22 @@ export const lightTheme: Theme = {
     "rgba(45, 45, 45, 1)",
     "rgba(19, 19, 19, 1)",
   ],
+  drawingCardBackground: "#FFFFFF",
+  drawingCardShadow: "0px 0px 10px 0px rgba(0,0,0,0.05)",
 };
 
 // Dark theme (new)
 export const darkTheme: Theme = {
   // Main colors
-  background: "#000306",
+  background: "#A2A2A2",
   // background: "rgba(0, 3, 6, 1)",
   modalBackground: "rgba(14, 20, 27, 1)",
-  cardBackground: "rgba(42, 42, 42, 1)",
+  cardBackground: "rgba(212, 212, 212, 1)",
   textInputBackground: "rgba(14, 20, 27, 1)",
 
   // Text colors
-  textPrimary: "#FFFFFF",
-  textSecondary: "#A8A8A8",
+  textPrimary: "#000000",
+  textSecondary: "#484848",
 
   // Border colors
   borderPrimary: "rgba(83, 145, 245, 1)",
@@ -132,32 +140,27 @@ export const darkTheme: Theme = {
   tabIconSelected: "#fff",
 
   buttonGradientColor: ["rgba(0, 243, 248, 1)", "rgba(0, 73, 191, 1)"],
+  drawingButton: ["rgba(78,78,78,1)", "rgba(48,48,48,1)", "rgba(34,34,34,1)"],
 
   // Tab bar gradients
-  // tabBarGradient: [
-  //   "rgba(227, 227, 227, 1)",
-  //   "rgba(216, 216, 216, 1)",
-  //   "rgba(205, 205, 205, 1)",
-  //   "rgba(195, 195, 195, 1)",
-  //   "rgba(188, 188, 188, 1)",
-  //   "rgba(182, 182, 182, 1)",
-  // ],
   tabBarGradient: [
-    "#3E3E3E",
-    "#383838",
-    "#313131",
-    "#2C2C2C",
-    "#262626",
-    "#202020",
-  ],
-  tabBarBorderGradient: ["#454545", "#707070"],
-  tabBubbleGradient: [
-    "rgba(255, 255, 255, 1)",
     "rgba(227, 227, 227, 1)",
-    "rgba(207, 207, 207, 1)",
-    "rgba(190, 190, 190, 1)",
+    "rgba(216, 216, 216, 1)",
+    "rgba(205, 205, 205, 1)",
+    "rgba(195, 195, 195, 1)",
+    "rgba(188, 188, 188, 1)",
+    "rgba(182, 182, 182, 1)",
+  ],
+  tabBarBorderGradient: ["rgba(148, 148, 148, 1)", "rgba(148, 148, 148, 1)"],
+  tabBubbleGradient: [
+    "rgba(128, 128, 128, 1)",
+    "rgba(96, 96, 96, 1)",
+    "rgba(45, 45, 45, 1)",
+    "rgba(19, 19, 19, 1)",
   ],
   centerTabBubbleGradient: ["#808080", "#606060", "#2D2D2D", "#131313"],
+  drawingCardBackground: "#E4E4E4",
+  drawingCardShadow: "0px 0px 10px 0px rgba(0,0,0,0.1)",
 };
 
 // Backward compatibility exports

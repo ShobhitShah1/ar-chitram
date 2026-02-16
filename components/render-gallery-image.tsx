@@ -1,11 +1,12 @@
+import { ic_image_audio_download } from "@/assets/icons";
 import { GalleryItem } from "@/constants/interface";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { FC, memo, useCallback, useEffect } from "react";
+import { useVideoPlayer, VideoView } from "expo-video";
+import React, { FC, memo, useCallback } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { Pressable } from "./themed";
-import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 export const GALLERY_ITEM_SIZE = (width - 50) / 2;
@@ -17,6 +18,28 @@ interface RenderGalleryImageProps {
   setSelectedStoryIndex: React.Dispatch<React.SetStateAction<number>>;
   setShowStoryModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
+
+// Video Preview Component for gallery thumbnails
+const VideoPreview = memo(({ uri, size }: { uri: string; size: number }) => {
+  const player = useVideoPlayer(uri, (player) => {
+    player.loop = true;
+    player.volume = 0; // Muted
+    player.play();
+  });
+
+  return (
+    <View pointerEvents="none" style={{ width: "100%", height: "100%" }}>
+      <VideoView
+        pointerEvents="none"
+        player={player}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="cover"
+        nativeControls={false}
+        surfaceType="textureView"
+      />
+    </View>
+  );
+});
 
 const RenderGalleryImage: FC<RenderGalleryImageProps> = ({
   item,
@@ -36,10 +59,10 @@ const RenderGalleryImage: FC<RenderGalleryImageProps> = ({
         initialIndex: index.toString(),
       },
     });
-  }, [index, images]);
+  }, [images, index]);
 
   return (
-    <Pressable
+    <View
       style={[
         styles.imageContainer,
         {
@@ -47,17 +70,30 @@ const RenderGalleryImage: FC<RenderGalleryImageProps> = ({
           backgroundColor: theme.cardBackground,
         },
       ]}
-      onPress={handlePress}
     >
-      <Image
-        source={{ uri: item.uri }}
-        style={styles.image}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        transition={0}
-        recyclingKey={item.id}
-      />
-    </Pressable>
+      {item.mediaType === "video" ? (
+        <View pointerEvents="none" style={styles.videoContainer}>
+          <VideoPreview uri={item.uri} size={GALLERY_ITEM_SIZE} />
+          <View pointerEvents="none" style={styles.videoIndicator}>
+            <Image
+              contentFit="contain"
+              source={ic_image_audio_download}
+              style={{ width: 18, height: 18, tintColor: "white" }}
+            />
+          </View>
+        </View>
+      ) : (
+        <Image
+          source={{ uri: item.uri }}
+          style={styles.image}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
+          recyclingKey={item.id}
+        />
+      )}
+      <Pressable style={styles.tapOverlay} onPress={handlePress} />
+    </View>
   );
 };
 
@@ -90,8 +126,15 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 10,
+    padding: 8,
+  },
+  tapOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 10,
   },
 });

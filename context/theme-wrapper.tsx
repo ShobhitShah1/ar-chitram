@@ -47,7 +47,7 @@ export function withTheme<P extends object>(
   options?: {
     statusBarStyle?: "light-content" | "dark-content" | "default";
     backgroundColor?: "background" | "modalBackground" | "cardBackground";
-  }
+  },
 ) {
   return function ThemedComponent(props: P) {
     return (

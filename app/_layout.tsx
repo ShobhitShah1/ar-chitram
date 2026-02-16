@@ -29,6 +29,10 @@ import {
 } from "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
+import * as SplashScreen from "expo-splash-screen";
+
+SplashScreen.preventAutoHideAsync();
+
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
@@ -92,6 +96,11 @@ function MainNavigator() {
         <Stack.Screen name="splash" options={{ animation: "fade" }} />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        {/* <Stack.Screen name="setting" options={{ headerShown: true }} /> */}
+        {/* <Stack.Screen name="drawing/guide" /> */}
+        {/* <Stack.Screen name="drawing/canvas" /> */}
+        {/* <Stack.Screen name="drawing/preview" /> */}
+
         <Stack.Screen
           name="privacy-policy"
           options={{ ...headerOptions, title: "Privacy Policy" }}
@@ -104,7 +113,6 @@ function MainNavigator() {
           name="open-source-license"
           options={{ ...headerOptions, title: "Open Source Licenses" }}
         />
-
         <Stack.Screen name="+not-found" />
       </Stack>
     </>
@@ -112,7 +120,21 @@ function MainNavigator() {
 }
 
 export default function RootLayout() {
-  useFonts({ ...FONT_ASSETS, ...FontAwesome.font });
+  const [loaded, error] = useFonts({ ...FONT_ASSETS, ...FontAwesome.font });
+
+  useEffect(() => {
+    if (error) throw error;
+  }, [error]);
+
+  useEffect(() => {
+    if (loaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded]);
+
+  if (!loaded) {
+    return null;
+  }
 
   return <RootLayoutNav />;
 }

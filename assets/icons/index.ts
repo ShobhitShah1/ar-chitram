@@ -23,3 +23,24 @@ export const ic_download_image_bg = require("@/assets/icons/ic_download_image_bg
 
 export const ic_welcome_google = require("@/assets/icons/ic_welcome_google.png");
 export const ic_welcome_facebook = require("@/assets/icons/ic_welcome_facebook.png");
+
+export const ic_setting = require("@/assets/icons/ic_setting.png");
+export const ic_upload_home = require("@/assets/icons/ic_upload_home.png");
+export const ic_back = require("@/assets/icons/ic_back.png");
+export const ic_flash = require("@/assets/icons/ic_flash.png");
+export const ic_flip_image = require("@/assets/icons/ic_flip_image.png");
+export const ic_lock = require("@/assets/icons/ic_lock.png");
+export const ic_video_preview = require("@/assets/icons/ic_video_preview.png");
+export const ic_redo = require("@/assets/icons/ic_redo.png");
+export const ic_guide = require("@/assets/icons/ic_guide.png");
+export const ic_suffel = require("@/assets/icons/ic_suffel.png");
+export const ic_image_audio_download = require("@/assets/icons/ic_image_audio_download.webp");
+export const ic_delete = require("@/assets/icons/ic_delete.png");
+export const ic_patent = require("@/assets/icons/ic_patent.png");
+export const ic_preview_eye = require("@/assets/icons/ic_preview-eye.png");
+export const ic_color_grid = require("@/assets/icons/ic_color_grid.png");
+export const ic_frontface = require("@/assets/icons/ic_frontface.png");
+export const ic_backface = require("@/assets/icons/ic_backface.png");
+export const ic_signature = require("@/assets/icons/ic_signature.png");
+export const ic_zoom = require("@/assets/icons/ic_zoom.png");
+export const ic_undo = require("@/assets/icons/ic_undo.png");
