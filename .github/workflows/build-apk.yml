@@ -43,6 +43,9 @@ jobs:
       - name: Expo prebuild
         run: npx expo prebuild --platform android --non-interactive
 
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
+
       - name: Clean Android build
         working-directory: android
         run: ./gradlew clean
