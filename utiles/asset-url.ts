@@ -1,9 +1,9 @@
 // Centralized asset URL utility for different image types
 const ASSETS_BASE_URL =
-  "https://nirvanatechlabs.in/GigglamBackend/gigglam_image";
+  "https://nirvanatechlabs.in/ar_chitram_backend/gigglam_image";
 
 // New admin base URL for banners and assets
-const ADMIN_BASE_URL = "https://nirvanatechlabs.in/GigglamAdmin/uploads";
+const ADMIN_BASE_URL = "https://nirvanatechlabs.in/ar_chitram_admin/uploads";
 
 // Asset types and their directory mappings
 export enum AssetType {
@@ -31,7 +31,7 @@ const ASSET_DIRECTORIES: Record<AssetType, string> = {
  */
 export const getAssetUrl = (
   assetType: AssetType,
-  filename?: string
+  filename?: string,
 ): string | undefined => {
   if (!filename) return undefined;
 
@@ -83,7 +83,7 @@ export const getAssetImageUrl = (filename?: string): string | undefined => {
  * @returns Complete background asset image URL or undefined
  */
 export const getBackgroundAssetUrl = (
-  filename?: string
+  filename?: string,
 ): string | undefined => {
   if (!filename) return undefined;
   return `${ADMIN_BASE_URL}/${AssetType.BACKGROUND}/${filename}`;
@@ -95,7 +95,7 @@ export const getBackgroundAssetUrl = (
  * @returns Remote URL or null if invalid
  */
 export const processProfileImageUrl = (
-  imageUrl?: string | null
+  imageUrl?: string | null,
 ): string | null => {
   if (!imageUrl) return null;
 
@@ -111,10 +111,7 @@ export const processProfileImageUrl = (
     imageUrl.includes("/cache/") ||
     imageUrl.includes("ImagePicker")
   ) {
-    console.warn(
-      "🚫 Local image path detected, should use remote URL:",
-      imageUrl
-    );
+    console.warn("Local image path detected, should use remote URL:", imageUrl);
     return null;
   }
 

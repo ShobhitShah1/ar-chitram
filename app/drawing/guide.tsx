@@ -87,14 +87,16 @@ const GuideItem: React.FC<GuideItemProps> = ({
 
 const Guide = () => {
   const params = useLocalSearchParams();
-
-  const commonStyles = useCommonThemedStyles();
   const { theme, isDark } = useTheme();
   const scrollX = useSharedValue(0);
 
   const handleContinue = () => {
-    if (params.fromEdit) {
-      router.back();
+    // If we have an imageUri (from Virtual Creativity), pass it along
+    if (params.imageUri) {
+      router.replace({
+        pathname: "/drawing/canvas",
+        params: { imageUri: params.imageUri },
+      });
     } else {
       router.replace("/drawing/canvas");
     }

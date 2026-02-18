@@ -10,6 +10,7 @@ export const ic_sketch_light = require("@/assets/icons/ic_sketch_light.png");
 export const ic_home_dark = require("@/assets/icons/ic_home_dark.png");
 export const ic_home_light = require("@/assets/icons/ic_home_light.png");
 export const ic_customize_home = require("@/assets/icons/ic_customize_home.png");
+export const ic_check = require("@/assets/icons/ic_check.webp");
 
 export const ic_plus = require("@/assets/icons/ic_plus.png");
 

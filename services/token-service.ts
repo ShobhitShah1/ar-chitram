@@ -3,10 +3,10 @@ import { getFromSecureStore } from "@/utiles/secure-storage";
 
 // Data API for notification tokens
 const dataApi = axios.create({
-  baseURL: "https://nirvanatechlabs.in/gigglam/api/data",
+  baseURL: "https://nirvanatechlabs.in/ar_chitram/api/data",
   headers: {
     "Content-Type": "application/json",
-    app_secret: "_g_i_g_g_l_a_m_",
+    app_secret: "_a_r_c_h_i_t_r_a_m_",
   },
   timeout: 30000,
 });
@@ -22,7 +22,7 @@ dataApi.interceptors.request.use(
     } catch (error) {}
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 export class TokenService {
@@ -51,7 +51,7 @@ export class TokenService {
    * Get FCM tokens for multiple phone numbers
    */
   async getFCMTokens(
-    phoneNumbers: string[]
+    phoneNumbers: string[],
   ): Promise<{ [phoneNumber: string]: string | null }> {
     try {
       const response = await dataApi.post("", {

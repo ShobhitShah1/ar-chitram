@@ -7,19 +7,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { preview_1 } from "@/assets/images";
 import Header from "@/components/header";
 import PrimaryButton from "@/components/ui/primary-button";
-import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 
 const { width, height } = Dimensions.get("window");
 
-const Preview = () => {
+const VirtualCreativityPreview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { imageUri } = useLocalSearchParams();
 
   const handleContinue = () => {
-    // Navigate to Contest Camera step
-    router.push("/drawing/contest-camera");
+    // Navigate to Guide with the image Uri
+    router.push({
+      pathname: "/drawing/guide",
+      params: { imageUri: imageUri },
+    });
   };
 
   const displayImage = imageUri ? { uri: imageUri as string } : preview_1;
@@ -27,7 +29,7 @@ const Preview = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <Header title="Preview" />
+      <Header title="" />
 
       {/* Main Content */}
       <View style={styles.content}>
@@ -55,27 +57,11 @@ const Preview = () => {
   );
 };
 
-export default Preview;
+export default VirtualCreativityPreview;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  headerTitle: {
-    fontFamily: FontFamily.medium,
-    fontSize: 16,
-    color: "#1C1C1E",
   },
   content: {
     flex: 1,
@@ -86,7 +72,7 @@ const styles = StyleSheet.create({
   card: {
     width: width * 0.85,
     height: height * 0.65,
-    backgroundColor: "#E5E5E5", // Light grey card background
+    backgroundColor: "#F5F5F5",
     borderRadius: 24,
     overflow: "hidden",
     shadowColor: "#000",
@@ -97,6 +83,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   image: {
     width: "100%",

@@ -4,6 +4,8 @@ import TabsHeader from "@/components/tabs-header";
 import { View } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
+import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
+import { useFocusEffect } from "expo-router";
 import React from "react";
 import { Platform, StatusBar, StyleSheet } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -11,6 +13,16 @@ import Animated from "react-native-reanimated";
 
 export default function Home() {
   const { theme } = useTheme();
+  const resetVirtualCreativity = useVirtualCreativityStore(
+    (state) => state.reset,
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Clear virtual creativity store when returning to Home
+      resetVirtualCreativity();
+    }, []),
+  );
 
   const contestStoryData: any[] = [];
   const galleryImages: any[] = [];

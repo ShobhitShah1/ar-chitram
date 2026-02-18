@@ -1,21 +1,18 @@
 import { debugLog } from "@/constants/debug";
 import { SERVER_URL } from "@/constants/server";
-import { RoomInfo } from "@/types";
-import { Platform } from "react-native";
 import {
   ApiRequest,
   ApiResponse,
   FetchAccountsResponse,
   RegisterResponse,
-  SendOTPResponse,
-  VerifyOTPResponse,
 } from "@/types/api";
 import { getFromSecureStore } from "@/utiles/secure-storage";
-import axios, { AxiosError, AxiosResponse } from "axios";
 import NetInfo from "@react-native-community/netinfo";
+import axios, { AxiosError, AxiosResponse } from "axios";
+import { Platform } from "react-native";
 
 // API Base URLs
-const GIGGLAM_API_BASE = "https://nirvanatechlabs.in/gigglam/api";
+const GIGGLAM_API_BASE = "https://nirvanatechlabs.in/ar_chitram/api";
 const DATA_API_BASE = `${GIGGLAM_API_BASE}/data`;
 const UPLOAD_API_BASE = GIGGLAM_API_BASE;
 
@@ -32,7 +29,7 @@ const dataApi = axios.create({
   baseURL: DATA_API_BASE,
   headers: {
     "Content-Type": "application/json",
-    app_secret: "_g_i_g_g_l_a_m_",
+    app_secret: "_a_r_c_h_i_t_r_a_m_",
   },
   timeout: 30000,
 });
@@ -41,7 +38,7 @@ const dataApi = axios.create({
 const uploadApi = axios.create({
   baseURL: UPLOAD_API_BASE,
   headers: {
-    app_secret: "_g_i_g_g_l_a_m_",
+    app_secret: "_a_r_c_h_i_t_r_a_m_",
   },
   timeout: 30000,
 });
@@ -446,26 +443,6 @@ export const registerUser = async (
   });
 };
 
-export const sendOTP = async (
-  mobileNo: string,
-): Promise<ApiResponse<SendOTPResponse>> => {
-  return makeApiRequest<SendOTPResponse>({
-    eventName: "send_otp",
-    mobile_no: mobileNo,
-  });
-};
-
-export const verifyOTP = async (
-  mobileNo: string,
-  otp: string,
-): Promise<ApiResponse<VerifyOTPResponse>> => {
-  return makeApiRequest<VerifyOTPResponse>({
-    eventName: "verify_otp",
-    mobile_no: mobileNo,
-    otp: otp,
-  });
-};
-
 export const getProfile = async (): Promise<ApiResponse<{
   name: string;
   profile_image: string | null;
@@ -553,12 +530,12 @@ export const joinContest = async (
     formData.append("mobile_no", mobileNo);
 
     const response = await axios.post(
-      "https://nirvanatechlabs.in/gigglam/api/upload",
+      "https://nirvanatechlabs.in/ar_chitram/api/upload",
       formData,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          app_secret: "_g_i_g_g_l_a_m_",
+          app_secret: "_a_r_c_h_i_t_r_a_m_",
           "Content-Type": "multipart/form-data",
         },
       },
@@ -614,12 +591,12 @@ export const updateProfile = async (
     formData.append("name", name);
 
     const response = await axios.post(
-      "https://nirvanatechlabs.in/gigglam/api/upload",
+      "https://nirvanatechlabs.in/ar_chitram/api/upload",
       formData,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          app_secret: "_g_i_g_g_l_a_m_",
+          app_secret: "_a_r_c_h_i_t_r_a_m_",
           "Content-Type": "multipart/form-data",
         },
       },
@@ -700,38 +677,6 @@ export const getContestWinners = async (): Promise<{
   }
 };
 
-export const fetchRooms = async (): Promise<RoomInfo[]> => {
-  const response = await api.get<{ rooms: RoomInfo[] }>("/rooms");
-  return response.data.rooms;
-};
-
-export const deleteRoom = async (roomId: string): Promise<void> => {
-  await api.delete(`/room/${roomId}`);
-};
-
-export const updatePhoneNumber = async (
-  userId: string,
-  newPhoneNumber: string,
-): Promise<ApiResponse> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "update_phone_no",
-      user_id: userId,
-      new_mobile_no: newPhoneNumber,
-    });
-
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error updating phone number", error);
-    if (error instanceof AxiosError) {
-      throw new Error(
-        error.response?.data?.message || "Failed to update phone number",
-      );
-    }
-    throw error;
-  }
-};
-
 // Legal Documents API
 export interface LegalDocument {
   _id: string;
@@ -780,26 +725,6 @@ export const getLibraryLicense = async (): Promise<
     return response.data;
   } catch (error) {
     debugLog.error("Error fetching library license", error);
-    throw error;
-  }
-};
-
-// Background Assets API
-export interface BackgroundAssetsResponse {
-  background_assets: string[];
-}
-
-export const getBackgroundAssets = async (): Promise<
-  ApiResponse<BackgroundAssetsResponse>
-> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "background_assets",
-    });
-
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error fetching background assets", error);
     throw error;
   }
 };

@@ -11,6 +11,9 @@ import { Image } from "expo-image";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { VirtualLayer } from "@/store/virtual-creativity-store";
+import { CompositePreview } from "./composite-preview";
+
 export type ToolType = "gallery" | "palette" | "pattern" | "stroke" | "preview";
 
 interface BottomBarProps {
@@ -20,8 +23,11 @@ interface BottomBarProps {
   onStroke: () => void;
   onPreview: () => void;
   onPreviewLongPress?: () => void;
+  onCompositeRestore?: () => void;
   selectedTool?: ToolType;
   previewBadge?: number;
+  mode?: "default" | "single";
+  layers: VirtualLayer[];
 }
 
 export const BottomBar: React.FC<BottomBarProps> = ({
@@ -31,10 +37,19 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   onStroke,
   onPreview,
   onPreviewLongPress,
+  onCompositeRestore,
   selectedTool = "gallery",
   previewBadge = 0,
+  mode = "default",
+  layers,
 }) => {
   const { theme, isDark } = useTheme();
+
+  // Calculate total paths length for key to force re-render on drawing updates
+  const totalPaths = layers.reduce(
+    (acc, layer) => acc + (layer.paths?.length || 0),
+    0,
+  );
 
   const getIconContainerStyle = (tool: ToolType) => {
     if (tool === "gallery") {
@@ -48,20 +63,41 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: "transparent" }]}>
-      {/* Gallery (Upload) */}
-      <Pressable onPress={onGallery} style={styles.btn}>
-        <View style={[styles.iconContainer, getIconContainerStyle("gallery")]}>
-          <Image
-            source={ic_upload_home}
-            style={styles.icon}
-            contentFit="contain"
-            tintColor="#FFFFFF"
-          />
-        </View>
-      </Pressable>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: "transparent",
+          justifyContent: "space-between",
+        },
+      ]}
+    >
+      {/* Slot 1: Gallery OR Composite Preview */}
+      {mode === "single" ? (
+        <Pressable onPress={onCompositeRestore} style={styles.btn}>
+          <View style={[styles.previewContainer]}>
+            <CompositePreview
+              layers={layers}
+              key={`composite-${totalPaths}-${layers.length}`}
+            />
+          </View>
+        </Pressable>
+      ) : (
+        <Pressable onPress={onGallery} style={styles.btn}>
+          <View
+            style={[styles.iconContainer, getIconContainerStyle("gallery")]}
+          >
+            <Image
+              source={ic_upload_home}
+              style={styles.icon}
+              contentFit="contain"
+              tintColor="#FFFFFF"
+            />
+          </View>
+        </Pressable>
+      )}
 
-      {/* Palette */}
+      {/* Slot 2: Palette */}
       <Pressable onPress={onPalette} style={styles.btn}>
         <View style={[styles.iconContainer, getIconContainerStyle("palette")]}>
           <Image
@@ -72,43 +108,53 @@ export const BottomBar: React.FC<BottomBarProps> = ({
         </View>
       </Pressable>
 
-      {/* Pattern */}
+      {/* Slot 3: Pattern */}
       <Pressable onPress={onPattern} style={styles.btn}>
         <View style={[styles.iconContainer, getIconContainerStyle("pattern")]}>
           <Image source={ic_patent} style={styles.icon} contentFit="contain" />
         </View>
       </Pressable>
 
-      {/* Stroke */}
-      <Pressable onPress={onStroke} style={styles.btn}>
-        <View style={[styles.iconContainer, getIconContainerStyle("stroke")]}>
-          <Image
-            source={ic_signature}
-            style={styles.icon}
-            contentFit="contain"
-          />
-        </View>
-      </Pressable>
+      {/* Slot 4: Stroke (Only in Default Mode, else placeholder) */}
+      {mode === "default" ? (
+        <Pressable onPress={onStroke} style={styles.btn}>
+          <View style={[styles.iconContainer, getIconContainerStyle("stroke")]}>
+            <Image
+              source={ic_signature}
+              style={styles.icon}
+              contentFit="contain"
+            />
+          </View>
+        </Pressable>
+      ) : (
+        <View style={styles.placeholder} />
+      )}
 
-      {/* Preview */}
-      <Pressable
-        onPress={onPreview}
-        onLongPress={onPreviewLongPress}
-        style={styles.btn}
-      >
-        <View style={[styles.iconContainer, getIconContainerStyle("preview")]}>
-          <Image
-            source={ic_preview_eye}
-            style={styles.icon}
-            contentFit="contain"
-          />
-          {previewBadge > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{previewBadge}</Text>
-            </View>
-          )}
-        </View>
-      </Pressable>
+      {/* Slot 5: Preview (Only in Default Mode, else placeholder) */}
+      {mode === "default" ? (
+        <Pressable
+          onPress={onPreview}
+          onLongPress={onPreviewLongPress}
+          style={styles.btn}
+        >
+          <View
+            style={[styles.iconContainer, getIconContainerStyle("preview")]}
+          >
+            <Image
+              source={ic_preview_eye}
+              style={styles.icon}
+              contentFit="contain"
+            />
+            {previewBadge > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{previewBadge}</Text>
+              </View>
+            )}
+          </View>
+        </Pressable>
+      ) : (
+        <View style={styles.placeholder} />
+      )}
     </View>
   );
 };
@@ -130,6 +176,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  previewContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#007AFF",
+    backgroundColor: "#fff",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
   icon: {
     width: 32,
     height: 32,
@@ -150,5 +209,8 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 10,
     fontFamily: FontFamily.bold,
+  },
+  placeholder: {
+    width: 60,
   },
 });

@@ -15,13 +15,15 @@ import {
 import { DrawingCanvas } from "./drawing-canvas";
 
 interface CanvasViewerProps {
-  layer: VirtualLayer | undefined;
+  layers: VirtualLayer[];
+  activeLayerId?: string | null;
   isZoomMode: boolean;
   currentColor: string;
 }
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({
-  layer,
+  layers,
+  activeLayerId,
   isZoomMode,
   currentColor,
 }) => {
@@ -35,7 +37,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const translateY = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Reset zoom when layer changes or zoom mode toggled off
+  // Reset zoom when active layer changes or zoom mode toggled off
   React.useEffect(() => {
     scale.value = withSpring(1);
     translateX.value = withSpring(0);
@@ -43,7 +45,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-  }, [layer?.id, isZoomMode]);
+  }, [activeLayerId, isZoomMode]);
 
   // Zoom/Pan Gestures
   const panGesture = Gesture.Pan()
@@ -92,40 +94,49 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     ],
   }));
 
-  const handleAddPath = (path: DrawingPath) => {
-    if (layer) {
-      const currentPaths = layer.paths || [];
+  const handleAddPath = (path: DrawingPath, layerId: string) => {
+    const targetLayer = layers.find((l) => l.id === layerId);
+    if (targetLayer) {
+      const currentPaths = targetLayer.paths || [];
       const newPaths = [...currentPaths, path];
-      updateLayer(layer.id, { paths: newPaths });
+      updateLayer(layerId, { paths: newPaths });
     }
   };
 
-  if (!layer) return <View style={styles.container} />;
+  if (!layers || layers.length === 0) return <View style={styles.container} />;
 
   return (
     <View style={styles.container}>
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[styles.content, animatedStyle]}>
-          <Image
-            source={{ uri: layer.uri }}
-            style={styles.image}
-            contentFit="contain"
-            // We might remove tintColor if we want to color OVER the image naturally
-            // tintColor={layer.color}
-          />
-          {/* Drawing Overlay */}
-          <View style={StyleSheet.absoluteFill}>
-            {/* This view needs to be EXACTLY over the image content for coordinates to align */}
-            {/* Since image is contentFit="contain", there might be empty space if aspect ratio differs */}
-            {/* Ideally, we should measure the rendered image size. For now, assuming Full Fill due to Step 90 changes */}
-            <DrawingCanvas
-              layerId={layer.id}
-              paths={layer.paths || []}
-              isZoomMode={isZoomMode}
-              onAddPath={handleAddPath}
-              currentColor={currentColor}
-            />
-          </View>
+          {layers.map((layer) => (
+            <View
+              key={layer.id}
+              style={StyleSheet.absoluteFill}
+              pointerEvents={
+                layer.id === activeLayerId || !activeLayerId ? "auto" : "none"
+              }
+            >
+              <Image
+                source={{ uri: layer.uri }}
+                style={styles.image}
+                contentFit="contain"
+              />
+              {/* Drawing Overlay */}
+              <View style={StyleSheet.absoluteFill}>
+                <DrawingCanvas
+                  layerId={layer.id}
+                  paths={layer.paths || []}
+                  isZoomMode={isZoomMode}
+                  onAddPath={(p) => handleAddPath(p, layer.id)}
+                  currentColor={currentColor}
+                  enabled={!activeLayerId || layer.id === activeLayerId}
+                  layerWidth={layer.width}
+                  layerHeight={layer.height}
+                />
+              </View>
+            </View>
+          ))}
         </Animated.View>
       </GestureDetector>
     </View>

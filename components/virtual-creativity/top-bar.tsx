@@ -25,6 +25,7 @@ interface TopBarProps {
   canRedo?: boolean;
   hasSelection?: boolean;
   isZoomActive?: boolean;
+  hideNext?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -39,6 +40,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   canRedo = false,
   hasSelection = false,
   isZoomActive = false,
+  hideNext = false,
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -152,7 +154,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </View>
 
       {/* Next Button */}
-      {onNext && (
+      {onNext && !hideNext && (
         <PrimaryButton
           title="Next"
           onPress={onNext}

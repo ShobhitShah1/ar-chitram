@@ -34,25 +34,3 @@ export interface RegisterRequest extends ApiRequest {
 export interface RegisterResponse {
   token: string;
 }
-
-export interface SendOTPRequest extends ApiRequest {
-  eventName: "send_otp";
-  mobile_no: string;
-}
-
-export interface SendOTPResponse {
-  success: boolean;
-  message: string;
-}
-
-export interface VerifyOTPRequest extends ApiRequest {
-  eventName: "verify_otp";
-  mobile_no: string;
-  otp: string;
-}
-
-export interface VerifyOTPResponse {
-  success: boolean;
-  token?: string;
-  message: string;
-}

@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   StyleSheet,
@@ -15,7 +15,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { preview_1 } from "@/assets/images";
 import DrawingHeader from "@/components/drawing/drawing-header";
@@ -27,6 +26,7 @@ import {
   Snapshot,
 } from "@/components/drawing/capture-preview-modal";
 import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-animation";
+import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
 
 const { width: screenWidth, height } = Dimensions.get("window");
 
@@ -34,27 +34,69 @@ const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const Canvas = () => {
   const { width } = useWindowDimensions();
+  const params = useLocalSearchParams();
   const sliderWidth = width - 210;
+  const virtualSnapshots = useVirtualCreativityStore((state) => state.snapshots);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [flash, setFlash] = useState<boolean>(false);
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const opacity = useSharedValue(0.5);
-  const insets = useSafeAreaInsets();
 
-  // Snapshot state
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [snapshotCount, setSnapshotCount] = useState(0);
+  // Drawing camera snapshot state
+  const [cameraSnapshots, setCameraSnapshots] = useState<Snapshot[]>([]);
   const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
   const [showAnimation, setShowAnimation] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [targetPosition, setTargetPosition] = useState({ x: 0, y: 0 });
+  const [activeVirtualSnapshotIndex, setActiveVirtualSnapshotIndex] = useState(0);
+  const hasInitializedSnapshotIndex = useRef(false);
 
   const cameraRef = useRef<CameraView>(null);
   const snapshotButtonRef = useRef<View>(null);
 
-  const sketchImage = preview_1;
+  const routeImageUri = Array.isArray(params.imageUri)
+    ? params.imageUri[0]
+    : params.imageUri;
+
+  useEffect(() => {
+    if (virtualSnapshots.length === 0) {
+      hasInitializedSnapshotIndex.current = false;
+      setActiveVirtualSnapshotIndex(0);
+      return;
+    }
+
+    setActiveVirtualSnapshotIndex((currentIndex) => {
+      if (!hasInitializedSnapshotIndex.current) {
+        hasInitializedSnapshotIndex.current = true;
+        // Always start from the first snapshot.
+        return 0;
+      }
+
+      return Math.min(currentIndex, virtualSnapshots.length - 1);
+    });
+  }, [virtualSnapshots, routeImageUri]);
+
+  const activeVirtualSnapshot = virtualSnapshots[activeVirtualSnapshotIndex];
+  const sketchImage = activeVirtualSnapshot
+    ? { uri: activeVirtualSnapshot.uri }
+    : routeImageUri
+      ? { uri: routeImageUri }
+      : preview_1;
+
+  const canGoPrevSnapshot =
+    virtualSnapshots.length > 1 && activeVirtualSnapshotIndex > 0;
+  const canGoNextSnapshot =
+    virtualSnapshots.length > 1 &&
+    activeVirtualSnapshotIndex < virtualSnapshots.length - 1;
+
+  const prevSnapshotCount =
+    virtualSnapshots.length > 0 ? activeVirtualSnapshotIndex : 0;
+  const nextSnapshotCount =
+    virtualSnapshots.length > 0
+      ? virtualSnapshots.length - activeVirtualSnapshotIndex - 1
+      : 0;
 
   const overlayStyle = useAnimatedStyle(() => {
     return {
@@ -98,15 +140,55 @@ const Canvas = () => {
             uri: photo.uri,
             timestamp: Date.now(),
           };
-          setSnapshots((prev) => [...prev, newSnapshot]);
+          setCameraSnapshots((prev) => [...prev, newSnapshot]);
           setSnapshotUri(photo.uri);
           setShowAnimation(true);
-          setSnapshotCount((prev) => prev + 1);
         }
       }
     } catch (error) {
       console.error("Snapshot failed", error);
     }
+  };
+
+  const handleComplete = async () => {
+    if (cameraSnapshots.length > 0) {
+      const lastSnapshot = cameraSnapshots[cameraSnapshots.length - 1];
+      router.push({
+        pathname: "/drawing/preview",
+        params: { imageUri: lastSnapshot.uri },
+      });
+    } else if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 1,
+        });
+
+        if (photo?.uri) {
+          router.push({
+            pathname: "/drawing/preview",
+            params: { imageUri: photo.uri },
+          });
+        }
+      } catch (e) {
+        console.error("Auto-snapshot failed", e);
+        // Fallback
+        router.push("/drawing/preview");
+      }
+    } else {
+      router.push("/drawing/preview");
+    }
+  };
+
+  const handlePrevSnapshot = () => {
+    setActiveVirtualSnapshotIndex((currentIndex) =>
+      Math.max(currentIndex - 1, 0),
+    );
+  };
+
+  const handleNextSnapshot = () => {
+    setActiveVirtualSnapshotIndex((currentIndex) =>
+      Math.min(currentIndex + 1, virtualSnapshots.length - 1),
+    );
   };
 
   if (!permission) {
@@ -149,9 +231,7 @@ const Canvas = () => {
         style={[styles.uiOverlay, { paddingTop: 0, paddingBottom: 0 }]}
         pointerEvents="box-none"
       >
-        {!isLocked && (
-          <DrawingHeader onComplete={() => router.push("/drawing/preview")} />
-        )}
+        {!isLocked && <DrawingHeader onComplete={handleComplete} />}
 
         <View style={styles.controlsContainer}>
           {!isLocked && (
@@ -161,10 +241,12 @@ const Canvas = () => {
               </View>
 
               <HistoryControls
-                canUndo={true}
-                canRedo={false}
-                undoCount={0}
-                redoCount={4}
+                onUndo={handlePrevSnapshot}
+                onRedo={handleNextSnapshot}
+                canUndo={canGoPrevSnapshot}
+                canRedo={canGoNextSnapshot}
+                undoCount={prevSnapshotCount}
+                redoCount={nextSnapshotCount}
               />
             </View>
           )}
@@ -175,7 +257,7 @@ const Canvas = () => {
             onFlash={toggleFlash}
             onRecord={handleSnapshot}
             isLocked={isLocked}
-            snapshotCount={snapshots.length}
+            snapshotCount={cameraSnapshots.length}
             snapshotButtonRef={snapshotButtonRef}
             onOpenPreview={() => setShowPreview(true)}
           />
@@ -192,11 +274,11 @@ const Canvas = () => {
       <CapturePreviewModal
         visible={showPreview}
         onClose={() => setShowPreview(false)}
-        snapshots={snapshots}
+        snapshots={cameraSnapshots}
         onDelete={(id) => {
-          setSnapshots((prev) => prev.filter((s) => s.id !== id));
+          setCameraSnapshots((prev) => prev.filter((s) => s.id !== id));
         }}
-        onUpdateSnapshots={setSnapshots}
+        onUpdateSnapshots={setCameraSnapshots}
         onReorder={() => {}}
       />
     </GestureHandlerRootView>

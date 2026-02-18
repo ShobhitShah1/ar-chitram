@@ -23,6 +23,12 @@ export interface VirtualLayer {
   paths?: DrawingPath[]; // For drawing layers or coloring on images
 }
 
+export interface VirtualCreativitySnapshot {
+  id: string;
+  uri: string;
+  timestamp?: number;
+}
+
 interface HistoryState {
   past: VirtualLayer[][];
   future: VirtualLayer[][];
@@ -30,6 +36,7 @@ interface HistoryState {
 
 interface VirtualCreativityStore {
   layers: VirtualLayer[];
+  snapshots: VirtualCreativitySnapshot[];
   selectedLayerId: string | null;
   canvasSize: { width: number; height: number };
 
@@ -39,6 +46,10 @@ interface VirtualCreativityStore {
   removeLayer: (id: string) => void;
   updateLayer: (id: string, updates: Partial<VirtualLayer>) => void;
   selectLayer: (id: string | null) => void;
+  addSnapshot: (snapshot: VirtualCreativitySnapshot) => void;
+  setSnapshots: (snapshots: VirtualCreativitySnapshot[]) => void;
+  removeSnapshot: (id: string) => void;
+  clearSnapshots: () => void;
 
   // Z-Index / Order
   bringToFront: (id: string) => void;
@@ -56,6 +67,7 @@ interface VirtualCreativityStore {
 export const useVirtualCreativityStore = create<VirtualCreativityStore>(
   (set, get) => ({
     layers: [],
+    snapshots: [],
     selectedLayerId: null,
     canvasSize: { width: 0, height: 0 },
     history: { past: [], future: [] },
@@ -105,6 +117,14 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     },
 
     selectLayer: (id) => set({ selectedLayerId: id }),
+    addSnapshot: (snapshot) =>
+      set((state) => ({ snapshots: [...state.snapshots, snapshot] })),
+    setSnapshots: (snapshots) => set({ snapshots }),
+    removeSnapshot: (id) =>
+      set((state) => ({
+        snapshots: state.snapshots.filter((snapshot) => snapshot.id !== id),
+      })),
+    clearSnapshots: () => set({ snapshots: [] }),
 
     bringToFront: (id) => {
       const { layers, history } = get();
@@ -177,6 +197,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     reset: () =>
       set({
         layers: [],
+        snapshots: [],
         selectedLayerId: null,
         history: { past: [], future: [] },
       }),

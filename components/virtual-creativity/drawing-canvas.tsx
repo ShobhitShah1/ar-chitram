@@ -12,6 +12,9 @@ interface DrawingCanvasProps {
   isZoomMode: boolean;
   onAddPath: (path: DrawingPath) => void;
   currentColor: string;
+  enabled?: boolean;
+  layerWidth?: number;
+  layerHeight?: number;
 }
 
 export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
@@ -20,23 +23,38 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   isZoomMode,
   onAddPath,
   currentColor,
+  enabled = true,
+  layerWidth = 1080,
+  layerHeight = 1920,
 }) => {
   const [currentPath, setCurrentPath] = useState<string>("");
   const currentPathBuilder = useSharedValue("");
+  const viewWidth = useSharedValue(0);
+  const viewHeight = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
-    .enabled(!isZoomMode) // Enable only when NOT in zoom mode
+    .enabled(!isZoomMode && enabled)
     .minDistance(1)
     .onStart((e) => {
-      currentPathBuilder.value = `M ${e.x} ${e.y}`;
-      scheduleOnRN(setCurrentPath, `M ${e.x} ${e.y}`);
+      // Calculate scaling factors
+      const scaleX = viewWidth.value > 0 ? layerWidth / viewWidth.value : 1;
+      const scaleY = viewHeight.value > 0 ? layerHeight / viewHeight.value : 1;
+
+      const x = e.x * scaleX;
+      const y = e.y * scaleY;
+
+      currentPathBuilder.value = `M ${x} ${y}`;
+      scheduleOnRN(setCurrentPath, `M ${x} ${y}`);
     })
     .onUpdate((e) => {
-      const newSegment = ` L ${e.x} ${e.y}`;
+      const scaleX = viewWidth.value > 0 ? layerWidth / viewWidth.value : 1;
+      const scaleY = viewHeight.value > 0 ? layerHeight / viewHeight.value : 1;
+
+      const x = e.x * scaleX;
+      const y = e.y * scaleY;
+
+      const newSegment = ` L ${x} ${y}`;
       currentPathBuilder.value += newSegment;
-      // throttle updates to JS thread for smoother drawing?
-      // For now, direct update for immediate feedback, though slightly perf heavy.
-      // A better way is to move the currentPath render to a Reanimated component.
       scheduleOnRN(setCurrentPath, currentPathBuilder.value);
     })
     .onEnd(() => {
@@ -46,7 +64,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           id: Date.now().toString(),
           path: finalPath,
           color: currentColor,
-          strokeWidth: 5,
+          strokeWidth: 15, // Thicker stroke for 1080p resolution (approx 5px on 360p screen)
         });
         scheduleOnRN(setCurrentPath, "");
       }
@@ -54,8 +72,17 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   return (
     <GestureDetector gesture={panGesture}>
-      <View style={StyleSheet.absoluteFill}>
-        <Svg style={StyleSheet.absoluteFill}>
+      <View
+        style={StyleSheet.absoluteFill}
+        onLayout={(e) => {
+          viewWidth.value = e.nativeEvent.layout.width;
+          viewHeight.value = e.nativeEvent.layout.height;
+        }}
+      >
+        <Svg
+          style={StyleSheet.absoluteFill}
+          viewBox={`0 0 ${layerWidth} ${layerHeight}`}
+        >
           {paths.map((p) => (
             <Path
               key={p.id}
@@ -72,7 +99,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             <Path
               d={currentPath}
               stroke={currentColor}
-              strokeWidth={5}
+              strokeWidth={15}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"

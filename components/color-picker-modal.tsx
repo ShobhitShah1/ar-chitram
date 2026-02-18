@@ -17,6 +17,8 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 import { Pressable, Text } from "./themed"; // Assuming themed exports Text and Pressable
+import { Image } from "expo-image";
+import { ic_check } from "@/assets/icons";
 
 // import { ic_check } from "@/assets/icons"; // Removed as likely missing, using Ionicons instead
 
@@ -232,9 +234,13 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Pressable onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.textPrimary} />
+              <Ionicons
+                name="close"
+                size={24}
+                color={isDark ? "#fff" : "#000"}
+              />
             </Pressable>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
               {mode === "color" ? "Pick a Color" : "Create Gradient"}
             </Text>
             <Pressable
@@ -247,10 +253,11 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 },
               ]}
             >
-              <Ionicons
-                name="checkmark"
-                size={16}
-                color={isDark ? "#fff" : "#000"}
+              <Image
+                source={ic_check}
+                contentFit="contain"
+                style={{ width: 16, height: 16 }}
+                tintColor={isDark ? "#fff" : "#000"}
               />
             </Pressable>
           </View>
