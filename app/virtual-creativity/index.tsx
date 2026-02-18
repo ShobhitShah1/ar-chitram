@@ -9,22 +9,85 @@ import {
   ToolType,
 } from "@/components/virtual-creativity/bottom-bar";
 import { CanvasViewer } from "@/components/virtual-creativity/canvas-viewer";
+import {
+  type PatternPreset,
+  type SignatureSelection,
+} from "@/components/virtual-creativity/editor-presets";
 import { LayerStrip } from "@/components/virtual-creativity/layer-strip";
+import { PatternModal } from "@/components/virtual-creativity/pattern-modal";
+import { SignatureModal } from "@/components/virtual-creativity/signature-modal";
 import { TopBar } from "@/components/virtual-creativity/top-bar";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
-import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
+import {
+  VirtualLayer,
+  useVirtualCreativityStore,
+} from "@/store/virtual-creativity-store";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  Dimensions,
+  Image as RNImage,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { captureRef } from "react-native-view-shot";
+import {
+  animal_1,
+  animal_2,
+  animal_3,
+  animal_4,
+  animal_5,
+  animal_6,
+  animal_7,
+  test_deer,
+} from "@/assets/images";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const EMPTY_LAYERS: VirtualLayer[] = [];
+
+const MAIN_IMAGE_URI = RNImage.resolveAssetSource(test_deer).uri;
+const SUB_IMAGE_URIS = [animal_1, animal_2, animal_3, animal_4, animal_5, animal_6, animal_7]
+  .map((asset) => RNImage.resolveAssetSource(asset).uri);
+
+const getInitialLayers = (): VirtualLayer[] => {
+  const subLayers = SUB_IMAGE_URIS.map((uri, index) => ({
+    id: `animal-${index + 1}`,
+    type: "image" as const,
+    uri,
+    x: 0,
+    y: 0,
+    width: 1080,
+    height: 1920,
+    rotation: 0,
+    scale: 1,
+    opacity: 1,
+    zIndex: index + 1,
+  }));
+
+  return [
+    ...subLayers,
+    {
+      id: "main-image",
+      type: "image",
+      uri: MAIN_IMAGE_URI,
+      x: 0,
+      y: 0,
+      width: 1080,
+      height: 1920,
+      rotation: 0,
+      scale: 1,
+      opacity: 1,
+      zIndex: subLayers.length + 1,
+    },
+  ];
+};
 
 export default function VirtualCreativityScreen() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const router = useRouter();
 
   // Store state
@@ -34,12 +97,12 @@ export default function VirtualCreativityScreen() {
     addSnapshot,
     setSnapshots,
     removeSnapshot,
+    setLayers,
     history,
     undo,
     redo,
     removeLayer,
     updateLayer,
-    addLayer,
     bringToFront,
     sendToBack,
     selectedLayerId,
@@ -49,74 +112,106 @@ export default function VirtualCreativityScreen() {
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<"color" | "gradient">("color");
   const [selectedTool, setSelectedTool] = useState<ToolType>("gallery");
+  const [patternModalVisible, setPatternModalVisible] = useState(false);
+  const [signatureModalVisible, setSignatureModalVisible] = useState(false);
+  const [selectedPatternId, setSelectedPatternId] = useState<string | null>(
+    null,
+  );
+  const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(
+    null,
+  );
 
   // Canvas & Zoom State
   const [isZoomMode, setIsZoomMode] = useState(false);
   const [selectedColor, setSelectedColor] = useState("#000000");
+  const [zoomResetKey, setZoomResetKey] = useState(0);
 
   // Snapshot State
   const viewShotRef = useRef<View>(null);
   const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
   const [showSnapshotAnim, setShowSnapshotAnim] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-
-  // View Mode: 'composite' (all layers with z-index) or 'single' (focused layer)
   const [viewMode, setViewMode] = useState<"composite" | "single">("composite");
+  const [compositePreviewLayers, setCompositePreviewLayers] = useState<
+    VirtualLayer[]
+  >([]);
 
-  // Load default layer on mount
+  // Always preload the main image + animal sub images.
   React.useEffect(() => {
-    if (layers.length === 0) {
-      const initialLayer = {
-        id: "main-image",
-        type: "image" as const,
-        uri: "https://picsum.photos/1080/1920",
-        x: 0,
-        y: 0,
-        width: 1080,
-        height: 1920,
-        rotation: 0,
-        scale: 1,
-        opacity: 1,
-        zIndex: 1,
-      };
-      addLayer(initialLayer);
-      // Ensure the main image is NOT selected by default so it doesn't show in the strip as selected
-      setTimeout(() => selectLayer(null), 100);
-    }
+    setLayers(getInitialLayers(), null);
+    setViewMode("composite");
   }, []);
 
-  const handleBack = () => router.back();
-
-  const handleUndo = () => undo();
-  const handleRedo = () => redo();
-
-  const handleBringToFront = () => {
-    if (selectedLayerId) {
-      bringToFront(selectedLayerId);
+  React.useEffect(() => {
+    if (viewMode === "single" && !selectedLayerId) {
+      setViewMode("composite");
     }
-  };
+  }, [viewMode, selectedLayerId]);
 
-  const handleSendToBack = () => {
-    if (selectedLayerId) {
-      sendToBack(selectedLayerId);
+  const allLayersSorted = useMemo(
+    () => [...layers].sort((a, b) => a.zIndex - b.zIndex),
+    [layers],
+  );
+  const compositeVisibleLayers = useMemo(
+    () =>
+      allLayersSorted.filter((layer) => {
+        if (layer.id === "main-image") return true;
+        return Boolean(layer.color) || (layer.paths?.length ?? 0) > 0;
+      }),
+    [allLayersSorted],
+  );
+
+  const hasMainLayer = useMemo(
+    () => layers.some((layer) => layer.id === "main-image"),
+    [layers],
+  );
+  const activeEditableLayerId = useMemo(
+    () => (viewMode === "single" ? selectedLayerId : hasMainLayer ? "main-image" : null),
+    [hasMainLayer, selectedLayerId, viewMode],
+  );
+  const activeOrderLayerId =
+    viewMode === "single" ? selectedLayerId : hasMainLayer ? "main-image" : null;
+  const canDeleteLayer =
+    viewMode === "single" && !!selectedLayerId && selectedLayerId !== "main-image";
+
+  const applyColorToActiveLayer = useCallback(
+    (color: string) => {
+      setSelectedColor(color);
+      if (!activeEditableLayerId) return;
+      updateLayer(activeEditableLayerId, { color });
+      if (activeEditableLayerId !== "main-image") {
+        bringToFront(activeEditableLayerId, false);
+      }
+    },
+    [activeEditableLayerId, bringToFront, updateLayer],
+  );
+
+  const handleUndo = useCallback(() => undo(), [undo]);
+  const handleRedo = useCallback(() => redo(), [redo]);
+
+  const handleBringToFront = useCallback(() => {
+    if (activeOrderLayerId) {
+      bringToFront(activeOrderLayerId);
     }
-  };
+  }, [activeOrderLayerId, bringToFront]);
 
-  const handleZoomToggle = () => {
-    setIsZoomMode(!isZoomMode);
-  };
+  const handleSendToBack = useCallback(() => {
+    if (activeOrderLayerId) {
+      sendToBack(activeOrderLayerId);
+    }
+  }, [activeOrderLayerId, sendToBack]);
 
-  const handleDelete = () => {
-    if (selectedLayerId) removeLayer(selectedLayerId);
-  };
+  const handleZoomToggle = useCallback(() => {
+    setIsZoomMode((prev) => !prev);
+  }, []);
 
-  const handleNext = async () => {
-    console.log("Next clicked - Capturing snapshot");
+  const handleDelete = useCallback(() => {
+    if (canDeleteLayer && selectedLayerId) removeLayer(selectedLayerId);
+  }, [canDeleteLayer, removeLayer, selectedLayerId]);
 
-    // Ensure we are in composite mode to capture full view
+  const handleNext = useCallback(async () => {
     if (viewMode === "single") {
       setViewMode("composite");
-      // Wait for render to update
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
@@ -127,9 +222,6 @@ export default function VirtualCreativityScreen() {
           quality: 1, // High quality for drawing base
         });
 
-        console.log("Snapshot captured:", uri);
-
-        // Navigate to Preview Screen with captured image
         router.push({
           pathname: "/virtual-creativity/preview",
           params: { imageUri: uri },
@@ -138,55 +230,36 @@ export default function VirtualCreativityScreen() {
     } catch (e) {
       console.error("Failed to capture snapshot for next step:", e);
     }
-  };
+  }, [router, viewMode]);
 
   // Bottom Bar Actions
-  const handleGallery = () => {
+  const handleGallery = useCallback(() => {
     setSelectedTool("gallery");
-    console.log("Gallery clicked - Adding Reference Image");
+  }, []);
 
-    // Simulate selecting from "Animal 1 to 7"
-    const animalId = `animal-${Date.now()}`;
-    const newLayer = {
-      id: animalId,
-      type: "image" as const,
-      // Use different picsum images to simulate different animals, same size as main
-      uri: `https://picsum.photos/seed/${animalId}/1080/1920`,
-      x: 0,
-      y: 0,
-      width: 1080,
-      height: 1920,
-      rotation: 0,
-      scale: 1,
-      opacity: 1,
-      zIndex: layers.length + 1,
-    };
-    addLayer(newLayer);
-
-    // User requested "main image remains in full view" - so we stay in composite mode usually?
-    // But earlier they said "after click on category show that preview view" (single mode).
-    // Let's assume adding a layer *selects* it, thus entering Single Mode to edit it.
-    selectLayer(animalId);
-    setViewMode("single");
-  };
-
-  const handlePalette = () => {
+  const handlePalette = useCallback(() => {
     setSelectedTool("palette");
     setPickerMode("color");
+    setPatternModalVisible(false);
+    setSignatureModalVisible(false);
     setColorPickerVisible(true);
-  };
+  }, []);
 
-  const handlePattern = () => {
+  const handlePattern = useCallback(() => {
     setSelectedTool("pattern");
-    console.log("Pattern clicked");
-  };
+    setColorPickerVisible(false);
+    setSignatureModalVisible(false);
+    setPatternModalVisible(true);
+  }, []);
 
-  const handleStroke = () => {
+  const handleStroke = useCallback(() => {
     setSelectedTool("stroke");
-    console.log("Stroke clicked");
-  };
+    setColorPickerVisible(false);
+    setPatternModalVisible(false);
+    setSignatureModalVisible(true);
+  }, []);
 
-  const handlePreview = async () => {
+  const handlePreview = useCallback(async () => {
     setSelectedTool("preview");
     try {
       if (viewShotRef.current) {
@@ -208,28 +281,95 @@ export default function VirtualCreativityScreen() {
     } catch (e) {
       console.error("Snapshot failed:", e);
     }
-  };
+  }, [addSnapshot]);
 
-  const handlePreviewLongPress = () => {
+  const handlePreviewLongPress = useCallback(() => {
     setShowPreviewModal(true);
-  };
+  }, []);
 
-  const onSelectColor = (color: string) => {
-    setSelectedColor(color);
-  };
+  const onSelectColor = useCallback(
+    (color: string) => {
+      applyColorToActiveLayer(color);
+    },
+    [applyColorToActiveLayer],
+  );
 
-  const handleSelectLayer = (id: string) => {
+  const handleSelectLayer = useCallback((id: string) => {
+    setCompositePreviewLayers(compositeVisibleLayers);
     selectLayer(id);
     setViewMode("single");
-  };
+  }, [compositeVisibleLayers, selectLayer]);
 
-  // Logic for layers to display in Main Viewer
-  // If composite (default), show ONLY the main image.
-  // If single (category selected), show ONLY the selected layer.
   const displayedLayers =
     viewMode === "composite"
-      ? layers.filter((l) => l.id === "main-image")
-      : layers.filter((l) => l.id === selectedLayerId);
+      ? compositeVisibleLayers
+      : allLayersSorted.filter((layer) => layer.id === selectedLayerId);
+  const stripLayers = useMemo(
+    () =>
+      [...layers]
+        .filter((layer) => layer.id !== "main-image")
+        .sort((a, b) => {
+          const aIndex = Number(a.id.split("-")[1]) || 0;
+          const bIndex = Number(b.id.split("-")[1]) || 0;
+          return aIndex - bIndex;
+        }),
+    [layers],
+  );
+  const bottomBarLayers = useMemo(
+    () =>
+      viewMode === "single"
+        ? compositePreviewLayers
+        : EMPTY_LAYERS,
+    [compositePreviewLayers, viewMode],
+  );
+  const handleZoomReset = useCallback(
+    () => setZoomResetKey((prev) => prev + 1),
+    [],
+  );
+  const handleCompositeRestore = useCallback(() => {
+    setViewMode("composite");
+  }, []);
+  const handleCloseColorPicker = useCallback(
+    () => setColorPickerVisible(false),
+    [],
+  );
+  const handleClosePatternModal = useCallback(
+    () => setPatternModalVisible(false),
+    [],
+  );
+  const handleCloseSignatureModal = useCallback(
+    () => setSignatureModalVisible(false),
+    [],
+  );
+  const handleApplyPattern = useCallback(
+    (preset: PatternPreset) => {
+      setSelectedPatternId(preset.id);
+      applyColorToActiveLayer(preset.tintColor);
+      setPatternModalVisible(false);
+    },
+    [applyColorToActiveLayer],
+  );
+  const handleApplySignature = useCallback(
+    (selection: SignatureSelection) => {
+      setSelectedSignatureId(selection.id);
+      setSelectedColor("#101010");
+      setSignatureModalVisible(false);
+    },
+    [],
+  );
+  const handleSnapshotAnimDone = useCallback(
+    () => setShowSnapshotAnim(false),
+    [],
+  );
+  const handleClosePreviewModal = useCallback(
+    () => setShowPreviewModal(false),
+    [],
+  );
+  const handleSelectGradient = useCallback(() => {}, []);
+  const snapshotTargetPosition = useMemo(
+    () => ({ x: SCREEN_WIDTH - 60, y: SCREEN_HEIGHT - 100 }),
+    [],
+  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -249,11 +389,14 @@ export default function VirtualCreativityScreen() {
           onBringToFront={handleBringToFront}
           onSendToBack={handleSendToBack}
           onZoomToggle={handleZoomToggle}
+          onZoomReset={handleZoomReset}
           onDelete={handleDelete}
           onNext={handleNext}
           canUndo={history.past.length > 0}
           canRedo={history.future.length > 0}
-          hasSelection={!!selectedLayerId}
+          hasSelection={viewMode === "single" && !!selectedLayerId}
+          canReorder={!!activeOrderLayerId}
+          canDelete={canDeleteLayer}
           isZoomActive={isZoomMode}
           hideNext={viewMode === "single"}
         />
@@ -262,15 +405,16 @@ export default function VirtualCreativityScreen() {
         <View style={{ flex: 1 }} ref={viewShotRef} collapsable={false}>
           <CanvasViewer
             layers={displayedLayers}
-            activeLayerId={selectedLayerId}
+            activeLayerId={viewMode === "single" ? selectedLayerId : "main-image"}
             isZoomMode={isZoomMode}
             currentColor={selectedColor}
+            zoomResetKey={zoomResetKey}
           />
         </View>
 
         {/* Layer Thumbnails Strip - Always Visible */}
         <LayerStrip
-          layers={layers.filter((l) => l.id !== "main-image")}
+          layers={stripLayers}
           selectedLayerId={selectedLayerId}
           onSelectLayer={handleSelectLayer}
         />
@@ -282,34 +426,42 @@ export default function VirtualCreativityScreen() {
           onStroke={handleStroke}
           onPreview={handlePreview}
           onPreviewLongPress={handlePreviewLongPress}
-          onCompositeRestore={() => {
-            setViewMode("composite");
-            selectLayer(null);
-          }}
+          onCompositeRestore={handleCompositeRestore}
           selectedTool={selectedTool}
           previewBadge={snapshots.length}
           mode={viewMode === "single" ? "single" : "default"}
-          // Use only main image for composite preview thumbnail
-          layers={layers.filter((l) => l.id === "main-image")}
+          layers={bottomBarLayers}
         />
 
         <ColorPickerModal
           visible={colorPickerVisible}
-          onClose={() => setColorPickerVisible(false)}
+          onClose={handleCloseColorPicker}
           onSelectColor={onSelectColor}
           mode={pickerMode}
-          onSelectGradient={(colors) => console.log("Gradient:", colors)}
+          onSelectGradient={handleSelectGradient}
+        />
+        <PatternModal
+          visible={patternModalVisible}
+          selectedPatternId={selectedPatternId}
+          onClose={handleClosePatternModal}
+          onApply={handleApplyPattern}
+        />
+        <SignatureModal
+          visible={signatureModalVisible}
+          selectedSignatureId={selectedSignatureId}
+          onClose={handleCloseSignatureModal}
+          onApply={handleApplySignature}
         />
 
         <ScreenshotCaptureAnimation
           visible={showSnapshotAnim}
           imageUri={snapshotUri}
-          targetPosition={{ x: SCREEN_WIDTH - 60, y: SCREEN_HEIGHT - 100 }}
-          onAnimationComplete={() => setShowSnapshotAnim(false)}
+          targetPosition={snapshotTargetPosition}
+          onAnimationComplete={handleSnapshotAnimDone}
         />
         <CapturePreviewModal
           visible={showPreviewModal}
-          onClose={() => setShowPreviewModal(false)}
+          onClose={handleClosePreviewModal}
           snapshots={snapshots}
           onDelete={removeSnapshot}
           onUpdateSnapshots={setSnapshots}

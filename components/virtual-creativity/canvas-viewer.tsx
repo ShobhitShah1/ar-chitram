@@ -19,6 +19,7 @@ interface CanvasViewerProps {
   activeLayerId?: string | null;
   isZoomMode: boolean;
   currentColor: string;
+  zoomResetKey?: number;
 }
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({
@@ -26,8 +27,10 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   activeLayerId,
   isZoomMode,
   currentColor,
+  zoomResetKey = 0,
 }) => {
   const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
+  const bringToFront = useVirtualCreativityStore((state) => state.bringToFront);
 
   // View Transformation Values
   const scale = useSharedValue(1);
@@ -37,7 +40,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const translateY = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Reset zoom when active layer changes or zoom mode toggled off
+  // Keep zoom state when toggling zoom mode. Reset only when layer focus changes.
   React.useEffect(() => {
     scale.value = withSpring(1);
     translateX.value = withSpring(0);
@@ -45,7 +48,17 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-  }, [activeLayerId, isZoomMode]);
+  }, [activeLayerId]);
+
+  // Explicit reset-to-fit trigger from long-press on zoom button.
+  React.useEffect(() => {
+    scale.value = withSpring(1);
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+    savedScale.value = 1;
+    savedTranslateX.value = 0;
+    savedTranslateY.value = 0;
+  }, [zoomResetKey]);
 
   // Zoom/Pan Gestures
   const panGesture = Gesture.Pan()
@@ -100,6 +113,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       const currentPaths = targetLayer.paths || [];
       const newPaths = [...currentPaths, path];
       updateLayer(layerId, { paths: newPaths });
+      if (layerId !== "main-image") {
+        bringToFront(layerId, false);
+      }
     }
   };
 
@@ -113,24 +129,28 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
             <View
               key={layer.id}
               style={StyleSheet.absoluteFill}
-              pointerEvents={
-                layer.id === activeLayerId || !activeLayerId ? "auto" : "none"
-              }
+              pointerEvents="box-none"
             >
               <Image
                 source={{ uri: layer.uri }}
-                style={styles.image}
+                style={[
+                  styles.image,
+                  layer.color ? { tintColor: layer.color } : undefined,
+                ]}
                 contentFit="contain"
               />
               {/* Drawing Overlay */}
-              <View style={StyleSheet.absoluteFill}>
+              <View
+                style={StyleSheet.absoluteFill}
+                pointerEvents={layer.id === activeLayerId ? "auto" : "none"}
+              >
                 <DrawingCanvas
                   layerId={layer.id}
                   paths={layer.paths || []}
                   isZoomMode={isZoomMode}
                   onAddPath={(p) => handleAddPath(p, layer.id)}
                   currentColor={currentColor}
-                  enabled={!activeLayerId || layer.id === activeLayerId}
+                  enabled={layer.id === activeLayerId}
                   layerWidth={layer.width}
                   layerHeight={layer.height}
                 />

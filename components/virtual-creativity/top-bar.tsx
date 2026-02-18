@@ -11,6 +11,11 @@ import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, Text, View, Pressable } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from "react-native-reanimated";
 import PrimaryButton from "@/components/ui/primary-button";
 
 interface TopBarProps {
@@ -19,33 +24,44 @@ interface TopBarProps {
   onBringToFront?: () => void;
   onSendToBack?: () => void;
   onZoomToggle?: () => void;
+  onZoomReset?: () => void;
   onDelete?: () => void;
   onNext?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   hasSelection?: boolean;
+  canReorder?: boolean;
+  canDelete?: boolean;
   isZoomActive?: boolean;
   hideNext?: boolean;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({
+const SOFT_LAYOUT = LinearTransition.springify()
+  .mass(1)
+  .damping(30)
+  .stiffness(260);
+
+const TopBarComponent: React.FC<TopBarProps> = ({
   onUndo,
   onRedo,
   onBringToFront,
   onSendToBack,
   onZoomToggle,
+  onZoomReset,
   onDelete,
   onNext,
   canUndo = false,
   canRedo = false,
   hasSelection = false,
+  canReorder = false,
+  canDelete = hasSelection,
   isZoomActive = false,
   hideNext = false,
 }) => {
   const { theme, isDark } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={styles.container} layout={SOFT_LAYOUT}>
       <View style={styles.toolsContainer}>
         {/* Undo */}
         <Pressable
@@ -84,11 +100,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           onPress={onBringToFront}
           style={({ pressed }) => [
             styles.btn,
-            !hasSelection && styles.disabled,
+            !canReorder && styles.disabled,
             pressed && styles.pressed,
             { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
           ]}
-          disabled={!hasSelection}
+          disabled={!canReorder}
         >
           <Image
             source={ic_frontface}
@@ -102,11 +118,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           onPress={onSendToBack}
           style={({ pressed }) => [
             styles.btn,
-            !hasSelection && styles.disabled,
+            !canReorder && styles.disabled,
             pressed && styles.pressed,
             { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
           ]}
-          disabled={!hasSelection}
+          disabled={!canReorder}
         >
           <Image
             source={ic_backface}
@@ -118,6 +134,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         {/* Zoom Toggle */}
         <Pressable
           onPress={onZoomToggle}
+          onLongPress={onZoomReset}
           style={({ pressed }) => [
             styles.btn,
             isZoomActive && styles.activeBtn,
@@ -143,11 +160,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           onPress={onDelete}
           style={({ pressed }) => [
             styles.btn,
-            !hasSelection && styles.disabled,
+            !canDelete && styles.disabled,
             pressed && styles.pressed,
             { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
           ]}
-          disabled={!hasSelection}
+          disabled={!canDelete}
         >
           <Image source={ic_delete} style={styles.icon} contentFit="contain" />
         </Pressable>
@@ -155,17 +172,25 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {/* Next Button */}
       {onNext && !hideNext && (
-        <PrimaryButton
-          title="Next"
-          onPress={onNext}
-          style={styles.nextBtn}
-          textStyle={styles.nextText}
-          colors={theme.drawingButton as any}
-        />
+        <Animated.View
+          entering={FadeIn.duration(180)}
+          exiting={FadeOut.duration(150)}
+          layout={SOFT_LAYOUT}
+        >
+          <PrimaryButton
+            title="Next"
+            onPress={onNext}
+            style={styles.nextBtn}
+            textStyle={styles.nextText}
+            colors={theme.drawingButton as any}
+          />
+        </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 };
+
+export const TopBar = React.memo(TopBarComponent);
 
 const styles = StyleSheet.create({
   container: {

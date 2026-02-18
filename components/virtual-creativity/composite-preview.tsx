@@ -8,16 +8,15 @@ interface CompositePreviewProps {
   layers: VirtualLayer[];
   width?: number;
   height?: number;
+  showDrawings?: boolean;
 }
 
 export const CompositePreview: React.FC<CompositePreviewProps> = ({
   layers,
   width = 1080,
   height = 1920,
+  showDrawings = false,
 }) => {
-  // Scale factor for stroke width visibility in thumbnail
-  const scaleFactor = 12;
-
   // Render layers in order (zIndex is already handled by array order usually, or we sort)
   const sortedLayers = [...layers].sort((a, b) => a.zIndex - b.zIndex);
 
@@ -34,30 +33,31 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
             />
           )}
 
-          {/* Layer Drawings */}
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              { zIndex: 10, backgroundColor: "transparent" },
-            ]}
-          >
-            <Svg
-              style={StyleSheet.absoluteFill}
-              viewBox={`0 0 ${layer.width || width} ${layer.height || height}`}
+          {showDrawings ? (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { zIndex: 10, backgroundColor: "transparent" },
+              ]}
             >
-              {layer.paths?.map((p) => (
-                <Path
-                  key={p.id}
-                  d={p.path}
-                  stroke={p.color}
-                  strokeWidth={p.strokeWidth * scaleFactor}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-            </Svg>
-          </View>
+              <Svg
+                style={StyleSheet.absoluteFill}
+                viewBox={`0 0 ${layer.width || width} ${layer.height || height}`}
+              >
+                {layer.paths?.map((p) => (
+                  <Path
+                    key={p.id}
+                    d={p.path}
+                    stroke={p.color}
+                    strokeWidth={Math.max(1, p.strokeWidth * 0.12)}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ))}
+              </Svg>
+            </View>
+          ) : null}
         </View>
       ))}
     </View>

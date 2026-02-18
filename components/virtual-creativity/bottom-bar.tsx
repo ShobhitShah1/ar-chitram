@@ -10,6 +10,11 @@ import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from "react-native-reanimated";
 
 import { VirtualLayer } from "@/store/virtual-creativity-store";
 import { CompositePreview } from "./composite-preview";
@@ -28,9 +33,15 @@ interface BottomBarProps {
   previewBadge?: number;
   mode?: "default" | "single";
   layers: VirtualLayer[];
+  showGallery?: boolean;
 }
 
-export const BottomBar: React.FC<BottomBarProps> = ({
+const SOFT_LAYOUT = LinearTransition.springify()
+  .mass(1)
+  .damping(30)
+  .stiffness(260);
+
+const BottomBarComponent: React.FC<BottomBarProps> = ({
   onGallery,
   onPalette,
   onPattern,
@@ -42,14 +53,9 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   previewBadge = 0,
   mode = "default",
   layers,
+  showGallery = true,
 }) => {
   const { theme, isDark } = useTheme();
-
-  // Calculate total paths length for key to force re-render on drawing updates
-  const totalPaths = layers.reduce(
-    (acc, layer) => acc + (layer.paths?.length || 0),
-    0,
-  );
 
   const getIconContainerStyle = (tool: ToolType) => {
     if (tool === "gallery") {
@@ -63,7 +69,7 @@ export const BottomBar: React.FC<BottomBarProps> = ({
   };
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.container,
         {
@@ -71,30 +77,51 @@ export const BottomBar: React.FC<BottomBarProps> = ({
           justifyContent: "space-between",
         },
       ]}
+      layout={SOFT_LAYOUT}
     >
       {/* Slot 1: Gallery OR Composite Preview */}
       {mode === "single" ? (
-        <Pressable onPress={onCompositeRestore} style={styles.btn}>
-          <View style={[styles.previewContainer]}>
-            <CompositePreview
-              layers={layers}
-              key={`composite-${totalPaths}-${layers.length}`}
-            />
-          </View>
-        </Pressable>
+        <Animated.View
+          key="slot1-preview"
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(140)}
+          layout={SOFT_LAYOUT}
+        >
+          <Pressable onPress={onCompositeRestore} style={styles.btn}>
+            <View style={[styles.previewContainer]}>
+              <CompositePreview layers={layers} />
+            </View>
+          </Pressable>
+        </Animated.View>
+      ) : showGallery ? (
+        <Animated.View
+          key="slot1-gallery"
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(140)}
+          layout={SOFT_LAYOUT}
+        >
+          <Pressable onPress={onGallery} style={styles.btn}>
+            <View
+              style={[styles.iconContainer, getIconContainerStyle("gallery")]}
+            >
+              <Image
+                source={ic_upload_home}
+                style={styles.icon}
+                contentFit="contain"
+                tintColor="#FFFFFF"
+              />
+            </View>
+          </Pressable>
+        </Animated.View>
       ) : (
-        <Pressable onPress={onGallery} style={styles.btn}>
-          <View
-            style={[styles.iconContainer, getIconContainerStyle("gallery")]}
-          >
-            <Image
-              source={ic_upload_home}
-              style={styles.icon}
-              contentFit="contain"
-              tintColor="#FFFFFF"
-            />
-          </View>
-        </Pressable>
+        <Animated.View
+          key="slot1-placeholder"
+          entering={FadeIn.duration(120)}
+          exiting={FadeOut.duration(120)}
+          layout={SOFT_LAYOUT}
+        >
+          <View style={styles.placeholder} />
+        </Animated.View>
       )}
 
       {/* Slot 2: Palette */}
@@ -117,47 +144,79 @@ export const BottomBar: React.FC<BottomBarProps> = ({
 
       {/* Slot 4: Stroke (Only in Default Mode, else placeholder) */}
       {mode === "default" ? (
-        <Pressable onPress={onStroke} style={styles.btn}>
-          <View style={[styles.iconContainer, getIconContainerStyle("stroke")]}>
-            <Image
-              source={ic_signature}
-              style={styles.icon}
-              contentFit="contain"
-            />
-          </View>
-        </Pressable>
+        <Animated.View
+          key="slot4-stroke"
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(140)}
+          layout={SOFT_LAYOUT}
+        >
+          <Pressable onPress={onStroke} style={styles.btn}>
+            <View
+              style={[styles.iconContainer, getIconContainerStyle("stroke")]}
+            >
+              <Image
+                source={ic_signature}
+                style={styles.icon}
+                contentFit="contain"
+              />
+            </View>
+          </Pressable>
+        </Animated.View>
       ) : (
-        <View style={styles.placeholder} />
+        <Animated.View
+          key="slot4-placeholder"
+          entering={FadeIn.duration(120)}
+          exiting={FadeOut.duration(120)}
+          layout={SOFT_LAYOUT}
+        >
+          <View style={styles.placeholder} />
+        </Animated.View>
       )}
 
       {/* Slot 5: Preview (Only in Default Mode, else placeholder) */}
       {mode === "default" ? (
-        <Pressable
-          onPress={onPreview}
-          onLongPress={onPreviewLongPress}
-          style={styles.btn}
+        <Animated.View
+          key="slot5-preview"
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(140)}
+          layout={SOFT_LAYOUT}
         >
-          <View
-            style={[styles.iconContainer, getIconContainerStyle("preview")]}
+          <Pressable
+            onPress={onPreview}
+            onLongPress={onPreviewLongPress}
+            style={styles.btn}
           >
-            <Image
-              source={ic_preview_eye}
-              style={styles.icon}
-              contentFit="contain"
-            />
-            {previewBadge > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{previewBadge}</Text>
-              </View>
-            )}
-          </View>
-        </Pressable>
+            <View
+              style={[styles.iconContainer, getIconContainerStyle("preview")]}
+            >
+              <Image
+                source={ic_preview_eye}
+                style={styles.icon}
+                contentFit="contain"
+              />
+              {previewBadge > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{previewBadge}</Text>
+                </View>
+              )}
+            </View>
+          </Pressable>
+        </Animated.View>
       ) : (
-        <View style={styles.placeholder} />
+        <Animated.View
+          key="slot5-placeholder"
+          entering={FadeIn.duration(120)}
+          exiting={FadeOut.duration(120)}
+          layout={SOFT_LAYOUT}
+        >
+          <View style={styles.placeholder} />
+        </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 };
+
+export const BottomBar = React.memo(BottomBarComponent);
 
 const styles = StyleSheet.create({
   container: {

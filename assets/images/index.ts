@@ -11,3 +11,6 @@ export const animal_4 = require("./animal/animal_4.png");
 export const animal_5 = require("./animal/animal_05.png");
 export const animal_6 = require("./animal/animal_6.png");
 export const animal_7 = require("./animal/animal_7.png");
+export const test_deer = require("./animal/test_deer.png");
+
+export const ic_contest_winner = require("./ic_contest_winner.png");

@@ -42,9 +42,14 @@ interface VirtualCreativityStore {
 
   // Actions
   setCanvasSize: (size: { width: number; height: number }) => void;
+  setLayers: (layers: VirtualLayer[], selectedLayerId?: string | null) => void;
   addLayer: (layer: VirtualLayer) => void;
   removeLayer: (id: string) => void;
-  updateLayer: (id: string, updates: Partial<VirtualLayer>) => void;
+  updateLayer: (
+    id: string,
+    updates: Partial<VirtualLayer>,
+    addToHistory?: boolean,
+  ) => void;
   selectLayer: (id: string | null) => void;
   addSnapshot: (snapshot: VirtualCreativitySnapshot) => void;
   setSnapshots: (snapshots: VirtualCreativitySnapshot[]) => void;
@@ -52,8 +57,8 @@ interface VirtualCreativityStore {
   clearSnapshots: () => void;
 
   // Z-Index / Order
-  bringToFront: (id: string) => void;
-  sendToBack: (id: string) => void;
+  bringToFront: (id: string, addToHistory?: boolean) => void;
+  sendToBack: (id: string, addToHistory?: boolean) => void;
 
   // History
   undo: () => void;
@@ -64,6 +69,22 @@ interface VirtualCreativityStore {
   history: HistoryState;
 }
 
+const normalizeZIndex = (layers: VirtualLayer[]): VirtualLayer[] =>
+  layers.map((layer, index) => ({
+    ...layer,
+    zIndex: index + 1,
+  }));
+
+const buildHistory = (history: HistoryState, layers: VirtualLayer[]) => ({
+  past: [...history.past, layers],
+  future: [],
+});
+
+const resolveSelectedLayerId = (
+  selectedLayerId: string | null,
+  layers: VirtualLayer[],
+) => (selectedLayerId && layers.some((layer) => layer.id === selectedLayerId) ? selectedLayerId : null);
+
 export const useVirtualCreativityStore = create<VirtualCreativityStore>(
   (set, get) => ({
     layers: [],
@@ -73,15 +94,19 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     history: { past: [], future: [] },
 
     setCanvasSize: (size) => set({ canvasSize: size }),
+    setLayers: (layers, selectedLayerId = null) =>
+      set({
+        layers: normalizeZIndex(layers),
+        selectedLayerId,
+        history: { past: [], future: [] },
+      }),
 
     addLayer: (layer) => {
       const { layers, history } = get();
-      const newHistory = {
-        past: [...history.past, layers],
-        future: [],
-      };
+      const newHistory = buildHistory(history, layers);
+      const nextLayers = normalizeZIndex([...layers, layer]);
       set({
-        layers: [...layers, layer],
+        layers: nextLayers,
         selectedLayerId: layer.id,
         history: newHistory,
       });
@@ -89,29 +114,37 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
 
     removeLayer: (id) => {
       const { layers, history } = get();
-      const newHistory = {
-        past: [...history.past, layers],
-        future: [],
-      };
+      const newHistory = buildHistory(history, layers);
+      const nextLayers = normalizeZIndex(layers.filter((l) => l.id !== id));
       set({
-        layers: layers.filter((l) => l.id !== id),
+        layers: nextLayers,
         selectedLayerId: null,
         history: newHistory,
       });
     },
 
-    updateLayer: (id, updates) => {
-      const { layers } = get();
+    updateLayer: (id, updates, addToHistory = true) => {
+      const { layers, history } = get();
       const index = layers.findIndex((l) => l.id === id);
       if (index === -1) return;
+      const previousLayer = layers[index];
 
-      // For frequent updates (like dragging), we might want to skip history push every frame.
-      // Ideally, history push happens on drag END.
-      // For now, simpler implementation: direct update.
-      // Real implementation would separate "fast update" from "commit update".
+      const hasMeaningfulChange = Object.entries(updates).some(
+        ([key, value]) =>
+          previousLayer[key as keyof VirtualLayer] !== value,
+      );
+      if (!hasMeaningfulChange) return;
 
       const newLayers = [...layers];
-      newLayers[index] = { ...newLayers[index], ...updates };
+      newLayers[index] = { ...previousLayer, ...updates };
+
+      if (addToHistory) {
+        set({
+          layers: newLayers,
+          history: buildHistory(history, layers),
+        });
+        return;
+      }
 
       set({ layers: newLayers });
     },
@@ -126,50 +159,60 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
       })),
     clearSnapshots: () => set({ snapshots: [] }),
 
-    bringToFront: (id) => {
+    bringToFront: (id, addToHistory = true) => {
       const { layers, history } = get();
       const index = layers.findIndex((l) => l.id === id);
       if (index === -1 || index === layers.length - 1) return;
-
-      const newHistory = {
-        past: [...history.past, layers],
-        future: [],
-      };
 
       const newLayers = [...layers];
       const [item] = newLayers.splice(index, 1);
       newLayers.push(item);
 
-      set({ layers: newLayers, history: newHistory });
+      if (addToHistory) {
+        set({
+          layers: normalizeZIndex(newLayers),
+          history: buildHistory(history, layers),
+        });
+        return;
+      }
+
+      set({ layers: normalizeZIndex(newLayers) });
     },
 
-    sendToBack: (id) => {
+    sendToBack: (id, addToHistory = true) => {
       const { layers, history } = get();
       const index = layers.findIndex((l) => l.id === id);
       if (index === -1 || index === 0) return;
-
-      const newHistory = {
-        past: [...history.past, layers],
-        future: [],
-      };
 
       const newLayers = [...layers];
       const [item] = newLayers.splice(index, 1);
       newLayers.unshift(item);
 
-      set({ layers: newLayers, history: newHistory });
+      if (addToHistory) {
+        set({
+          layers: normalizeZIndex(newLayers),
+          history: buildHistory(history, layers),
+        });
+        return;
+      }
+
+      set({ layers: normalizeZIndex(newLayers) });
     },
 
     undo: () => {
-      const { history, layers } = get();
+      const { history, layers, selectedLayerId } = get();
       if (history.past.length === 0) return;
 
       const previous = history.past[history.past.length - 1];
       const newPast = history.past.slice(0, -1);
+      const normalizedPrevious = normalizeZIndex(previous);
 
       set({
-        layers: previous,
-        selectedLayerId: null,
+        layers: normalizedPrevious,
+        selectedLayerId: resolveSelectedLayerId(
+          selectedLayerId,
+          normalizedPrevious,
+        ),
         history: {
           past: newPast,
           future: [layers, ...history.future],
@@ -178,15 +221,16 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     },
 
     redo: () => {
-      const { history, layers } = get();
+      const { history, layers, selectedLayerId } = get();
       if (history.future.length === 0) return;
 
       const next = history.future[0];
       const newFuture = history.future.slice(1);
+      const normalizedNext = normalizeZIndex(next);
 
       set({
-        layers: next,
-        selectedLayerId: null,
+        layers: normalizedNext,
+        selectedLayerId: resolveSelectedLayerId(selectedLayerId, normalizedNext),
         history: {
           past: [...history.past, layers],
           future: newFuture,

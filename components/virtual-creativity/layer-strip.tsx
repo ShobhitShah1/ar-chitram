@@ -2,6 +2,7 @@ import { VirtualLayer } from "@/store/virtual-creativity-store";
 import { Image } from "expo-image";
 import React from "react";
 import { ScrollView, StyleSheet, View, Pressable } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 interface LayerStripProps {
   layers: VirtualLayer[];
@@ -18,8 +19,12 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
     return null;
   }
 
-  // We want the top-most layer (last in the array usually, or first if reversed) to be first.
-  const reversedLayers = [...layers].reverse();
+  const orderedLayers = [...layers].sort((a, b) => {
+    const aIndex = Number(a.id.split("-")[1]) || 0;
+    const bIndex = Number(b.id.split("-")[1]) || 0;
+    return aIndex - bIndex;
+  });
+  const strokeScale = 0.12;
 
   return (
     <View style={styles.container}>
@@ -28,7 +33,7 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {reversedLayers.map((layer, index) => (
+        {orderedLayers.map((layer, index) => (
           <Pressable
             key={layer.id}
             onPress={() => onSelectLayer(layer.id)}
@@ -37,17 +42,36 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
               // Negative margin to overlap items
               index > 0 && { marginLeft: -15 },
               // ZIndex to ensure first items are on top of later items
-              { zIndex: reversedLayers.length - index },
+              { zIndex: orderedLayers.length - index },
               layer.id === selectedLayerId && styles.selectedWrapper,
             ]}
           >
             <View style={styles.thumbnail}>
               {layer.uri ? (
-                <Image
-                  source={{ uri: layer.uri }}
-                  style={styles.image}
-                  contentFit="cover"
-                />
+                <>
+                  <Image
+                    source={{ uri: layer.uri }}
+                    style={styles.image}
+                    contentFit="contain"
+                    tintColor={layer.color}
+                  />
+                  <Svg
+                    style={StyleSheet.absoluteFill}
+                    viewBox={`0 0 ${layer.width || 1080} ${layer.height || 1920}`}
+                  >
+                    {layer.paths?.map((path) => (
+                      <Path
+                        key={path.id}
+                        d={path.path}
+                        stroke={path.color}
+                        strokeWidth={Math.max(1, path.strokeWidth * strokeScale)}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ))}
+                  </Svg>
+                </>
               ) : (
                 <View
                   style={[
