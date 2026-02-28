@@ -3,15 +3,15 @@ import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Image } from "expo-image";
-import { useTheme } from "@/context/theme-context";
 import { FontFamily } from "@/constants/fonts";
+import { CameraPermissionView } from "@/components/camera/camera-permission-view";
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "@/components/ui/primary-button";
+import { takeNormalizedStoryPicture } from "@/services/story-media-service";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 
 const ContestCamera = () => {
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
@@ -26,18 +26,20 @@ const ContestCamera = () => {
     if (cameraRef.current && !processing) {
       try {
         setProcessing(true);
-        const photo = await cameraRef.current.takePictureAsync({
+        const normalizedUri = await takeNormalizedStoryPicture(cameraRef.current, {
           quality: 0.8,
-          skipProcessing: true,
+          targetWidth: STORY_FRAME_WIDTH,
+          targetHeight: STORY_FRAME_HEIGHT,
+          fit: "contain",
         });
 
         // Mock API call delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        if (photo?.uri) {
+        if (normalizedUri) {
           router.push({
             pathname: "/drawing/share",
-            params: { imageUri: photo.uri },
+            params: { imageUri: normalizedUri },
           });
         }
       } catch (e) {
@@ -51,17 +53,13 @@ const ContestCamera = () => {
   if (!permission) return <View />;
   if (!permission.granted) {
     return (
-      <View
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <Text style={{ color: "white", marginBottom: 20 }}>
-          Camera permission needed
-        </Text>
-        <PrimaryButton title="Grant Permission" onPress={requestPermission} />
-      </View>
+      <CameraPermissionView
+        canAskAgain={permission.canAskAgain}
+        onRequestPermission={() => {
+          void requestPermission();
+        }}
+        subtitle="Camera is required to capture your artwork and join the contest."
+      />
     );
   }
 
@@ -71,6 +69,7 @@ const ContestCamera = () => {
         style={StyleSheet.absoluteFill}
         ref={cameraRef}
         facing={facing}
+        ratio="16:9"
       />
 
       {/* Overlay UI */}

@@ -1,29 +1,4 @@
-import axios from "axios";
-import { getFromSecureStore } from "@/utiles/secure-storage";
-
-// Data API for notification tokens
-const dataApi = axios.create({
-  baseURL: "https://nirvanatechlabs.in/ar_chitram/api/data",
-  headers: {
-    "Content-Type": "application/json",
-    app_secret: "_a_r_c_h_i_t_r_a_m_",
-  },
-  timeout: 30000,
-});
-
-// Request interceptor to add auth token
-dataApi.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await getFromSecureStore("userToken");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {}
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+import { makeApiRequest } from "@/services/api-service";
 
 export class TokenService {
   /**
@@ -31,13 +6,13 @@ export class TokenService {
    */
   async getFCMToken(phoneNumber: string): Promise<string | null> {
     try {
-      const response = await dataApi.post("", {
+      const response = await makeApiRequest({
         eventName: "get_notification_token",
         mobile_no: [phoneNumber],
       });
 
-      if (response.data.code === 200) {
-        const tokens = response.data.data as (string | null)[];
+      if (response.code === 200) {
+        const tokens = response.data as Array<string | null>;
         return tokens[0] || null;
       } else {
         return null;
@@ -54,15 +29,15 @@ export class TokenService {
     phoneNumbers: string[],
   ): Promise<{ [phoneNumber: string]: string | null }> {
     try {
-      const response = await dataApi.post("", {
+      const response = await makeApiRequest({
         eventName: "get_notification_token",
         mobile_no: phoneNumbers,
       });
 
       const result: { [phoneNumber: string]: string | null } = {};
 
-      if (response.data.code === 200) {
-        const tokens = response.data.data as (string | null)[];
+      if (response.code === 200) {
+        const tokens = response.data as Array<string | null>;
 
         phoneNumbers.forEach((phoneNumber, index) => {
           const token = index < tokens.length ? tokens[index] : null;

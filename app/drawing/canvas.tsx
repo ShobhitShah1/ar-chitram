@@ -3,10 +3,8 @@ import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
+  ActivityIndicator,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -17,6 +15,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { preview_1 } from "@/assets/images";
+import { CameraPermissionView } from "@/components/camera/camera-permission-view";
 import DrawingHeader from "@/components/drawing/drawing-header";
 import OpacitySlider from "@/components/drawing/opacity-slider";
 import DrawingToolbar from "@/components/drawing/drawing-toolbar";
@@ -26,13 +25,16 @@ import {
   Snapshot,
 } from "@/components/drawing/capture-preview-modal";
 import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-animation";
+import { useTheme } from "@/context/theme-context";
+import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
+import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
-
-const { width: screenWidth, height } = Dimensions.get("window");
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const Canvas = () => {
+  const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
   const sliderWidth = width - 210;
@@ -59,6 +61,10 @@ const Canvas = () => {
   const routeImageUri = Array.isArray(params.imageUri)
     ? params.imageUri[0]
     : params.imageUri;
+  const overlayFrame = useStoryFrameSize({
+    maxWidthRatio: 0.9,
+    maxHeightRatio: 0.74,
+  });
 
   useEffect(() => {
     if (virtualSnapshots.length === 0) {
@@ -81,7 +87,7 @@ const Canvas = () => {
   const activeVirtualSnapshot = virtualSnapshots[activeVirtualSnapshotIndex];
   const sketchImage = activeVirtualSnapshot
     ? { uri: activeVirtualSnapshot.uri }
-    : routeImageUri
+    : typeof routeImageUri === "string"
       ? { uri: routeImageUri }
       : preview_1;
 
@@ -129,19 +135,21 @@ const Canvas = () => {
 
     try {
       if (cameraRef.current) {
-        const photo = await cameraRef.current.takePictureAsync({
+        const normalizedUri = await takeNormalizedStoryPicture(cameraRef.current, {
           quality: 0.8,
-          skipProcessing: true,
+          targetWidth: STORY_FRAME_WIDTH,
+          targetHeight: STORY_FRAME_HEIGHT,
+          fit: "contain",
         });
 
-        if (photo?.uri) {
+        if (normalizedUri) {
           const newSnapshot: Snapshot = {
             id: Date.now().toString(),
-            uri: photo.uri,
+            uri: normalizedUri,
             timestamp: Date.now(),
           };
           setCameraSnapshots((prev) => [...prev, newSnapshot]);
-          setSnapshotUri(photo.uri);
+          setSnapshotUri(normalizedUri);
           setShowAnimation(true);
         }
       }
@@ -159,14 +167,17 @@ const Canvas = () => {
       });
     } else if (cameraRef.current) {
       try {
-        const photo = await cameraRef.current.takePictureAsync({
+        const normalizedUri = await takeNormalizedStoryPicture(cameraRef.current, {
           quality: 1,
+          targetWidth: STORY_FRAME_WIDTH,
+          targetHeight: STORY_FRAME_HEIGHT,
+          fit: "contain",
         });
 
-        if (photo?.uri) {
+        if (normalizedUri) {
           router.push({
             pathname: "/drawing/preview",
-            params: { imageUri: photo.uri },
+            params: { imageUri: normalizedUri },
           });
         }
       } catch (e) {
@@ -192,19 +203,21 @@ const Canvas = () => {
   };
 
   if (!permission) {
-    return <View />;
+    return (
+      <View style={[styles.permissionLoadingContainer, { backgroundColor: "#000" }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.message}>
-          We need your permission to show the camera
-        </Text>
-        <TouchableOpacity onPress={requestPermission} style={styles.permButton}>
-          <Text style={styles.permButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
+      <CameraPermissionView
+        canAskAgain={permission.canAskAgain}
+        onRequestPermission={() => {
+          void requestPermission();
+        }}
+      />
     );
   }
 
@@ -216,13 +229,21 @@ const Canvas = () => {
           style={StyleSheet.absoluteFill}
           facing={facing}
           enableTorch={flash}
+          ratio="16:9"
         />
       </View>
 
       <View style={styles.imageOverlayWrapper}>
         <AnimatedImage
           source={sketchImage}
-          style={[styles.overlayImage, overlayStyle]}
+          style={[
+            styles.overlayImage,
+            overlayStyle,
+            {
+              width: overlayFrame.width,
+              height: overlayFrame.height,
+            },
+          ]}
           contentFit="contain"
         />
       </View>
@@ -292,25 +313,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "black",
   },
-  permissionContainer: {
+  permissionLoadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "black",
-  },
-  message: {
-    textAlign: "center",
-    paddingBottom: 20,
-    color: "white",
-  },
-  permButton: {
-    backgroundColor: "#007AFF",
-    padding: 12,
-    borderRadius: 8,
-  },
-  permButtonText: {
-    color: "white",
-    fontSize: 16,
   },
   uiOverlay: {
     flex: 1,
@@ -339,7 +345,7 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
   },
   overlayImage: {
-    width: screenWidth * 0.9,
-    height: height * 0.7,
+    borderRadius: 18,
+    overflow: "hidden",
   },
 });

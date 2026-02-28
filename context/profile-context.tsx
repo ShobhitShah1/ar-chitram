@@ -1,4 +1,5 @@
 import { getProfile, updateProfile } from "@/services/api-service";
+import { getAuthToken, getAuthUserId } from "@/store/auth-store";
 import { getProfileImageUrl } from "@/utiles/asset-url";
 import { getFromSecureStore, saveToSecureStore } from "@/utiles/secure-storage";
 import React, {
@@ -47,8 +48,8 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchProfile = async (): Promise<ProfileData | null> => {
     try {
-      const token = await getFromSecureStore("userToken");
-      const userId = await getFromSecureStore("userId");
+      const token = getAuthToken();
+      const userId = getAuthUserId();
 
       if (!token || !userId) {
         return null;

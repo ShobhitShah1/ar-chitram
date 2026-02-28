@@ -133,10 +133,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
             >
               <Image
                 source={{ uri: layer.uri }}
-                style={[
-                  styles.image,
-                  layer.color ? { tintColor: layer.color } : undefined,
-                ]}
+                style={styles.image}
                 contentFit="contain"
               />
               {/* Drawing Overlay */}

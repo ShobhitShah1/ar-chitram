@@ -1,8 +1,86 @@
-const { withAndroidManifest, withMainApplication, withDangerousMod } = require('expo/config-plugins');
+const {
+  withAndroidManifest,
+  withMainApplication,
+  withDangerousMod,
+  withAppBuildGradle,
+  withGradleProperties,
+} = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
-function withShareFileProvider(config) {
+const DEFAULT_ANDROID_SIGNING = {
+  storeFile: '../../architram-release-key.jks',
+  storePassword: 'architram123',
+  keyAlias: 'architramkey',
+  keyPassword: 'architram123',
+};
+
+function upsertGradleProperty(properties, key, value) {
+  const index = properties.findIndex(item => item.type === 'property' && item.key === key);
+  const next = { type: 'property', key, value };
+
+  if (index >= 0) {
+    properties[index] = next;
+  } else {
+    properties.push(next);
+  }
+
+  return properties;
+}
+
+function withAndroidSigning(config, signingOptions = {}) {
+  const signing = {
+    ...DEFAULT_ANDROID_SIGNING,
+    ...signingOptions,
+  };
+
+  config = withGradleProperties(config, config => {
+    const props = config.modResults;
+    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_FILE', signing.storeFile);
+    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_PASSWORD', signing.storePassword);
+    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS', signing.keyAlias);
+    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD', signing.keyPassword);
+    config.modResults = props;
+    return config;
+  });
+
+  config = withAppBuildGradle(config, config => {
+    let buildGradle = config.modResults.contents;
+    const releaseSigningLine =
+      "            signingConfig project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug";
+
+    if (!buildGradle.includes('ARCHITRAM_UPLOAD_KEY_ALIAS')) {
+      buildGradle = buildGradle.replace(
+        /(signingConfigs\s*\{\s*debug\s*\{[\s\S]*?keyPassword\s*'android'\s*\}\s*)/m,
+        `$1        release {\n            if (project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE')) {\n                storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)\n                storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD\n                keyAlias ARCHITRAM_UPLOAD_KEY_ALIAS\n                keyPassword ARCHITRAM_UPLOAD_KEY_PASSWORD\n            }\n        }\n`
+      );
+    }
+
+    if (!buildGradle.includes(releaseSigningLine.trim())) {
+      buildGradle = buildGradle.replace(
+        /(buildTypes\s*\{\s*debug\s*\{[\s\S]*?\}\s*release\s*\{\s*)([\s\S]*?)(\s*\}\s*\})/m,
+        (match, prefix, releaseBody, suffix) => {
+          if (releaseBody.includes(releaseSigningLine.trim())) {
+            return match;
+          }
+
+          const updatedReleaseBody = /signingConfig\s+signingConfigs\.debug/.test(releaseBody)
+            ? releaseBody.replace(/signingConfig\s+signingConfigs\.debug/, releaseSigningLine.trim())
+            : `\n${releaseSigningLine}\n${releaseBody}`;
+
+          return `${prefix}${updatedReleaseBody}${suffix}`;
+        }
+      );
+    }
+
+    config.modResults.contents = buildGradle;
+    return config;
+  });
+
+  return config;
+}
+
+function withShareFileProvider(config, props = {}) {
   config = withAndroidManifest(config, async (config) => {
     const androidManifest = config.modResults;
     const { manifest } = androidManifest;
@@ -147,8 +225,9 @@ function withShareFileProvider(config) {
     },
   ]);
 
+  config = withAndroidSigning(config, props.androidSigning || {});
+
   return config;
 }
 
 module.exports = withShareFileProvider;
-

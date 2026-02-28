@@ -8,6 +8,7 @@ import {
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -56,6 +57,9 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
   showGallery = true,
 }) => {
   const { theme, isDark } = useTheme();
+  const previewGradientColors = isDark
+    ? ["rgba(126, 126, 126, 1)", "rgba(107, 107, 107, 1)"]
+    : ["rgba(185, 184, 184, 1)", "rgba(125, 125, 125, 1)"];
 
   const getIconContainerStyle = (tool: ToolType) => {
     if (tool === "gallery") {
@@ -88,9 +92,23 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
           layout={SOFT_LAYOUT}
         >
           <Pressable onPress={onCompositeRestore} style={styles.btn}>
-            <View style={[styles.previewContainer]}>
-              <CompositePreview layers={layers} />
-            </View>
+            <LinearGradient
+              colors={previewGradientColors as [string, string, ...string[]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.previewGradientBorder}
+            >
+              <View
+                style={[
+                  styles.previewContainer,
+                  { backgroundColor: theme.background },
+                ]}
+              >
+                <View style={styles.previewContent}>
+                  <CompositePreview layers={layers} />
+                </View>
+              </View>
+            </LinearGradient>
           </Pressable>
         </Animated.View>
       ) : showGallery ? (
@@ -186,14 +204,8 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
             onLongPress={onPreviewLongPress}
             style={styles.btn}
           >
-            <View
-              style={[styles.iconContainer, getIconContainerStyle("preview")]}
-            >
-              <Image
-                source={ic_preview_eye}
-                style={styles.icon}
-                contentFit="contain"
-              />
+            <View style={[styles.iconContainer, getIconContainerStyle("preview")]}>
+              <Image source={ic_preview_eye} style={styles.icon} contentFit="contain" />
               {previewBadge > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{previewBadge}</Text>
@@ -226,7 +238,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   btn: {
+    width: 60,
+    height: 60,
     alignItems: "center",
+    justifyContent: "center",
   },
   iconContainer: {
     width: 60,
@@ -235,18 +250,34 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  previewContainer: {
+  previewGradientBorder: {
     width: 60,
     height: 60,
     borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "#007AFF",
-    backgroundColor: "#fff",
+    padding: 2.5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  previewImage: {
+  previewContainer: {
     width: "100%",
     height: "100%",
+    borderRadius: 18,
+    padding: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  previewContent: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 16,
+    overflow: "hidden",
   },
   icon: {
     width: 32,
@@ -271,5 +302,6 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 60,
+    height: 60,
   },
 });

@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import Svg, { Path } from "react-native-svg";
 import { VirtualLayer } from "@/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 
 interface CompositePreviewProps {
   layers: VirtualLayer[];
@@ -13,8 +14,8 @@ interface CompositePreviewProps {
 
 export const CompositePreview: React.FC<CompositePreviewProps> = ({
   layers,
-  width = 1080,
-  height = 1920,
+  width = STORY_FRAME_WIDTH,
+  height = STORY_FRAME_HEIGHT,
   showDrawings = false,
 }) => {
   // Render layers in order (zIndex is already handled by array order usually, or we sort)

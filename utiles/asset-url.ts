@@ -4,6 +4,7 @@ const ASSETS_BASE_URL =
 
 // New admin base URL for banners and assets
 const ADMIN_BASE_URL = "https://nirvanatechlabs.in/ar_chitram_admin/uploads";
+const TAB_ASSETS_BASE_URL = "https://nirvanatechlabs.in/ARChitramAdmin";
 
 // Asset types and their directory mappings
 export enum AssetType {
@@ -12,6 +13,13 @@ export enum AssetType {
   BANNER = "banners",
   ASSET = "assets",
   BACKGROUND = "background",
+}
+
+export enum TabAssetType {
+  COLOR = "color_image",
+  DRAWING = "drawing_image",
+  SKETCH = "sketch_image",
+  CONTEST = "contest",
 }
 
 // Asset directory mappings
@@ -88,6 +96,29 @@ export const getBackgroundAssetUrl = (
   if (!filename) return undefined;
   return `${ADMIN_BASE_URL}/${AssetType.BACKGROUND}/${filename}`;
 };
+
+/**
+ * Generic URL builder for API tab assets (colors, drawing, sketch, contest)
+ */
+export const getTabAssetUrl = (
+  tabAssetType: TabAssetType,
+  filename?: string,
+): string | undefined => {
+  if (!filename) return undefined;
+  return `${TAB_ASSETS_BASE_URL}/${tabAssetType}/${filename}`;
+};
+
+export const getColorAssetUrl = (filename?: string): string | undefined =>
+  getTabAssetUrl(TabAssetType.COLOR, filename);
+
+export const getDrawingAssetUrl = (filename?: string): string | undefined =>
+  getTabAssetUrl(TabAssetType.DRAWING, filename);
+
+export const getSketchAssetUrl = (filename?: string): string | undefined =>
+  getTabAssetUrl(TabAssetType.SKETCH, filename);
+
+export const getContestTabAssetUrl = (filename?: string): string | undefined =>
+  getTabAssetUrl(TabAssetType.CONTEST, filename);
 
 /**
  * Processes profile image URL to ensure it's a valid remote URL

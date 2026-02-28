@@ -1,73 +1,72 @@
-import {
-  animal_1,
-  animal_2,
-  animal_3,
-  animal_4,
-  animal_5,
-  animal_6,
-  animal_7,
-} from "@/assets/images";
 import { CategoryChips } from "@/components/category-chips";
-import ImageGrid from "@/components/image-grid";
+import { EmptyState } from "@/components/empty-state";
+import ImageGrid, { GridAssetItem } from "@/components/image-grid";
 import TabsHeader from "@/components/tabs-header";
 import { useCommonThemedStyles } from "@/components/themed";
-import { useTheme } from "@/context/theme-context";
+import { useSketchesTabGrid } from "@/hooks/api";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback } from "react";
 import { View } from "react-native";
 
-const CATEGORIES = [
-  "All",
-  "Animals",
-  "Cartoons",
-  "Nature",
-  "Abstract",
-  "Vehicles",
-];
-
-const DATA = [
-  { id: 1, image: animal_1, category: "Animals" },
-  { id: 2, image: animal_2, category: "Animals" },
-  { id: 3, image: animal_3, category: "Animals" },
-  { id: 4, image: animal_4, category: "Animals" },
-  { id: 5, image: animal_5, category: "Animals" },
-  { id: 6, image: animal_6, category: "Animals" },
-  { id: 7, image: animal_7, category: "Animals" },
-];
-
 export default function Sketch() {
-  const { theme } = useTheme();
   const commonStyles = useCommonThemedStyles();
   const router = useRouter();
-  const [category, setCategory] = useState("All");
-  const [items, setItems] = useState(DATA);
+  const {
+    categories,
+    selectedCategory,
+    setSelectedCategory,
+    gridItems,
+    shuffle,
+    isLoading,
+    isError,
+  } = useSketchesTabGrid();
 
-  const filteredData =
-    category === "All"
-      ? items
-      : items.filter((item) => item.category === category);
+  const handlePress = useCallback(
+    (item: GridAssetItem) => {
+      const imageUri =
+        typeof item.image === "string"
+          ? item.image
+          : item.image && typeof item.image === "object" && "uri" in item.image
+            ? item.image.uri
+            : null;
 
-  const handlePress = (item: any) => {
-    // Navigate to guide or drawing screen
-    router.push("/drawing/guide");
-  };
+      if (!imageUri) {
+        return;
+      }
 
-  const handleShuffle = () => {
-    const shuffled = [...items].sort(() => Math.random() - 0.5);
-    setItems(shuffled);
-  };
+      router.push({
+        pathname: "/drawing/guide",
+        params: { imageUri },
+      });
+    },
+    [router],
+  );
 
   return (
     <View style={commonStyles.container}>
-      <TabsHeader isShuffle onShufflePress={handleShuffle} />
+      <TabsHeader isShuffle onShufflePress={shuffle} />
 
       <CategoryChips
-        items={CATEGORIES}
-        selected={category}
-        onSelect={setCategory}
+        items={categories}
+        selected={selectedCategory}
+        onSelect={setSelectedCategory}
       />
 
-      <ImageGrid data={filteredData} onPress={handlePress} />
+      {isLoading ? (
+        <EmptyState showLoading title="Loading sketch assets..." />
+      ) : isError ? (
+        <EmptyState
+          title="Unable to load sketches"
+          description="Please try again in a moment."
+        />
+      ) : gridItems.length === 0 ? (
+        <EmptyState
+          title="No sketch assets"
+          description="No images found for this category."
+        />
+      ) : (
+        <ImageGrid data={gridItems} onPress={handlePress} />
+      )}
     </View>
   );
 }

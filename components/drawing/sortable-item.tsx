@@ -1,4 +1,5 @@
 import { useTheme } from "@/context/theme-context";
+import { STORY_TILE_ASPECT_RATIO } from "@/utiles/story-frame";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";
@@ -20,7 +21,7 @@ export const COLUMNS = 3;
 export const SPACING = 8;
 export const TILE_SIZE =
   (width - MARGIN * 2 - SPACING * (COLUMNS - 1)) / COLUMNS;
-export const TILE_ASPECT = 1.35; // Slightly taller for portrait feeling
+export const TILE_ASPECT = STORY_TILE_ASPECT_RATIO;
 export const TILE_WIDTH = TILE_SIZE + SPACING;
 export const TILE_HEIGHT = TILE_SIZE * TILE_ASPECT + SPACING;
 

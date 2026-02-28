@@ -2,7 +2,7 @@ import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Dimensions, Modal, ScrollView, StyleSheet, View } from "react-native";
 import {
   Gesture,
@@ -80,12 +80,65 @@ const rgbToHex = (r: number, g: number, b: number): string => {
     .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`.toUpperCase();
 };
 
+const hexToRgb = (hex: string): [number, number, number] | null => {
+  const sanitized = hex.trim().replace("#", "");
+
+  if (sanitized.length === 3) {
+    const r = parseInt(`${sanitized[0]}${sanitized[0]}`, 16);
+    const g = parseInt(`${sanitized[1]}${sanitized[1]}`, 16);
+    const b = parseInt(`${sanitized[2]}${sanitized[2]}`, 16);
+    return [r, g, b];
+  }
+
+  if (sanitized.length === 6) {
+    const r = parseInt(sanitized.substring(0, 2), 16);
+    const g = parseInt(sanitized.substring(2, 4), 16);
+    const b = parseInt(sanitized.substring(4, 6), 16);
+    return [r, g, b];
+  }
+
+  return null;
+};
+
+const rgbToHsv = (
+  r: number,
+  g: number,
+  b: number,
+): [number, number, number] => {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const delta = max - min;
+
+  let h = 0;
+  if (delta !== 0) {
+    if (max === rn) {
+      h = ((gn - bn) / delta) % 6;
+    } else if (max === gn) {
+      h = (bn - rn) / delta + 2;
+    } else {
+      h = (rn - gn) / delta + 4;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+
+  const s = max === 0 ? 0 : delta / max;
+  const v = max;
+
+  return [h, s, v];
+};
+
 interface ColorPickerModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectColor: (color: string) => void;
   onSelectGradient?: (colors: [string, string]) => void;
   mode?: "color" | "gradient";
+  initialColor?: string;
 }
 
 export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
@@ -94,6 +147,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   onSelectColor,
   onSelectGradient,
   mode = "color",
+  initialColor,
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -121,6 +175,26 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   const satBrightX = useSharedValue(PICKER_WIDTH * 0.7);
   const satBrightY = useSharedValue(PICKER_HEIGHT * 0.2);
   const thumbScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (!visible || mode !== "color" || !initialColor) {
+      return;
+    }
+
+    const rgb = hexToRgb(initialColor);
+    if (!rgb) {
+      return;
+    }
+
+    const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+    setHue1(h);
+    setSaturation1(s);
+    setBrightness1(v);
+
+    hueThumbX.value = (h / 360) * PICKER_WIDTH;
+    satBrightX.value = s * PICKER_WIDTH;
+    satBrightY.value = (1 - v) * PICKER_HEIGHT;
+  }, [visible, mode, initialColor]);
 
   const updateColor = useCallback(
     (h: number, s: number, b: number) => {
@@ -394,14 +468,22 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 <Pressable
                   key={c}
                   onPress={() => {
-                    updateColor(0, 0, 1); // Reset to something default if needed
+                    const rgb = hexToRgb(c);
+                    if (rgb) {
+                      const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+                      setHue1(h);
+                      setSaturation1(s);
+                      setBrightness1(v);
+                      hueThumbX.value = (h / 360) * PICKER_WIDTH;
+                      satBrightX.value = s * PICKER_WIDTH;
+                      satBrightY.value = (1 - v) * PICKER_HEIGHT;
+                    }
+
                     if (mode === "color") {
                       onSelectColor(c);
-                      // Don't close immediately? Or close? User code in ref closes if needed.
-                      // Ref code: onSelectColor(c); onClose();
                       onClose();
                     } else {
-                      // Logic for quick gradient omitted for brevity, keeping simple
+                      // Gradient quick-pick not used in this screen yet.
                     }
                   }}
                   style={[

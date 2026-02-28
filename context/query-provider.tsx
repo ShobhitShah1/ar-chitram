@@ -1,41 +1,28 @@
 import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { debugLog } from "@/constants/debug";
+import NetInfo from "@react-native-community/netinfo";
+import {
+  QueryClient,
+  QueryClientProvider,
+  focusManager,
+  onlineManager,
+} from "@tanstack/react-query";
+import { AppState, AppStateStatus } from "react-native";
 
-// Create a query client with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Stale time: Data is considered fresh for 5 minutes
       staleTime: 5 * 60 * 1000,
-      // Cache time: Data stays in cache for 10 minutes after becoming unused
-      gcTime: 10 * 60 * 1000,
-      // Retry failed requests 3 times with exponential backoff
-      retry: 3,
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Refetch on window focus (useful for web, harmless for mobile)
+      gcTime: 20 * 60 * 1000,
+      retry: 1,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 8000),
       refetchOnWindowFocus: false,
-      // Refetch on reconnect
+      refetchOnMount: false,
       refetchOnReconnect: true,
+      refetchInterval: false,
     },
     mutations: {
-      // Retry mutations once on failure
-      retry: 1,
-      onError: (error) => {
-        debugLog.error("Mutation error", error);
-      },
-      onSuccess: (data) => {
-        debugLog.info("Mutation success", data);
-      },
+      retry: 0,
     },
-  },
-});
-
-// Add global error handling
-queryClient.setMutationDefaults(['auth'], {
-  mutationFn: async (variables: any) => {
-    debugLog.api("Auth mutation started", variables);
-    return variables;
   },
 });
 
@@ -44,6 +31,27 @@ interface QueryProviderProps {
 }
 
 export default function QueryProvider({ children }: QueryProviderProps) {
+  React.useEffect(() => {
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextAppState: AppStateStatus) => {
+        focusManager.setFocused(nextAppState === "active");
+      },
+    );
+
+    const netInfoUnsubscribe = NetInfo.addEventListener((state) => {
+      const isOnline = Boolean(
+        state.isConnected && state.isInternetReachable !== false,
+      );
+      onlineManager.setOnline(isOnline);
+    });
+
+    return () => {
+      appStateSubscription.remove();
+      netInfoUnsubscribe();
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
@@ -51,5 +59,4 @@ export default function QueryProvider({ children }: QueryProviderProps) {
   );
 }
 
-// Export the query client for use in custom hooks
 export { queryClient };

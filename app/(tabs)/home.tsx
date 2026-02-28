@@ -1,31 +1,53 @@
+import { EmptyState } from "@/components/empty-state";
 import { HorizontalGallery } from "@/components/horizontal-gallery";
 import { StoryRow } from "@/components/story/story-row";
 import TabsHeader from "@/components/tabs-header";
 import { View } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
-import { useTheme } from "@/context/theme-context";
+import { useHomeTabAssets } from "@/hooks/api";
 import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
+import { useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import React from "react";
-import { Platform, StatusBar, StyleSheet } from "react-native";
+import {
+  InteractionManager,
+  Platform,
+  StatusBar,
+  StyleSheet,
+} from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
 
 export default function Home() {
-  const { theme } = useTheme();
   const resetVirtualCreativity = useVirtualCreativityStore(
     (state) => state.reset,
   );
+  const { data, isLoading, isError } = useHomeTabAssets();
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const hasAutoRequestedPermission = React.useRef(false);
 
   useFocusEffect(
     React.useCallback(() => {
       // Clear virtual creativity store when returning to Home
       resetVirtualCreativity();
-    }, []),
+
+      const canAutoRequest =
+        cameraPermission &&
+        !cameraPermission.granted &&
+        cameraPermission.canAskAgain &&
+        !hasAutoRequestedPermission.current;
+
+      if (canAutoRequest) {
+        hasAutoRequestedPermission.current = true;
+        InteractionManager.runAfterInteractions(() => {
+          void requestCameraPermission();
+        });
+      }
+    }, [cameraPermission, requestCameraPermission, resetVirtualCreativity]),
   );
 
-  const contestStoryData: any[] = [];
-  const galleryImages: any[] = [];
+  const contestStoryData = data?.stories ?? [];
+  const galleryImages = data?.galleryImages ?? [];
 
   const handleLikePress = () => {};
 
@@ -43,14 +65,26 @@ export default function Home() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {contestStoryData.length > 0 && (
+          {isLoading ? (
+            <EmptyState
+              showLoading
+              title="Loading home assets..."
+              containerStyle={{ minHeight: 240 }}
+            />
+          ) : isError ? (
+            <EmptyState
+              title="Unable to load home assets"
+              description="Please try again in a moment."
+              containerStyle={{ minHeight: 240 }}
+            />
+          ) : contestStoryData.length > 0 ? (
             <View style={styles.storiesSection}>
               <StoryRow
                 stories={contestStoryData}
                 contestStoryData={contestStoryData}
               />
             </View>
-          )}
+          ) : null}
 
           {galleryImages?.length > 0 && (
             <View style={styles.gallerySection}>

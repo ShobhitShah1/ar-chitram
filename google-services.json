@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "308014673509",
-    "project_id": "gigglam-5ccf5",
-    "storage_bucket": "gigglam-5ccf5.firebasestorage.app"
+    "project_number": "919012592510",
+    "project_id": "architram-c79ea",
+    "storage_bucket": "architram-c79ea.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:308014673509:android:ce644e09e2c2da584a608c",
+        "mobilesdk_app_id": "1:919012592510:android:edc673a606d950ab7b812f",
         "android_client_info": {
-          "package_name": "com.gigglam"
+          "package_name": "com.architram"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "919012592510-te30ebqvhhs51ogog6p9uhqk1dld3fde.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.architram",
+            "certificate_hash": "3b2f08debfd3565f48b951ffb803d453ed4493ea"
+          }
+        },
+        {
+          "client_id": "919012592510-g5j1tfvkk5qfi2b2ftrm8s07q5reuguv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCg7Zgpdwbj5ybHAsWPLVaWWWowrbeF_nc"
+          "current_key": "AIzaSyC1qcRSixjbp6jpD2e-Uvj93euuswzafBA"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "919012592510-g5j1tfvkk5qfi2b2ftrm8s07q5reuguv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

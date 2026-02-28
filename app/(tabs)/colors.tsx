@@ -1,54 +1,73 @@
 import { CategoryChips } from "@/components/category-chips";
-import ImageGrid from "@/components/image-grid";
+import { EmptyState } from "@/components/empty-state";
+import ImageGrid, { GridAssetItem } from "@/components/image-grid";
 import TabsHeader from "@/components/tabs-header";
 import { useCommonThemedStyles } from "@/components/themed";
+import { useColorsTabGrid } from "@/hooks/api";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback } from "react";
 import { View } from "react-native";
-
-const CATEGORIES = ["All", "Pastel", "Neon", "Dark", "Light", "Vintage"];
-
-const DATA = [
-  { id: 1, color: "#FFB3BA", category: "Pastel" },
-  { id: 2, color: "#FFFFBA", category: "Pastel" },
-  { id: 3, color: "#BAFFC9", category: "Pastel" },
-  { id: 4, color: "#BAE1FF", category: "Pastel" },
-  { id: 5, color: "#FF00FF", category: "Neon" },
-  { id: 6, color: "#00FF00", category: "Neon" },
-  { id: 7, color: "#1a1a1a", category: "Dark" },
-  { id: 8, color: "#f5f5f5", category: "Light" },
-  { id: 9, color: "#8B4513", category: "Vintage" },
-];
 
 export default function Colors() {
   const commonStyles = useCommonThemedStyles();
   const router = useRouter();
-  const [category, setCategory] = useState("All");
-  const [items, setItems] = useState(DATA);
+  const {
+    categories,
+    selectedCategory,
+    setSelectedCategory,
+    gridItems,
+    shuffle,
+    isLoading,
+    isError,
+  } = useColorsTabGrid();
 
-  const filteredData =
-    category === "All"
-      ? items
-      : items.filter((item) => item.category === category);
+  const handlePress = useCallback(
+    (item: GridAssetItem) => {
+      const imageUri =
+        typeof item.image === "string"
+          ? item.image
+          : item.image && typeof item.image === "object" && "uri" in item.image
+            ? item.image.uri
+            : null;
 
-  const handlePress = (item: any) => {
-    router.push("/drawing/guide");
-  };
+      if (!imageUri) {
+        return;
+      }
 
-  const handleShuffle = () => {
-    const shuffled = [...items].sort(() => Math.random() - 0.5);
-    setItems(shuffled);
-  };
+      router.push({
+        pathname: "/drawing/guide",
+        params: { imageUri },
+      });
+    },
+    [router],
+  );
+
+  console.log(gridItems);
 
   return (
     <View style={commonStyles.container}>
-      <TabsHeader isShuffle onShufflePress={handleShuffle} />
+      <TabsHeader isShuffle onShufflePress={shuffle} />
       <CategoryChips
-        items={CATEGORIES}
-        selected={category}
-        onSelect={setCategory}
+        items={categories}
+        selected={selectedCategory}
+        onSelect={setSelectedCategory}
       />
-      <ImageGrid data={filteredData} onPress={handlePress} />
+
+      {isLoading ? (
+        <EmptyState showLoading title="Loading color assets..." />
+      ) : isError ? (
+        <EmptyState
+          title="Unable to load colors"
+          description="Please try again in a moment."
+        />
+      ) : gridItems.length === 0 ? (
+        <EmptyState
+          title="No color assets"
+          description="No images found for this category."
+        />
+      ) : (
+        <ImageGrid data={gridItems} onPress={handlePress} />
+      )}
     </View>
   );
 }

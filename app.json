@@ -33,6 +33,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "googleServicesFile": "./google-services.json",
       "edgeToEdgeEnabled": true,
       "package": "com.architram",
       "permissions": [
@@ -50,7 +51,17 @@
       ]
     },
     "plugins": [
-      "./app.plugin.js",
+      [
+        "./app.plugin.js",
+        {
+          "androidSigning": {
+            "storeFile": "../../architram-release-key.jks",
+            "storePassword": "architram123",
+            "keyAlias": "architramkey",
+            "keyPassword": "architram123"
+          }
+        }
+      ],
       "expo-router",
       [
         "expo-image-picker",
@@ -118,10 +129,14 @@
       ],
       "expo-font",
       "expo-asset",
-      "expo-video"
+      "expo-video",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "googleWebClientId": "919012592510-g5j1tfvkk5qfi2b2ftrm8s07q5reuguv.apps.googleusercontent.com"
     }
   }
 }

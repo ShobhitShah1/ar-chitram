@@ -7,14 +7,20 @@ import Animated, {
   LinearTransition,
 } from "react-native-reanimated";
 
-import { useCommonThemedStyles, Pressable } from "./themed";
+import { Pressable } from "./themed";
 import { useTheme } from "@/context/theme-context";
 
 const { width } = Dimensions.get("window");
 
+export interface GridAssetItem {
+  id: string | number;
+  image?: string | number | { uri: string };
+  color?: string;
+}
+
 interface ImageGridProps {
-  data: any[];
-  onPress: (item: any) => void;
+  data: GridAssetItem[];
+  onPress: (item: GridAssetItem) => void;
   ListHeaderComponent?: React.ReactNode;
   contentContainerStyle?: any;
 }
@@ -30,7 +36,6 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   ListHeaderComponent,
   contentContainerStyle,
 }) => {
-  const commonStyles = useCommonThemedStyles();
   const { theme } = useTheme();
 
   return (
@@ -54,7 +59,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
           return (
             <Animated.View
-              key={item.id}
+              key={String(item.id)}
               layout={LinearTransition.springify()
                 .mass(1)
                 .damping(20)
@@ -76,7 +81,11 @@ const ImageGrid: React.FC<ImageGridProps> = ({
               >
                 {item.image ? (
                   <Image
-                    source={item.image}
+                    source={
+                      typeof item.image === "string"
+                        ? { uri: item.image }
+                        : item.image
+                    }
                     contentFit="contain"
                     style={imageStyle}
                     transition={200}

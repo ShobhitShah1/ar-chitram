@@ -3,6 +3,7 @@ import { FontFamily } from "@/constants/fonts";
 import { useThemedStyles } from "@/context/theme-context";
 import React from "react";
 import {
+  ActivityIndicator,
   Image,
   ImageSourcePropType,
   StyleSheet,
@@ -16,6 +17,8 @@ interface SocialButtonProps {
   title: string;
   imageSource: ImageSourcePropType;
   style?: ViewStyle;
+  isLoading?: boolean;
+  loadingText?: string;
 }
 
 const SocialButton = ({
@@ -23,13 +26,28 @@ const SocialButton = ({
   title,
   imageSource,
   style,
+  isLoading = false,
+  loadingText = "Signing in...",
 }: SocialButtonProps) => {
   const styles = useThemedStyles(styleCreator);
 
   return (
-    <Pressable onPress={onPress} style={[styles.container, style]}>
-      <Image source={imageSource} style={styles.icon} resizeMode="contain" />
-      <Text style={styles.text}>{title}</Text>
+    <Pressable
+      onPress={onPress}
+      disabled={isLoading}
+      style={[styles.container, style, isLoading ? styles.loadingContainer : null]}
+    >
+      {isLoading ? (
+        <>
+          <ActivityIndicator size="small" color="#2B2B2B" />
+          <Text style={styles.text}>{loadingText}</Text>
+        </>
+      ) : (
+        <>
+          <Image source={imageSource} style={styles.icon} resizeMode="contain" />
+          <Text style={styles.text}>{title}</Text>
+        </>
+      )}
     </Pressable>
   );
 };
@@ -59,5 +77,8 @@ const styleCreator = (theme: Theme) =>
     icon: {
       width: 24,
       height: 24,
+    },
+    loadingContainer: {
+      opacity: 0.9,
     },
   });

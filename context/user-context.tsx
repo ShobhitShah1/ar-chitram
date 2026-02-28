@@ -1,13 +1,9 @@
 import { storage } from "@/utiles/storage";
+import { useAuthStore } from "@/store/auth-store";
 import {
-  saveToSecureStore,
-  deleteFromSecureStore,
-  getFromSecureStore,
-} from "@/utiles/secure-storage";
-import {
-  initializeAuth,
   getProfile,
   addSkuToProfile,
+  clearApiAuthToken,
 } from "@/services/api-service";
 import { processProfileImageUrl } from "@/utiles/asset-url";
 import { debugLog } from "@/constants/debug";
@@ -73,9 +69,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const initializeUserData = async () => {
     try {
-      const secureUserId = await getFromSecureStore("userId");
+      const authUserId = useAuthStore.getState().user?.id || "";
       const regularUserId = storage.getString("@userId");
-      const finalUserId = secureUserId || regularUserId || "";
+      const finalUserId = authUserId || regularUserId || "";
 
       const regularUserName = storage.getString("@username") || "";
       const regularPhoneNumber = storage.getString("@phoneNumber") || null;
@@ -83,8 +79,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
       if (finalUserId !== userId) {
         setUserId(finalUserId);
-        if (secureUserId && secureUserId !== regularUserId) {
-          storage.setString("@userId", secureUserId);
+        if (authUserId && authUserId !== regularUserId) {
+          storage.setString("@userId", authUserId);
         }
       }
 
@@ -125,10 +121,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     if (id) {
       storage.setString("@userId", id);
-      await saveToSecureStore("userId", id);
     } else {
       storage.removeItem("@userId");
-      await deleteFromSecureStore("userId");
     }
   };
 
@@ -163,8 +157,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setProfileImage(null);
     setPurchasedSkus([]);
 
-    // 3. Clear Secure Storage
-    await deleteFromSecureStore("userId");
+    useAuthStore.getState().clearAuthSession();
+    clearApiAuthToken();
     debugLog.info("[USER] Data cleared.");
   };
 

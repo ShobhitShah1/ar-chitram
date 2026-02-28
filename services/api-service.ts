@@ -1,243 +1,213 @@
 import { debugLog } from "@/constants/debug";
 import { SERVER_URL } from "@/constants/server";
+import { getAuthToken, getAuthUserId } from "@/store/auth-store";
 import {
-  ApiRequest,
+  ApiDataFor,
+  ApiEventName,
+  ApiRequestFor,
   ApiResponse,
   FetchAccountsResponse,
+  ProfileResponseData,
   RegisterResponse,
 } from "@/types/api";
-import { getFromSecureStore } from "@/utiles/secure-storage";
-import NetInfo from "@react-native-community/netinfo";
-import axios, { AxiosError, AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosInstance } from "axios";
 import { Platform } from "react-native";
 
-// API Base URLs
-const GIGGLAM_API_BASE = "https://nirvanatechlabs.in/ar_chitram/api";
-const DATA_API_BASE = `${GIGGLAM_API_BASE}/data`;
-const UPLOAD_API_BASE = GIGGLAM_API_BASE;
+const APP_SECRET = "_a_r_c_h_i_t_r_a_m_";
+const API_BASE_URL = "https://nirvanatechlabs.in/ar_chitram/api";
+const DATA_API_URL = `${API_BASE_URL}/data`;
+const UPLOAD_API_URL = `${API_BASE_URL}/upload`;
 
-// Legacy API for room management
-const api = axios.create({
-  baseURL: SERVER_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+const AUTH_OPTIONAL_EVENTS = new Set<string>([
+  "send_otp",
+  "verify_otp",
+  "app_user_register",
+  "fetch_acc",
+  "install",
+]);
 
-// Data API for authentication and general data operations
-const dataApi = axios.create({
-  baseURL: DATA_API_BASE,
-  headers: {
-    "Content-Type": "application/json",
-    app_secret: "_a_r_c_h_i_t_r_a_m_",
-  },
-  timeout: 30000,
-});
+type AnyApiRequest = {
+  eventName: string;
+} & Record<string, unknown>;
 
-// Upload API for file uploads and contest operations
-const uploadApi = axios.create({
-  baseURL: UPLOAD_API_BASE,
-  headers: {
-    app_secret: "_a_r_c_h_i_t_r_a_m_",
-  },
-  timeout: 30000,
-});
+type UnknownApiResponse = ApiResponse<Record<string, unknown>>;
 
-// Check internet before making requests
-const checkInternetInterceptor = async (config: any) => {
-  const netInfo = await NetInfo.fetch();
-  if (!netInfo.isConnected) {
-    return Promise.reject(new Error("No internet connection"));
+const createDataClient = (): AxiosInstance =>
+  axios.create({
+    baseURL: DATA_API_URL,
+    timeout: 30000,
+    headers: {
+      "Content-Type": "application/json",
+      app_secret: APP_SECRET,
+    },
+  });
+
+const createUploadClient = (): AxiosInstance =>
+  axios.create({
+    baseURL: UPLOAD_API_URL,
+    timeout: 30000,
+    headers: {
+      app_secret: APP_SECRET,
+    },
+  });
+
+const createLegacyClient = (): AxiosInstance =>
+  axios.create({
+    baseURL: SERVER_URL,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+const dataApi = createDataClient();
+const uploadApi = createUploadClient();
+const legacyApi = createLegacyClient();
+
+const shouldRequireAuth = (requestData?: unknown): boolean => {
+  if (!requestData || typeof requestData !== "object") {
+    return false;
   }
-  return config;
+
+  const eventName =
+    "eventName" in requestData
+      ? String((requestData as AnyApiRequest).eventName || "")
+      : "";
+  return Boolean(eventName && !AUTH_OPTIONAL_EVENTS.has(eventName));
 };
 
-// Add internet check to all API instances
-dataApi.interceptors.request.use(checkInternetInterceptor);
-uploadApi.interceptors.request.use(checkInternetInterceptor);
-api.interceptors.request.use(checkInternetInterceptor);
-
-// Request interceptor for uploadApi to automatically add auth tokens
-uploadApi.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await getFromSecureStore("userToken");
-      const userId = await getFromSecureStore("userId");
-
-      if (token && userId) {
-        config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        debugLog.warn(
-          "Missing authentication data, attempting to refresh from storage",
-          {
-            hasToken: !!token,
-            hasUserId: !!userId,
-          },
-        );
-
-        // Try to get fresh tokens from storage one more time
-        const freshToken = await getFromSecureStore("userToken");
-        const freshUserId = await getFromSecureStore("userId");
-
-        if (freshToken && freshUserId) {
-          debugLog.info("Found fresh tokens in storage, using them");
-          config.headers.Authorization = `Bearer ${freshToken}`;
-          // Also set the auth token for future requests
-          dataApi.defaults.headers.common["Authorization"] =
-            `Bearer ${freshToken}`;
-          uploadApi.defaults.headers.common["Authorization"] =
-            `Bearer ${freshToken}`;
-        } else {
-          debugLog.error("Authentication failed - no valid tokens found", {
-            hasFreshToken: !!freshToken,
-            hasFreshUserId: !!freshUserId,
-          });
-          return Promise.reject(
-            new Error(
-              `Authentication failed: ${
-                !freshToken ? "token" : "userId"
-              } is missing from secure storage`,
-            ),
-          );
-        }
-      }
-
-      // Remove Content-Type for FormData requests to let axios set it automatically
-      if (config.data instanceof FormData) {
-        delete config.headers["Content-Type"];
-      }
-    } catch (error) {
-      debugLog.error("Error getting auth token:", error);
-      return Promise.reject(error);
-    }
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
-
-// Response interceptor for uploadApi
-uploadApi.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    debugLog.error("Upload API Error", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-    return Promise.reject(error);
-  },
-);
-
-// Custom error class for auth-skipped requests (not a real error, just skipped)
 export class AuthSkippedError extends Error {
-  public isAuthSkipped = true;
+  public readonly isAuthSkipped = true;
+
   constructor(eventName: string) {
-    super(`Request skipped - user not authenticated: ${eventName}`);
+    super(`Request skipped because auth is missing: ${eventName}`);
     this.name = "AuthSkippedError";
   }
 }
 
-// Check if an error is an AuthSkippedError
-export const isAuthSkipped = (error: any): boolean => {
-  return error instanceof AuthSkippedError || error?.isAuthSkipped === true;
-};
+export const isAuthSkipped = (error: unknown): boolean =>
+  error instanceof AuthSkippedError ||
+  (typeof error === "object" &&
+    error !== null &&
+    "isAuthSkipped" in error &&
+    Boolean((error as { isAuthSkipped?: boolean }).isAuthSkipped));
 
-dataApi.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await getFromSecureStore("userToken");
+dataApi.interceptors.request.use((config) => {
+  const token = getAuthToken();
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      } else {
-        // If no token is available, check if this is a request that requires auth
-        const requiresAuth =
-          config.data?.eventName &&
-          ![
-            "send_otp",
-            "verify_otp",
-            "app_user_register",
-            "fetch_acc",
-          ].includes(config.data.eventName);
-
-        if (requiresAuth) {
-          // Silently skip authenticated requests when user is not logged in
-          // This prevents error logs and allows callers to handle gracefully
-          return Promise.reject(new AuthSkippedError(config.data.eventName));
-        }
-      }
-    } catch (error) {
-      debugLog.error("Error getting auth token for data API:", error);
-      return Promise.reject(error);
-    }
-
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
     return config;
-  },
-  (error: AxiosError) => {
-    debugLog.error("Data API Request Error", error);
-    return Promise.reject(error);
-  },
-);
+  }
 
-dataApi.interceptors.response.use(
-  (response: AxiosResponse) => {
-    return response;
-  },
-  (error: AxiosError | AuthSkippedError) => {
-    // Skip logging for auth-skipped requests (user not logged in)
-    if (isAuthSkipped(error)) {
-      return Promise.reject(error);
-    }
+  if (shouldRequireAuth(config.data)) {
+    const eventName =
+      config.data && typeof config.data === "object" && "eventName" in config.data
+        ? String((config.data as AnyApiRequest).eventName || "")
+        : "unknown";
+    return Promise.reject(new AuthSkippedError(eventName));
+  }
 
-    const errorInfo = {
-      message: error.message,
-      status: (error as AxiosError).response?.status,
-      statusText: (error as AxiosError).response?.statusText,
-      data: (error as AxiosError).response?.data,
-      config: {
-        url: (error as AxiosError).config?.url,
-        method: (error as AxiosError).config?.method,
-        data: (error as AxiosError).config?.data,
-      },
-    };
+  return config;
+});
 
-    debugLog.error("API Response Error", errorInfo);
+uploadApi.interceptors.request.use((config) => {
+  const token = getAuthToken();
 
-    if ((error as AxiosError).code === "ECONNABORTED") {
-      debugLog.error("API Request Timeout", {
-        timeout: (error as AxiosError).config?.timeout,
-      });
-    } else if ((error as AxiosError).code === "ERR_NETWORK") {
-      debugLog.error("Network Error", {
-        message: "No internet connection or server unreachable",
-      });
-    } else if ((error as AxiosError).response?.status === 401) {
-      debugLog.warn("Authentication Error", {
-        message: "Unauthorized - token may be expired",
-      });
-    } else if ((error as AxiosError).response?.status === 500) {
-      debugLog.error("Server Error", { message: "Internal server error" });
-    }
+  if (!token) {
+    return Promise.reject(new Error("Authentication token is required."));
+  }
 
-    return Promise.reject(error);
-  },
-);
+  config.headers.Authorization = `Bearer ${token}`;
 
-/**
- * Sets authentication token for API requests
- * @param token - The JWT token for authenticated requests
- */
-export const setApiAuthToken = (token: string) => {
-  dataApi.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  uploadApi.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  if (config.data instanceof FormData) {
+    delete config.headers["Content-Type"];
+  }
 
-  // Clear auth cache since token changed
-  authCache = null;
+  return config;
+});
+
+const parseApiErrorMessage = (error: AxiosError): string => {
+  const responseData = error.response?.data;
+
+  if (typeof responseData === "string") {
+    return responseData;
+  }
+
+  if (
+    responseData &&
+    typeof responseData === "object" &&
+    "message" in responseData &&
+    typeof (responseData as { message?: unknown }).message === "string"
+  ) {
+    return (responseData as { message: string }).message;
+  }
+
+  return error.message || "Unknown API error";
 };
 
-// Cache for authentication status to prevent redundant calls
+const parseBrokenJson = (rawPayload: string): unknown => {
+  try {
+    return JSON.parse(rawPayload);
+  } catch {
+    // Handle malformed responses like: {"code":200,"data":versip,"message":"success."}
+    const fixedPayload = rawPayload.replace(
+      /("data"\s*:\s*)([A-Za-z_][A-Za-z0-9_\s-]*)(\s*[,}])/,
+      (_match, start, value, end) => `${start}"${String(value).trim()}"${end}`,
+    );
+    return JSON.parse(fixedPayload);
+  }
+};
+
+const normalizeApiResponse = <TData>(payload: unknown): ApiResponse<TData> => {
+  if (payload && typeof payload === "object" && "code" in payload && "message" in payload) {
+    return payload as ApiResponse<TData>;
+  }
+
+  if (typeof payload === "string") {
+    const parsed = parseBrokenJson(payload);
+    if (parsed && typeof parsed === "object" && "code" in parsed && "message" in parsed) {
+      return parsed as ApiResponse<TData>;
+    }
+  }
+
+  throw new Error("Invalid API response format.");
+};
+
+const toApiError = (error: AxiosError, eventName: string): Error => {
+  const message = parseApiErrorMessage(error);
+  const enhancedError = new Error(`API Error (${eventName}): ${message}`);
+
+  (enhancedError as Error & { statusCode?: number }).statusCode =
+    error.response?.status;
+  (enhancedError as Error & { eventName?: string }).eventName = eventName;
+  (enhancedError as Error & { originalError?: AxiosError }).originalError =
+    error;
+
+  return enhancedError;
+};
+
+interface UploadApiResponse {
+  message?: string;
+  profile_image?: string;
+  [key: string]: unknown;
+}
+
+export const setApiAuthToken = (token: string) => {
+  dataApi.defaults.headers.common.Authorization = `Bearer ${token}`;
+  uploadApi.defaults.headers.common.Authorization = `Bearer ${token}`;
+};
+
+export const clearApiAuthToken = () => {
+  delete dataApi.defaults.headers.common.Authorization;
+  delete uploadApi.defaults.headers.common.Authorization;
+  delete legacyApi.defaults.headers.common.Authorization;
+  clearAuthCache();
+};
+
+export const setApiDeviceHeader = (deviceId: string) => {
+  legacyApi.defaults.headers.common["x-device-id"] = deviceId;
+};
+
 let authCache: {
   timestamp: number;
   result: {
@@ -249,12 +219,8 @@ let authCache: {
   };
 } | null = null;
 
-const AUTH_CACHE_DURATION = 30000; // 30 seconds
+const AUTH_CACHE_DURATION = 30000;
 
-/**
- * Initialize authentication when app starts or when navigating to authenticated screens
- * Uses caching to prevent redundant calls within 30 seconds
- */
 export const initializeAuth = async (
   forceRefresh = false,
 ): Promise<{
@@ -264,74 +230,48 @@ export const initializeAuth = async (
   token?: string;
   userId?: string;
 }> => {
-  try {
-    // Check cache first (unless forced refresh)
-    const now = Date.now();
-    if (
-      !forceRefresh &&
-      authCache &&
-      now - authCache.timestamp < AUTH_CACHE_DURATION
-    ) {
-      return authCache.result;
-    }
+  const now = Date.now();
 
-    const token = await getFromSecureStore("userToken");
-    const userId = await getFromSecureStore("userId");
-
-    const result = {
-      success: !!(token && userId),
-      hasToken: !!token,
-      hasUserId: !!userId,
-      token: token || undefined,
-      userId: userId || undefined,
-    };
-
-    if (token && userId) {
-      // Set the tokens globally for all API instances
-      setApiAuthToken(token);
-    } else {
-      debugLog.warn("Authentication data incomplete - user needs to login", {
-        missingToken: !token,
-        missingUserId: !userId,
-      });
-    }
-
-    // Update cache
-    authCache = {
-      timestamp: now,
-      result,
-    };
-
-    return result;
-  } catch (error) {
-    const errorResult = { success: false, hasToken: false, hasUserId: false };
-
-    authCache = {
-      timestamp: Date.now(),
-      result: errorResult,
-    };
-
-    return errorResult;
+  if (
+    !forceRefresh &&
+    authCache &&
+    now - authCache.timestamp < AUTH_CACHE_DURATION
+  ) {
+    return authCache.result;
   }
+
+  const token = getAuthToken();
+  const userId = getAuthUserId();
+  const result = {
+    success: Boolean(token && userId),
+    hasToken: Boolean(token),
+    hasUserId: Boolean(userId),
+    token: token || undefined,
+    userId: userId || undefined,
+  };
+
+  if (token) {
+    setApiAuthToken(token);
+  }
+
+  authCache = {
+    timestamp: now,
+    result,
+  };
+
+  return result;
 };
 
-/**
- * Clear authentication cache - useful when auth state changes
- */
 export const clearAuthCache = () => {
   authCache = null;
 };
 
-/**
- * Legacy function - use initializeAuth instead
- * @deprecated Use initializeAuth for better functionality
- */
 export const reinitializeAuth = async (): Promise<{
   success: boolean;
   hasToken: boolean;
   hasUserId: boolean;
 }> => {
-  const result = await initializeAuth(true); // Force refresh for legacy compatibility
+  const result = await initializeAuth(true);
   return {
     success: result.success,
     hasToken: result.hasToken,
@@ -339,226 +279,178 @@ export const reinitializeAuth = async (): Promise<{
   };
 };
 
-/**
- * Check if user is properly authenticated for API calls
- */
 export const checkAuthStatus = async (): Promise<{
   isAuthenticated: boolean;
   hasToken: boolean;
   hasUserId: boolean;
   message: string;
 }> => {
-  try {
-    const token = await getFromSecureStore("userToken");
-    const userId = await getFromSecureStore("userId");
+  const token = getAuthToken();
+  const userId = getAuthUserId();
 
-    const hasToken = !!token;
-    const hasUserId = !!userId;
-    const isAuthenticated = hasToken && hasUserId;
+  const hasToken = Boolean(token);
+  const hasUserId = Boolean(userId);
+  const isAuthenticated = hasToken && hasUserId;
 
-    let message = "";
-    if (isAuthenticated) {
-      message = "User is properly authenticated";
-    } else if (!hasToken && !hasUserId) {
-      message = "User needs to login - missing both token and userId";
-    } else if (!hasToken) {
-      message = "User needs to login - missing authentication token";
-    } else if (!hasUserId) {
-      message = "User needs to login - missing userId";
-    }
+  if (isAuthenticated) {
+    return {
+      isAuthenticated: true,
+      hasToken,
+      hasUserId,
+      message: "User is authenticated.",
+    };
+  }
 
-    return { isAuthenticated, hasToken, hasUserId, message };
-  } catch (error) {
-    debugLog.error("Error checking auth status:", error);
+  if (!hasToken && !hasUserId) {
     return {
       isAuthenticated: false,
       hasToken: false,
       hasUserId: false,
-      message: "Error checking authentication status",
+      message: "Missing token and user id.",
     };
   }
-};
 
-/**
- * Removes authentication token from API requests
- */
-export const clearApiAuthToken = () => {
-  delete dataApi.defaults.headers.common["Authorization"];
-  delete uploadApi.defaults.headers.common["Authorization"];
-
-  // Also clear from legacy API
-  delete api.defaults.headers.common["Authorization"];
-
-  // Clear auth cache when logging out
-  clearAuthCache();
-};
-
-/**
- * Legacy: Sets device header for old API endpoints
- * @param deviceId - The unique ID of the user's device
- */
-export const setApiDeviceHeader = (deviceId: string) => {
-  api.defaults.headers.common["x-device-id"] = deviceId;
-};
-
-const handleApiError = (error: AxiosError, eventName: string): never => {
-  const errorMessage =
-    error.response?.data || error.message || "Unknown error occurred";
-  const statusCode = error.response?.status || 0;
-
-  const enhancedError = new Error(`API Error (${eventName}): ${errorMessage}`);
-  (enhancedError as any).statusCode = statusCode;
-  (enhancedError as any).eventName = eventName;
-  (enhancedError as any).originalError = error;
-
-  throw enhancedError;
-};
-
-export const makeApiRequest = async <T>(
-  request: ApiRequest,
-): Promise<ApiResponse<T>> => {
-  try {
-    const response = await dataApi.post<ApiResponse<T>>("", request);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error as AxiosError, request.eventName);
+  if (!hasToken) {
+    return {
+      isAuthenticated: false,
+      hasToken: false,
+      hasUserId: true,
+      message: "Missing token.",
+    };
   }
+
+  return {
+    isAuthenticated: false,
+    hasToken: true,
+    hasUserId: false,
+    message: "Missing user id.",
+  };
 };
+
+export async function makeApiRequest<TEvent extends ApiEventName>(
+  request: ApiRequestFor<TEvent>,
+): Promise<ApiResponse<ApiDataFor<TEvent>>>;
+export async function makeApiRequest(
+  request: AnyApiRequest,
+): Promise<UnknownApiResponse>;
+export async function makeApiRequest(
+  request: AnyApiRequest,
+): Promise<UnknownApiResponse> {
+  try {
+    const response = await dataApi.post<unknown>(
+      "",
+      request,
+    );
+    return normalizeApiResponse(response.data);
+  } catch (error) {
+    if (isAuthSkipped(error)) {
+      throw error;
+    }
+
+    throw toApiError(error as AxiosError, request.eventName);
+  }
+}
 
 export const fetchAccounts = async (
   mobile: string,
-): Promise<ApiResponse<FetchAccountsResponse>> => {
-  return makeApiRequest<FetchAccountsResponse>({
+): Promise<ApiResponse<FetchAccountsResponse>> =>
+  makeApiRequest<"fetch_acc">({
     eventName: "fetch_acc",
     mobiles: mobile,
   });
-};
 
 export const registerUser = async (
   mobileNo: string,
-): Promise<ApiResponse<RegisterResponse>> => {
-  return makeApiRequest<RegisterResponse>({
+): Promise<ApiResponse<RegisterResponse>> =>
+  makeApiRequest<"app_user_register">({
     eventName: "app_user_register",
     mobile_no: mobileNo,
   });
-};
 
-export const getProfile = async (): Promise<ApiResponse<{
-  name: string;
-  profile_image: string | null;
-  SKU?: (string | null)[];
-}> | null> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "get_profile",
-    });
+export const registerUserWithEmail = async (
+  email: string,
+): Promise<ApiResponse<RegisterResponse>> =>
+  makeApiRequest<"app_user_register">({
+    eventName: "app_user_register",
+    email_id: email,
+  });
 
-    debugLog.info("[PAYMENT] Profile fetched raw:", response.data);
-
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error loading profile", error);
-    throw error;
-  }
-};
+export const getProfile = async (): Promise<ApiResponse<ProfileResponseData>> =>
+  makeApiRequest<"get_profile">({
+    eventName: "get_profile",
+  });
 
 export const addSkuToProfile = async (
   sku: string,
-): Promise<ApiResponse<any>> => {
-  debugLog.info(`[PAYMENT] Adding SKU to profile: ${sku}`);
-  const response = await makeApiRequest({
+): Promise<ApiResponse<ApiDataFor<"app_user_inapp">>> =>
+  makeApiRequest<"app_user_inapp">({
     eventName: "app_user_inapp",
     SKU: sku,
   });
-  debugLog.info(`[PAYMENT] Add SKU response:`, response);
-  return response;
-};
 
 export const updateNotificationToken = async (
   notificationToken: string,
-): Promise<ApiResponse<any>> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "update_notification_token",
-      notification_token: notificationToken,
-    });
+): Promise<ApiResponse<Record<string, unknown> | string>> =>
+  makeApiRequest<"update_notification_token">({
+    eventName: "update_notification_token",
+    notification_token: notificationToken,
+  });
 
-    let responseData = response.data;
+const buildUploadFormData = (
+  eventName: "join_contest" | "update_profile",
+  fileTo: "contest_image" | "profile_image",
+  imageUri: string,
+  fileNamePrefix: string,
+  extraFields: Record<string, string>,
+): FormData => {
+  const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
+  const fileName = `${fileNamePrefix}_${Date.now()}.${fileExtension}`;
+  const mimeType = `image/${fileExtension === "jpg" ? "jpeg" : fileExtension}`;
 
-    if (typeof responseData === "string") {
-      try {
-        const fixed = responseData.replace(/data":([A-Za-z\s]+)/, 'data":"$1"');
+  const formData = new FormData();
+  formData.append("eventName", eventName);
+  formData.append("file_to", fileTo);
+  formData.append("file", {
+    uri: Platform.OS === "android" ? imageUri : imageUri.replace("file://", ""),
+    type: mimeType,
+    name: fileName,
+  } as never);
 
-        responseData = JSON.parse(fixed);
-      } catch (err) {
-        console.warn("Could not parse response:", responseData);
-      }
-    }
+  Object.entries(extraFields).forEach(([field, value]) => {
+    formData.append(field, value);
+  });
 
-    return responseData;
-  } catch (error) {
-    debugLog.error("Error updating notification token", error);
-    throw error;
-  }
+  return formData;
 };
 
 export const joinContest = async (
   imageUri: string,
   mobileNo: string,
-): Promise<{ success: boolean; message: string; data?: any }> => {
+): Promise<{ success: boolean; message: string; data?: UploadApiResponse }> => {
   try {
-    const token = await getFromSecureStore("userToken");
-    if (!token) {
-      throw new Error("Authentication token is required");
-    }
-
-    const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `contest_image_${Date.now()}.${fileExtension}`;
-    const mimeType = `image/${
-      fileExtension === "jpg" ? "jpeg" : fileExtension
-    }`;
-
-    const formData = new FormData();
-    formData.append("eventName", "join_contest");
-    formData.append("file_to", "contest_image");
-    formData.append("file", {
-      uri:
-        Platform.OS === "android" ? imageUri : imageUri.replace("file://", ""),
-      type: mimeType,
-      name: fileName,
-    } as any);
-    formData.append("mobile_no", mobileNo);
-
-    const response = await axios.post(
-      "https://nirvanatechlabs.in/ar_chitram/api/upload",
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          app_secret: "_a_r_c_h_i_t_r_a_m_",
-          "Content-Type": "multipart/form-data",
-        },
-      },
+    const formData = buildUploadFormData(
+      "join_contest",
+      "contest_image",
+      imageUri,
+      "contest_image",
+      { mobile_no: mobileNo },
     );
 
+    const response = await uploadApi.post<UploadApiResponse>("", formData);
     return {
       success: true,
-      message: response.data.message || "Successfully joined contest!",
+      message: response.data?.message || "Successfully joined contest.",
       data: response.data,
     };
   } catch (error) {
-    const axiosError = error as AxiosError;
-    const errorData = axiosError.response?.data as any;
-    const statusCode = axiosError.response?.status || 0;
-    const errorMessage =
-      errorData?.message ||
-      axiosError.message ||
-      "Network error occurred while joining contest";
-
+    const axiosError = error as AxiosError<{ message?: string }>;
     return {
       success: false,
-      message: errorMessage,
-      data: { statusCode, error: errorData },
+      message:
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Unable to join contest.",
+      data: axiosError.response?.data,
     };
   }
 };
@@ -566,165 +458,118 @@ export const joinContest = async (
 export const updateProfile = async (
   imageUri: string,
   name: string,
-): Promise<{ success: boolean; message: string; data?: any }> => {
+): Promise<{ success: boolean; message: string; data?: UploadApiResponse }> => {
   try {
-    const token = await getFromSecureStore("userToken");
-    if (!token) {
-      throw new Error("Authentication token is required");
-    }
-
-    const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `profile_image_${Date.now()}.${fileExtension}`;
-    const mimeType = `image/${
-      fileExtension === "jpg" ? "jpeg" : fileExtension
-    }`;
-
-    const formData = new FormData();
-    formData.append("eventName", "update_profile");
-    formData.append("file_to", "profile_image");
-    formData.append("file", {
-      uri:
-        Platform.OS === "android" ? imageUri : imageUri.replace("file://", ""),
-      type: mimeType,
-      name: fileName,
-    } as any);
-    formData.append("name", name);
-
-    const response = await axios.post(
-      "https://nirvanatechlabs.in/ar_chitram/api/upload",
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          app_secret: "_a_r_c_h_i_t_r_a_m_",
-          "Content-Type": "multipart/form-data",
-        },
-      },
+    const formData = buildUploadFormData(
+      "update_profile",
+      "profile_image",
+      imageUri,
+      "profile_image",
+      { name },
     );
 
+    const response = await uploadApi.post<UploadApiResponse>("", formData);
     return {
       success: true,
-      message: response.data.message || "Profile updated successfully!",
+      message: response.data?.message || "Profile updated successfully.",
       data: response.data,
     };
-  } catch (error: AxiosError | any) {
-    const axiosError = error as AxiosError;
-    const errorData = axiosError.response?.data as any;
-    const statusCode = axiosError.response?.status || 0;
-    const errorMessage =
-      errorData?.message ||
-      axiosError.message ||
-      "Network error occurred while updating profile";
-
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
     return {
       success: false,
-      message: errorMessage,
-      data: { statusCode, error: errorData },
+      message:
+        axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Unable to update profile.",
+      data: axiosError.response?.data,
     };
   }
 };
 
-export const loadAssets = async (): Promise<ApiResponse<any> | null> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "load_assets",
-    });
-
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error loading assets", error);
-    throw error;
-  }
-};
+export const loadAssets = async (): Promise<
+  ApiResponse<ApiDataFor<"load_assets">>
+> =>
+  makeApiRequest<"load_assets">({
+    eventName: "load_assets",
+  });
 
 export const likeAndDislike = async (
-  contest_image_id?: string,
-  isLiked: boolean = true,
-): Promise<ApiResponse<any>> => {
-  try {
-    const value = isLiked ? 1 : 0;
-    const response = await dataApi.post("", {
-      eventName: "like_dislike",
-      contest_image_id: contest_image_id,
-      value: value,
-    });
+  contest_image_id: string | undefined,
+  isLiked = true,
+): Promise<ApiResponse<ApiDataFor<"liked">>> => {
+  const value = isLiked ? 1 : 0;
 
-    return response.data;
+  try {
+    return await makeApiRequest<"liked">({
+      eventName: "liked",
+      contest_image_id,
+      value,
+    });
   } catch (error) {
-    debugLog.error("Error loading like:", error);
-    throw error;
+    // Backward compatibility for deployments still expecting "like_dislike".
+    return makeApiRequest<"like_dislike">({
+      eventName: "like_dislike",
+      contest_image_id,
+      value,
+    });
   }
 };
 
 export const getContestWinners = async (): Promise<{
-  today: any[];
-  last7days: any[];
+  today: ApiDataFor<"contest_winner_list">["today"];
+  last7days: ApiDataFor<"contest_winner_list">["last7days"];
 }> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "contest_winner_list",
-    });
+  const response = await makeApiRequest<"contest_winner_list">({
+    eventName: "contest_winner_list",
+  });
+  const contestData = response.data;
 
-    const contestData = response.data.data || {};
-
-    return {
-      today: contestData.today || [],
-      last7days: contestData.last7days || [],
-    };
-  } catch (error) {
-    debugLog.error("Error loading contest winners", error);
-    throw error;
-  }
+  return {
+    today: Array.isArray(contestData.today) ? contestData.today : [],
+    last7days: Array.isArray(contestData.last7days)
+      ? contestData.last7days
+      : [],
+  };
 };
 
-// Legal Documents API
-export interface LegalDocument {
-  _id: string;
-  title: string;
-  content: string;
-  version: string;
-  updatedAt: string;
-}
-
-export const getPrivacyPolicy = async (): Promise<
-  ApiResponse<LegalDocument>
+export const getContestWinning = async (): Promise<
+  ApiDataFor<"get_contest_winning">["win_results"]
 > => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "get_privacy_policy",
-    });
+  const response = await makeApiRequest<"get_contest_winning">({
+    eventName: "get_contest_winning",
+  });
 
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error fetching privacy policy", error);
-    throw error;
-  }
+  const winResults = response.data?.win_results;
+  return Array.isArray(winResults) ? winResults : [];
 };
 
-export const getTermsOfUse = async (): Promise<ApiResponse<LegalDocument>> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "get_terms_of_use",
-    });
+export type LegalDocument = ApiDataFor<"get_privacy_policy">;
 
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error fetching terms of use", error);
-    throw error;
-  }
-};
+export const getPrivacyPolicy = async (): Promise<ApiResponse<LegalDocument>> =>
+  makeApiRequest<"get_privacy_policy">({
+    eventName: "get_privacy_policy",
+  });
 
-export const getLibraryLicense = async (): Promise<
-  ApiResponse<LegalDocument>
-> => {
-  try {
-    const response = await dataApi.post("", {
-      eventName: "get_library_license",
-    });
+export const getTermsOfUse = async (): Promise<ApiResponse<LegalDocument>> =>
+  makeApiRequest<"get_terms_of_use">({
+    eventName: "get_terms_of_use",
+  });
 
-    return response.data;
-  } catch (error) {
-    debugLog.error("Error fetching library license", error);
-    throw error;
-  }
-};
+export const getLibraryLicense = async (): Promise<ApiResponse<LegalDocument>> =>
+  makeApiRequest<"get_library_license">({
+    eventName: "get_library_license",
+  });
+
+dataApi.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (!isAuthSkipped(error)) {
+      debugLog.error("Data API request failed", {
+        message: error.message,
+        status: error.response?.status,
+      });
+    }
+    return Promise.reject(error);
+  },
+);

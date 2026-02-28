@@ -19,10 +19,13 @@ import { SignatureModal } from "@/components/virtual-creativity/signature-modal"
 import { TopBar } from "@/components/virtual-creativity/top-bar";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
+import { normalizeStoryImageUri } from "@/services/story-media-service";
 import {
   VirtualLayer,
   useVirtualCreativityStore,
 } from "@/store/virtual-creativity-store";
+import * as ImageManipulator from "expo-image-manipulator";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -60,8 +63,8 @@ const getInitialLayers = (): VirtualLayer[] => {
     uri,
     x: 0,
     y: 0,
-    width: 1080,
-    height: 1920,
+    width: STORY_FRAME_WIDTH,
+    height: STORY_FRAME_HEIGHT,
     rotation: 0,
     scale: 1,
     opacity: 1,
@@ -76,8 +79,8 @@ const getInitialLayers = (): VirtualLayer[] => {
       uri: MAIN_IMAGE_URI,
       x: 0,
       y: 0,
-      width: 1080,
-      height: 1920,
+      width: STORY_FRAME_WIDTH,
+      height: STORY_FRAME_HEIGHT,
       rotation: 0,
       scale: 1,
       opacity: 1,
@@ -156,7 +159,7 @@ export default function VirtualCreativityScreen() {
     () =>
       allLayersSorted.filter((layer) => {
         if (layer.id === "main-image") return true;
-        return Boolean(layer.color) || (layer.paths?.length ?? 0) > 0;
+        return (layer.paths?.length ?? 0) > 0;
       }),
     [allLayersSorted],
   );
@@ -178,12 +181,12 @@ export default function VirtualCreativityScreen() {
     (color: string) => {
       setSelectedColor(color);
       if (!activeEditableLayerId) return;
-      updateLayer(activeEditableLayerId, { color });
+      // Paint-style behavior: color applies to new strokes only.
       if (activeEditableLayerId !== "main-image") {
         bringToFront(activeEditableLayerId, false);
       }
     },
-    [activeEditableLayerId, bringToFront, updateLayer],
+    [activeEditableLayerId, bringToFront],
   );
 
   const handleUndo = useCallback(() => undo(), [undo]);
@@ -208,6 +211,24 @@ export default function VirtualCreativityScreen() {
   const handleDelete = useCallback(() => {
     if (canDeleteLayer && selectedLayerId) removeLayer(selectedLayerId);
   }, [canDeleteLayer, removeLayer, selectedLayerId]);
+  const captureCanvasSnapshot = useCallback(async (quality: number) => {
+    if (!viewShotRef.current) {
+      return null;
+    }
+
+    const capturedUri = await captureRef(viewShotRef, {
+      format: "png",
+      quality,
+    });
+
+    return normalizeStoryImageUri(capturedUri, {
+      format: ImageManipulator.SaveFormat.PNG,
+      compress: 1,
+      targetWidth: STORY_FRAME_WIDTH,
+      targetHeight: STORY_FRAME_HEIGHT,
+      fit: "contain",
+    });
+  }, []);
 
   const handleNext = useCallback(async () => {
     if (viewMode === "single") {
@@ -216,12 +237,8 @@ export default function VirtualCreativityScreen() {
     }
 
     try {
-      if (viewShotRef.current) {
-        const uri = await captureRef(viewShotRef, {
-          format: "png",
-          quality: 1, // High quality for drawing base
-        });
-
+      const uri = await captureCanvasSnapshot(1);
+      if (uri) {
         router.push({
           pathname: "/virtual-creativity/preview",
           params: { imageUri: uri },
@@ -230,7 +247,7 @@ export default function VirtualCreativityScreen() {
     } catch (e) {
       console.error("Failed to capture snapshot for next step:", e);
     }
-  }, [router, viewMode]);
+  }, [captureCanvasSnapshot, router, viewMode]);
 
   // Bottom Bar Actions
   const handleGallery = useCallback(() => {
@@ -262,12 +279,8 @@ export default function VirtualCreativityScreen() {
   const handlePreview = useCallback(async () => {
     setSelectedTool("preview");
     try {
-      if (viewShotRef.current) {
-        const uri = await captureRef(viewShotRef, {
-          format: "png",
-          quality: 0.9,
-        });
-
+      const uri = await captureCanvasSnapshot(0.9);
+      if (uri) {
         const newSnap: Snapshot = {
           id: Date.now().toString(),
           uri: uri,
@@ -281,7 +294,7 @@ export default function VirtualCreativityScreen() {
     } catch (e) {
       console.error("Snapshot failed:", e);
     }
-  }, [addSnapshot]);
+  }, [addSnapshot, captureCanvasSnapshot]);
 
   const handlePreviewLongPress = useCallback(() => {
     setShowPreviewModal(true);
@@ -437,6 +450,7 @@ export default function VirtualCreativityScreen() {
           visible={colorPickerVisible}
           onClose={handleCloseColorPicker}
           onSelectColor={onSelectColor}
+          initialColor={selectedColor}
           mode={pickerMode}
           onSelectGradient={handleSelectGradient}
         />

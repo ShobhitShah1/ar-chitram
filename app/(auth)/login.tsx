@@ -2,13 +2,83 @@ import { ic_welcome_facebook, ic_welcome_google } from "@/assets/icons";
 import { welcome } from "@/assets/images";
 import SocialButton from "@/components/login/social-button";
 import { FontFamily } from "@/constants/fonts";
+import { useUser } from "@/context/user-context";
+import { useWarmCoreTabAssets } from "@/hooks/api";
+import { signInWithGoogleSession } from "@/services/auth-session-service";
+import { useAuthStore } from "@/store/auth-store";
 import { ImageBackground } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { StatusBar, StyleSheet, Text, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 export default function Login() {
+  const { setUserData } = useUser();
+  const warmCoreTabAssets = useWarmCoreTabAssets();
+  const isAuthenticated = useAuthStore(
+    (state) => !!state.accessToken && !!state.user?.id,
+  );
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const completeGoogleLogin = useCallback(
+    async (sessionUser: {
+      id: string;
+      name: string | null;
+      email: string | null;
+      photo: string | null;
+    }) => {
+      await setUserData(
+        sessionUser.name || sessionUser.email || "User",
+        sessionUser.id,
+        null,
+        sessionUser.photo,
+      );
+      router.replace("/(tabs)/home");
+    },
+    [setUserData],
+  );
+
+  const handleGoogleLogin = useCallback(async () => {
+    if (isGoogleLoading) {
+      return;
+    }
+
+    setIsGoogleLoading(true);
+
+    try {
+      const result = await signInWithGoogleSession();
+
+      if (result.type === "success") {
+        await warmCoreTabAssets();
+        await completeGoogleLogin(result.session.user);
+        return;
+      }
+
+      if (result.type === "error") {
+        Toast.show({
+          type: "error",
+          text1: "Google Login Failed",
+          text2: result.message,
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Google Login Failed",
+        text2: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [completeGoogleLogin, isGoogleLoading, warmCoreTabAssets]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/(tabs)/home");
+    }
+  }, [isAuthenticated]);
+
   return (
     <ImageBackground
       source={welcome}
@@ -47,7 +117,9 @@ export default function Login() {
           <SocialButton
             title="Login with Google"
             imageSource={ic_welcome_google}
-            onPress={() => router.replace("/(tabs)/home")}
+            onPress={handleGoogleLogin}
+            isLoading={isGoogleLoading}
+            loadingText="Signing in..."
           />
           <SocialButton
             title="Login with Facebook"

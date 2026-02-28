@@ -45,3 +45,7 @@ export const ic_backface = require("@/assets/icons/ic_backface.png");
 export const ic_signature = require("@/assets/icons/ic_signature.png");
 export const ic_zoom = require("@/assets/icons/ic_zoom.png");
 export const ic_undo = require("@/assets/icons/ic_undo.png");
+export const ic_close = require("@/assets/icons/ic_close.webp");
+export const ic_confetti_left = require("@/assets/icons/ic_confetti_left.png");
+export const ic_confetti_right = require("@/assets/icons/ic_confetti_right.png");
+export const ic_gold = require("@/assets/icons/ic_gold.webp");

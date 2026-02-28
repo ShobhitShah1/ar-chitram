@@ -1,27 +1,15 @@
 import { BYPASS_OTP, debugLog } from "@/constants/debug";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import {
   fetchAccounts,
   registerUser,
-  sendOTP,
   setApiAuthToken,
-  verifyOTP,
-  updatePhoneNumber,
 } from "@/services/api-service";
-import {
-  ApiResponse,
-  RegisterResponse,
-  SendOTPResponse,
-  VerifyOTPResponse,
-} from "@/types/api";
-import { saveToSecureStore, getFromSecureStore } from "@/utiles/secure-storage";
+import { useAuthStore } from "@/store/auth-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-// Query keys for caching
-export const authQueryKeys = {
-  accounts: (mobile: string) => ["accounts", mobile] as const,
-  user: ["user"] as const,
-} as const;
+export const authQueryKeys = apiQueryKeys.auth;
 
 /**
  * Utility function to check if user is properly authenticated
@@ -33,8 +21,9 @@ export const checkAuthStatus = async (): Promise<{
   userId: string | null;
 }> => {
   try {
-    const token = await getFromSecureStore("userToken");
-    const userId = await getFromSecureStore("userId");
+    const { accessToken, user } = useAuthStore.getState();
+    const token = accessToken;
+    const userId = user?.id || null;
 
     debugLog.info("🔍 Auth status check", {
       hasToken: !!token,
@@ -146,8 +135,15 @@ export const useRegisterUser = () => {
     },
     onSuccess: async (data, mobileNo) => {
       try {
-        await saveToSecureStore("userToken", data.token);
-        await saveToSecureStore("userId", data.userId);
+        useAuthStore.getState().setAuthSession({
+          accessToken: data.token,
+          user: {
+            id: data.userId,
+            name: null,
+            email: null,
+            photo: null,
+          },
+        });
 
         setApiAuthToken(data.token);
 

@@ -5,6 +5,9 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 import { scheduleOnRN } from "react-native-worklets";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+
+const DRAW_STROKE_WIDTH = 18;
 
 interface DrawingCanvasProps {
   layerId: string;
@@ -24,8 +27,8 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   onAddPath,
   currentColor,
   enabled = true,
-  layerWidth = 1080,
-  layerHeight = 1920,
+  layerWidth = STORY_FRAME_WIDTH,
+  layerHeight = STORY_FRAME_HEIGHT,
 }) => {
   const [currentPath, setCurrentPath] = useState<string>("");
   const currentPathBuilder = useSharedValue("");
@@ -64,7 +67,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           id: Date.now().toString(),
           path: finalPath,
           color: currentColor,
-          strokeWidth: 15, // Thicker stroke for 1080p resolution (approx 5px on 360p screen)
+          strokeWidth: DRAW_STROKE_WIDTH,
         });
         scheduleOnRN(setCurrentPath, "");
       }
@@ -99,7 +102,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             <Path
               d={currentPath}
               stroke={currentColor}
-              strokeWidth={15}
+              strokeWidth={DRAW_STROKE_WIDTH}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"

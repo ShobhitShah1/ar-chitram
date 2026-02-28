@@ -1,4 +1,5 @@
 import { VirtualLayer } from "@/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 import { Image } from "expo-image";
 import React from "react";
 import { ScrollView, StyleSheet, View, Pressable } from "react-native";
@@ -53,11 +54,10 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
                     source={{ uri: layer.uri }}
                     style={styles.image}
                     contentFit="contain"
-                    tintColor={layer.color}
                   />
                   <Svg
                     style={StyleSheet.absoluteFill}
-                    viewBox={`0 0 ${layer.width || 1080} ${layer.height || 1920}`}
+                    viewBox={`0 0 ${layer.width || STORY_FRAME_WIDTH} ${layer.height || STORY_FRAME_HEIGHT}`}
                   >
                     {layer.paths?.map((path) => (
                       <Path

@@ -1,15 +1,13 @@
-import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { preview_1 } from "@/assets/images";
 import Header from "@/components/header";
+import { StoryFramePreviewCard } from "@/components/story/story-frame-preview-card";
 import PrimaryButton from "@/components/ui/primary-button";
 import { useTheme } from "@/context/theme-context";
-
-const { width, height } = Dimensions.get("window");
 
 const VirtualCreativityPreview = () => {
   const insets = useSafeAreaInsets();
@@ -33,13 +31,10 @@ const VirtualCreativityPreview = () => {
 
       {/* Main Content */}
       <View style={styles.content}>
-        <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
-          <Image
-            source={displayImage}
-            style={styles.image}
-            contentFit="contain"
-          />
-        </View>
+        <StoryFramePreviewCard
+          source={displayImage}
+          cardBackgroundColor={theme.cardBackground}
+        />
       </View>
 
       {/* Footer */}
@@ -68,27 +63,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
-  },
-  card: {
-    width: width * 0.85,
-    height: height * 0.65,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 24,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
   },
   footer: {
     width: "100%",

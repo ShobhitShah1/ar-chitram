@@ -1,5 +1,7 @@
 export const loginBG = require("./login.png");
 export const welcome = require("./welcome.png");
+export const join_contest = require("./Join-contest.png");
+export const winner_background = require("./winner-background.png");
 
 export const preview_1 = require("./preview_1.png");
 export const preview_2 = require("./preview_2.png");
@@ -14,3 +16,8 @@ export const animal_7 = require("./animal/animal_7.png");
 export const test_deer = require("./animal/test_deer.png");
 
 export const ic_contest_winner = require("./ic_contest_winner.png");
+
+export const Images = {
+  JoinContest: join_contest,
+  winnerBackground: winner_background,
+} as const;
