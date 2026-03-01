@@ -36,10 +36,20 @@ function withAndroidSigning(config, signingOptions = {}) {
 
   config = withGradleProperties(config, config => {
     const props = config.modResults;
-    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_FILE', signing.storeFile);
-    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_PASSWORD', signing.storePassword);
-    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS', signing.keyAlias);
-    upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD', signing.keyPassword);
+    const projectRoot = config.modRequest.projectRoot;
+    // Resolve storeFile relative to android/app (where it's used by Gradle file())
+    const storeFilePath = path.isAbsolute(signing.storeFile)
+      ? signing.storeFile
+      : path.resolve(projectRoot, 'android/app', signing.storeFile);
+
+    if (fs.existsSync(storeFilePath)) {
+      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_FILE', signing.storeFile);
+      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_PASSWORD', signing.storePassword);
+      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS', signing.keyAlias);
+      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD', signing.keyPassword);
+    } else {
+      console.warn(`[withAndroidSigning] Keystore file not found at ${storeFilePath}. Skipping release signing config.`);
+    }
     config.modResults = props;
     return config;
   });
