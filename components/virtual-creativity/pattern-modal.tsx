@@ -9,11 +9,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   View,
 } from "react-native";
+import Modal from "react-native-modal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface PatternModalProps {
@@ -29,7 +29,7 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
   onClose,
   onApply,
 }) => {
-  const { theme } = useTheme();
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [pendingId, setPendingId] = React.useState<string | null>(
     selectedPatternId ?? PATTERN_PRESETS[0].id,
@@ -54,7 +54,18 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
       return (
         <Pressable
           onPress={() => setPendingId(item.id)}
-          style={[styles.tileWrap, selected && styles.tileWrapSelected]}
+          style={[
+            styles.tileWrap,
+            {
+              borderColor: isDark
+                ? "rgba(20,20,20,0.08)"
+                : "rgba(0,0,0,0.06)",
+            },
+            selected && [
+              styles.tileWrapSelected,
+              { borderColor: "#1D1D1D" },
+            ],
+          ]}
         >
           <LinearGradient
             colors={item.colors}
@@ -73,23 +84,34 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
         </Pressable>
       );
     },
-    [pendingId],
+    [isDark, pendingId],
   );
 
   return (
     <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      isVisible={visible}
+      style={styles.modal}
+      hasBackdrop={false}
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      onBackButtonPress={onClose}
     >
-      <View style={styles.overlay}>
+      <View
+        style={[
+          styles.overlay,
+          {
+            backgroundColor: isDark
+              ? "rgba(0,0,0,0.2)"
+              : "rgba(0,0,0,0.18)",
+          },
+        ]}
+      >
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View
           style={[
             styles.card,
             {
-              backgroundColor: theme.modalBackground,
+              backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
               paddingBottom: Math.max(insets.bottom, 12),
             },
           ]}
@@ -118,9 +140,12 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
 export const PatternModal = React.memo(PatternModalComponent);
 
 const styles = StyleSheet.create({
+  modal: {
+    margin: 0,
+    justifyContent: "flex-end",
+  },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
     justifyContent: "flex-end",
   },
   card: {
@@ -144,10 +169,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
   },
   tileWrapSelected: {
-    borderColor: "#1D1D1D",
     borderWidth: 1.5,
   },
   tile: {

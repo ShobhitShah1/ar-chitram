@@ -135,24 +135,24 @@ export const PATTERN_PRESETS: PatternPreset[] = [
 
 export const SIGNATURE_FONT_PRESETS: SignatureFontPreset[] = [
   {
-    id: "font-galada",
-    label: "Galada",
-    fontFamily: FontFamily.galada,
+    id: "font-monte-carlo",
+    label: "MonteCarlo",
+    fontFamily: FontFamily.signatureMonteCarlo,
   },
   {
-    id: "font-pattaya",
-    label: "Pattaya",
-    fontFamily: FontFamily.pattaya,
+    id: "font-monsieur-la-doulaise",
+    label: "MonsieurLaDoulaise",
+    fontFamily: FontFamily.signatureMonsieurLaDoulaise,
   },
   {
-    id: "font-semi",
-    label: "Mona SemiBold",
-    fontFamily: FontFamily.semibold,
+    id: "font-molle",
+    label: "Molle",
+    fontFamily: FontFamily.signatureMolle,
   },
   {
-    id: "font-bold",
-    label: "Mona Bold",
-    fontFamily: FontFamily.bold,
+    id: "font-montez",
+    label: "Montez",
+    fontFamily: FontFamily.signatureMontez,
   },
 ];
 

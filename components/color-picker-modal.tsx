@@ -3,7 +3,7 @@ import { useTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
-import { Dimensions, Modal, ScrollView, StyleSheet, View } from "react-native";
+import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
 import {
   Gesture,
   GestureDetector,
@@ -19,6 +19,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import { Pressable, Text } from "./themed"; // Assuming themed exports Text and Pressable
 import { Image } from "expo-image";
 import { ic_check } from "@/assets/icons";
+import Modal from "react-native-modal";
 
 // import { ic_check } from "@/assets/icons"; // Removed as likely missing, using Ionicons instead
 
@@ -290,17 +291,19 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
   return (
     <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
+      isVisible={visible}
+      style={styles.modal}
+      hasBackdrop={false}
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      onBackButtonPress={onClose}
     >
       <GestureHandlerRootView style={styles.overlay}>
         <View
           style={[
             styles.container,
             {
-              backgroundColor: theme.modalBackground,
+              backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
               paddingBottom: insets.bottom + 16,
             },
           ]}
@@ -308,13 +311,9 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Pressable onPress={onClose} style={styles.closeBtn}>
-              <Ionicons
-                name="close"
-                size={24}
-                color={isDark ? "#fff" : "#000"}
-              />
+              <Ionicons name="close" size={24} color="#000" />
             </Pressable>
-            <Text style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
+            <Text style={[styles.title, { color: "#000" }]}>
               {mode === "color" ? "Pick a Color" : "Create Gradient"}
             </Text>
             <Pressable
@@ -322,8 +321,8 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
               style={[
                 styles.applyBtn,
                 {
-                  backgroundColor: isDark ? "rgba(65, 64, 64, 0.45)" : "white",
-                  boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)" as any, // Cast for TS
+                  backgroundColor: "white",
+                  boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)" as any,
                 },
               ]}
             >
@@ -331,7 +330,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 source={ic_check}
                 contentFit="contain"
                 style={{ width: 16, height: 16 }}
-                tintColor={isDark ? "#fff" : "#000"}
+                tintColor="#000"
               />
             </Pressable>
           </View>
@@ -382,9 +381,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
           {/* Color Preview (for color mode) */}
           {mode === "color" && (
             <View style={styles.colorPreviewContainer}>
-              <View
-                style={[styles.colorPreview, { backgroundColor: color1 }]}
-              />
+              <View style={[styles.colorPreview, { backgroundColor: color1 }]} />
             </View>
           )}
 
@@ -491,7 +488,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                     { backgroundColor: c },
                     c === "#FFFFFF" && {
                       borderWidth: 1,
-                      borderColor: theme.borderPrimary,
+                      borderColor: "rgba(0,0,0,0.12)",
                     },
                   ]}
                 />
@@ -505,9 +502,13 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  modal: {
+    margin: 0,
+    justifyContent: "flex-end",
+  },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.18)",
     justifyContent: "flex-end",
   },
   container: {

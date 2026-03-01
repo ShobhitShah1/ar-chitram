@@ -9,17 +9,21 @@ import { useTheme } from "@/context/theme-context";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
+  Dimensions,
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import Modal from "react-native-modal";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SignatureTab = "custom" | "artist";
+const SHEET_MAX_HEIGHT = Dimensions.get("window").height * 0.86;
+const SHEET_MIN_HEIGHT = 420;
 
 interface SignatureModalProps {
   visible: boolean;
@@ -110,9 +114,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           <Text
             style={[
               styles.signatureText,
-              { color: theme.textPrimary, fontFamily: item.fontFamily },
-              item.id === SIGNATURE_FONT_PRESETS[0].id &&
-                styles.signatureTopText,
+              { color: "#000", fontFamily: item.fontFamily },
             ]}
           >
             {customPreviewName}
@@ -120,7 +122,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
         </Pressable>
       );
     },
-    [customPreviewName, selectedCustomFontId, theme.textPrimary],
+    [customPreviewName, selectedCustomFontId],
   );
 
   const renderArtistItem = React.useCallback(
@@ -132,19 +134,15 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           style={[
             styles.artistTile,
             {
-              borderColor: selected
-                ? theme.textPrimary
-                : isDark
-                  ? "rgba(255,255,255,0.1)"
-                  : "rgba(20,20,20,0.06)",
-              backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "#F2F2F2",
+              borderColor: selected ? "#1D1D1D" : "rgba(20,20,20,0.06)",
+              backgroundColor: "#F2F2F2",
             },
           ]}
         >
           <Text
             style={[
               styles.artistName,
-              { fontFamily: item.fontFamily, color: theme.textPrimary },
+              { fontFamily: item.fontFamily, color: "#000" },
             ]}
           >
             {item.name}
@@ -152,24 +150,33 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
         </Pressable>
       );
     },
-    [isDark, selectedArtistId, theme.textPrimary],
+    [selectedArtistId],
   );
 
   return (
     <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
+      isVisible={visible}
+      onBackdropPress={onClose}
+      onBackButtonPress={onClose}
+      style={styles.modal}
+      backdropColor="#000"
+      backdropOpacity={isDark ? 0.2 : 0.18}
+      animationIn="slideInUp"
+      animationOut="slideOutDown"
+      backdropTransitionOutTiming={0}
+      avoidKeyboard
+      useNativeDriver
     >
-      <View style={styles.overlay}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <KeyboardAvoidingView
+        behavior="padding"
+        enabled={visible}
+        style={styles.keyboardWrap}
+      >
         <View
           style={[
             styles.card,
             {
-              backgroundColor: theme.modalBackground,
-              paddingBottom: Math.max(insets.bottom, 10),
+              backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
             },
           ]}
         >
@@ -179,7 +186,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             onConfirm={handleApply}
           />
 
-          <View style={[styles.tabsRow]}>
+          <View style={styles.tabsRow}>
             <Pressable
               onPress={() => setTab("custom")}
               style={styles.tabButton}
@@ -228,51 +235,53 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             </Pressable>
           </View>
 
-          {tab === "custom" ? (
-            <View style={styles.customWrap}>
-              <View
-                style={[
-                  styles.inputWrap,
-                  { backgroundColor: isDark ? "#EAEAEA" : "#EAEAEA" },
-                ]}
-              >
-                <TextInput
-                  value={typedName}
-                  onChangeText={setTypedName}
-                  placeholder="Type Here..."
-                  placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
-                  style={[styles.input, { color: theme.textPrimary }]}
+          <View style={styles.contentArea}>
+            {tab === "custom" ? (
+              <View style={styles.customWrap}>
+                <View
+                  style={[styles.inputWrap, { backgroundColor: "#EAEAEA" }]}
+                >
+                  <TextInput
+                    value={typedName}
+                    onChangeText={setTypedName}
+                    placeholder="Type Here..."
+                    placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
+                    style={[styles.input, { color: "#000" }]}
+                  />
+                </View>
+
+                <FlatList
+                  data={SIGNATURE_FONT_PRESETS}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderCustomFont}
+                  style={styles.list}
+                  contentContainerStyle={styles.signatureList}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                  nestedScrollEnabled
+                  initialNumToRender={4}
                 />
               </View>
-
-              <FlatList
-                data={SIGNATURE_FONT_PRESETS}
-                keyExtractor={(item) => item.id}
-                renderItem={renderCustomFont}
-                contentContainerStyle={styles.signatureList}
-                showsVerticalScrollIndicator={false}
-                removeClippedSubviews
-                keyboardShouldPersistTaps="handled"
-                initialNumToRender={4}
-              />
-            </View>
-          ) : (
-            <View>
-              <FlatList
-                data={ARTIST_SIGNATURE_PRESETS}
-                keyExtractor={(item) => item.id}
-                renderItem={renderArtistItem}
-                numColumns={2}
-                columnWrapperStyle={styles.artistRow}
-                contentContainerStyle={styles.artistList}
-                showsVerticalScrollIndicator={false}
-                removeClippedSubviews
-                initialNumToRender={8}
-              />
-            </View>
-          )}
+            ) : (
+              <View style={styles.artistWrap}>
+                <FlatList
+                  data={ARTIST_SIGNATURE_PRESETS}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderArtistItem}
+                  numColumns={2}
+                  style={styles.list}
+                  columnWrapperStyle={styles.artistRow}
+                  contentContainerStyle={styles.artistList}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled
+                  initialNumToRender={8}
+                />
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -280,23 +289,32 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
 export const SignatureModal = React.memo(SignatureModalComponent);
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
+  modal: {
+    justifyContent: "flex-end",
+    margin: 0,
+  },
+  keyboardWrap: {
+    width: "100%",
     justifyContent: "flex-end",
   },
   card: {
+    width: "100%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 4,
     paddingHorizontal: 16,
-    maxHeight: "80%",
+    minHeight: SHEET_MIN_HEIGHT,
+    maxHeight: SHEET_MAX_HEIGHT,
   },
   tabsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 4,
     marginBottom: 12,
+  },
+  contentArea: {
+    flex: 1,
+    minHeight: 0,
   },
   tabButton: {
     width: "48.4%",
@@ -329,6 +347,8 @@ const styles = StyleSheet.create({
     color: "#A5A5A5",
   },
   customWrap: {
+    flex: 1,
+    minHeight: 0,
     gap: 10,
   },
   inputWrap: {
@@ -345,7 +365,15 @@ const styles = StyleSheet.create({
   signatureList: {
     gap: 8,
     paddingTop: 2,
-    paddingBottom: 6,
+    paddingBottom: 10,
+  },
+  list: {
+    flex: 1,
+    minHeight: 0,
+  },
+  artistWrap: {
+    flex: 1,
+    minHeight: 0,
   },
   signatureRow: {
     minHeight: 54,
@@ -367,13 +395,8 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     textAlign: "center",
   },
-  signatureTopText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 36,
-    lineHeight: 40,
-  },
   artistList: {
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
   artistRow: {
     justifyContent: "space-between",

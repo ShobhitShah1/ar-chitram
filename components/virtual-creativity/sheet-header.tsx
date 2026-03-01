@@ -1,6 +1,5 @@
 import { ic_check } from "@/assets/icons";
 import { FontFamily } from "@/constants/fonts";
-import { useTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";
@@ -17,23 +16,19 @@ const SheetHeaderComponent: React.FC<SheetHeaderProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const { theme, isDark } = useTheme();
-
   return (
     <View style={styles.header}>
       <Pressable onPress={onClose} style={styles.closeBtn}>
-        <Ionicons name="close" size={24} color={isDark ? "#fff" : "#000"} />
+        <Ionicons name="close" size={24} color="#000" />
       </Pressable>
-      <Text style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
-        {title}
-      </Text>
+      <Text style={[styles.title, { color: "#000" }]}>{title}</Text>
       <Pressable
         onPress={onConfirm}
         style={[
           styles.applyBtn,
           {
-            backgroundColor: isDark ? "rgba(65, 64, 64, 0.45)" : "white",
-            boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)" as any, // Cast for TS
+            backgroundColor: "white",
+            boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)" as any,
           },
         ]}
       >
@@ -41,7 +36,7 @@ const SheetHeaderComponent: React.FC<SheetHeaderProps> = ({
           source={ic_check}
           contentFit="contain"
           style={{ width: 16, height: 16 }}
-          tintColor={isDark ? "#fff" : "#000"}
+          tintColor="#000"
         />
       </Pressable>
     </View>

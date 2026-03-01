@@ -5,6 +5,10 @@ export const FONT_ASSETS = {
   "Mona-Sans-SemiBold": require("../assets/fonts/Mona-Sans-SemiBold.ttf"),
   "Mona-Sans-Bold": require("../assets/fonts/Mona-Sans-Bold.ttf"),
   "Pattaya-Regular": require("../assets/fonts/Pattaya-Regular.ttf"),
+  "Molle-Italic": require("../assets/fonts/signature/Molle-Italic.ttf"),
+  "MonsieurLaDoulaise-Regular": require("../assets/fonts/signature/MonsieurLaDoulaise-Regular.ttf"),
+  "MonteCarlo-Regular": require("../assets/fonts/signature/MonteCarlo-Regular.ttf"),
+  "Montez-Regular": require("../assets/fonts/signature/Montez-Regular.ttf"),
 } as const;
 
 export const FontFamily = {
@@ -14,6 +18,10 @@ export const FontFamily = {
   bold: "Mona-Sans-Bold",
   galada: "Galada-Regular",
   pattaya: "Pattaya-Regular",
+  signatureMolle: "Molle-Italic",
+  signatureMonsieurLaDoulaise: "MonsieurLaDoulaise-Regular",
+  signatureMonteCarlo: "MonteCarlo-Regular",
+  signatureMontez: "Montez-Regular",
 } as const;
 
 // Typography helper functions

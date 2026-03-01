@@ -150,13 +150,15 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     return profileData?.name || "";
   };
 
-  useEffect(() => {
-    let timeoutId = setTimeout(() => {
-      fetchProfile();
-    }, 500);
+  // TODO: enable this when we have a proper API
 
-    return () => clearTimeout(timeoutId);
-  }, []);
+  // useEffect(() => {
+  //   let timeoutId = setTimeout(() => {
+  //     fetchProfile();
+  //   }, 500);
+
+  //   return () => clearTimeout(timeoutId);
+  // }, []);
 
   const value: ProfileContextType = {
     profileData,
