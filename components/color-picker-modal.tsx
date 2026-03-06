@@ -293,12 +293,19 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
     <Modal
       isVisible={visible}
       style={styles.modal}
-      hasBackdrop={false}
+      hasBackdrop={true}
       animationIn="slideInUp"
       animationOut="slideOutDown"
-      backdropTransitionOutTiming={0}
-      hideModalContentWhileAnimating
+      animationInTiming={260}
+      animationOutTiming={220}
+      backdropTransitionInTiming={220}
+      backdropTransitionOutTiming={220}
+      backdropColor="#000"
+      backdropOpacity={isDark ? 0.2 : 0.18}
       useNativeDriver
+      useNativeDriverForBackdrop
+      propagateSwipe
+      onBackdropPress={onClose}
       onBackButtonPress={onClose}
     >
       <GestureHandlerRootView style={styles.overlay}>
@@ -513,7 +520,6 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
     justifyContent: "flex-end",
   },
   container: {

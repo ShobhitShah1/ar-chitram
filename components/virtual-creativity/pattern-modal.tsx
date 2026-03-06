@@ -3,7 +3,6 @@ import type { PatternPreset } from "@/components/virtual-creativity/editor-prese
 import { SheetHeader } from "@/components/virtual-creativity/sheet-header";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import Modal from "react-native-modal";
@@ -25,21 +24,27 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [pendingId, setPendingId] = React.useState<string | null>(
-    selectedPatternId ?? PATTERN_PRESETS[0].id,
+    selectedPatternId ?? null,
   );
 
   React.useEffect(() => {
     if (visible) {
-      setPendingId(selectedPatternId ?? PATTERN_PRESETS[0].id);
+      setPendingId(selectedPatternId ?? null);
     }
   }, [selectedPatternId, visible]);
 
   const handleApply = React.useCallback(() => {
-    const chosen =
-      PATTERN_PRESETS.find((preset) => preset.id === pendingId) ??
-      PATTERN_PRESETS[0];
+    if (!pendingId) {
+      onClose();
+      return;
+    }
+    const chosen = PATTERN_PRESETS.find((preset) => preset.id === pendingId);
+    if (!chosen) {
+      onClose();
+      return;
+    }
     onApply(chosen);
-  }, [onApply, pendingId]);
+  }, [onApply, onClose, pendingId]);
 
   const renderPatternItem = React.useCallback(
     ({ item }: { item: PatternPreset }) => {
@@ -49,30 +54,14 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
           onPress={() => setPendingId(item.id)}
           style={[
             styles.tileWrap,
-            {
-              borderColor: isDark ? "rgba(20,20,20,0.08)" : "rgba(0,0,0,0.06)",
-            },
             selected && [styles.tileWrapSelected, { borderColor: "#1D1D1D" }],
           ]}
         >
-          <LinearGradient
-            colors={item.colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.tile}
-          >
-            {item.textureSource ? (
-              <Image
-                source={item.textureSource}
-                style={styles.texture}
-                contentFit="cover"
-              />
-            ) : null}
-          </LinearGradient>
+          <Image source={item.source} style={styles.tile} contentFit="cover" />
         </Pressable>
       );
     },
-    [isDark, pendingId],
+    [pendingId],
   );
 
   return (
@@ -82,20 +71,18 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
       hasBackdrop={true}
       animationIn="slideInUp"
       animationOut="slideOutDown"
+      animationInTiming={260}
+      animationOutTiming={220}
+      backdropTransitionInTiming={220}
+      backdropTransitionOutTiming={220}
       onBackButtonPress={onClose}
       onBackdropPress={onClose}
       backdropOpacity={0.5}
       useNativeDriver
       useNativeDriverForBackdrop
-      hideModalContentWhileAnimating
-      backdropTransitionOutTiming={0}
+      propagateSwipe
     >
-      <View
-        style={[
-          styles.overlay,
-          { backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.18)" },
-        ]}
-      >
+      <View style={styles.overlay}>
         <View
           style={[
             styles.card,
@@ -138,8 +125,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   overlay: {
-    // flex: 1,
-    // justifyContent: "flex-end",
+    flex: 1,
+    justifyContent: "flex-end",
   },
   card: {
     borderTopLeftRadius: 24,
@@ -161,16 +148,12 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: 0,
   },
   tileWrapSelected: {
     borderWidth: 1.5,
   },
   tile: {
     flex: 1,
-  },
-  texture: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.28,
   },
 });

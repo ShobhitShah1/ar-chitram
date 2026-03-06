@@ -89,16 +89,32 @@ const Guide = () => {
   const params = useLocalSearchParams();
   const { theme, isDark } = useTheme();
   const scrollX = useSharedValue(0);
+  const signatureText = Array.isArray(params.signatureText)
+    ? params.signatureText[0]
+    : params.signatureText;
+  const signatureFont = Array.isArray(params.signatureFont)
+    ? params.signatureFont[0]
+    : params.signatureFont;
 
   const handleContinue = () => {
     // If we have an imageUri (from Virtual Creativity), pass it along
     if (params.imageUri) {
       router.replace({
         pathname: "/drawing/canvas",
-        params: { imageUri: params.imageUri },
+        params: {
+          imageUri: params.imageUri,
+          signatureText,
+          signatureFont,
+        },
       });
     } else {
-      router.replace("/drawing/canvas");
+      router.replace({
+        pathname: "/drawing/canvas",
+        params: {
+          signatureText,
+          signatureFont,
+        },
+      });
     }
   };
 

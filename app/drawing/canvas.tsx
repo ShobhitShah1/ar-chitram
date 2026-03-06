@@ -64,6 +64,12 @@ const Canvas = () => {
   const routeImageUri = Array.isArray(params.imageUri)
     ? params.imageUri[0]
     : params.imageUri;
+  const routeSignatureText = Array.isArray(params.signatureText)
+    ? params.signatureText[0]
+    : params.signatureText;
+  const routeSignatureFont = Array.isArray(params.signatureFont)
+    ? params.signatureFont[0]
+    : params.signatureFont;
   const overlayFrame = useStoryFrameSize({
     maxWidthRatio: 0.9,
     maxHeightRatio: 0.74,
@@ -169,7 +175,11 @@ const Canvas = () => {
       const lastSnapshot = cameraSnapshots[cameraSnapshots.length - 1];
       router.push({
         pathname: "/drawing/preview",
-        params: { imageUri: lastSnapshot.uri },
+        params: {
+          imageUri: lastSnapshot.uri,
+          signatureText: routeSignatureText,
+          signatureFont: routeSignatureFont,
+        },
       });
     } else if (cameraRef.current) {
       try {
@@ -186,16 +196,32 @@ const Canvas = () => {
         if (normalizedUri) {
           router.push({
             pathname: "/drawing/preview",
-            params: { imageUri: normalizedUri },
+            params: {
+              imageUri: normalizedUri,
+              signatureText: routeSignatureText,
+              signatureFont: routeSignatureFont,
+            },
           });
         }
       } catch (e) {
         console.error("Auto-snapshot failed", e);
         // Fallback
-        router.push("/drawing/preview");
+        router.push({
+          pathname: "/drawing/preview",
+          params: {
+            signatureText: routeSignatureText,
+            signatureFont: routeSignatureFont,
+          },
+        });
       }
     } else {
-      router.push("/drawing/preview");
+      router.push({
+        pathname: "/drawing/preview",
+        params: {
+          signatureText: routeSignatureText,
+          signatureFont: routeSignatureFont,
+        },
+      });
     }
   };
 

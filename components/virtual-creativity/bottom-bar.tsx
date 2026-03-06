@@ -35,6 +35,7 @@ interface BottomBarProps {
   mode?: "default" | "single";
   layers: VirtualLayer[];
   showGallery?: boolean;
+  horizontalInset?: number;
 }
 
 const SOFT_LAYOUT = LinearTransition.springify()
@@ -55,6 +56,7 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
   mode = "default",
   layers,
   showGallery = true,
+  horizontalInset = 16,
 }) => {
   const { theme, isDark } = useTheme();
   const previewGradientColors = isDark
@@ -76,6 +78,7 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
     <Animated.View
       style={[
         styles.container,
+        { paddingHorizontal: horizontalInset },
         {
           backgroundColor: "transparent",
           justifyContent: "space-between",
@@ -234,7 +237,6 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 24,
     paddingVertical: 16,
   },
   btn: {

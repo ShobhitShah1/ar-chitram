@@ -58,6 +58,8 @@ import {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const EMPTY_LAYERS: VirtualLayer[] = [];
+const HORIZONTAL_GUTTER = 16;
+const CANVAS_BOTTOM_GAP = 10;
 
 const MAIN_IMAGE_URI = RNImage.resolveAssetSource(test_deer).uri;
 const SUB_IMAGE_URIS = [
@@ -278,7 +280,7 @@ export default function VirtualCreativityScreen() {
     } catch (e) {
       console.error("Failed to capture snapshot for next step:", e);
     }
-  }, [captureCanvasSnapshot, router, viewMode]);
+  }, [captureCanvasSnapshot, router, signatureSelection, viewMode]);
 
   // Bottom Bar Actions
   const handleGallery = useCallback(async () => {
@@ -294,6 +296,7 @@ export default function VirtualCreativityScreen() {
 
   const handlePalette = useCallback(() => {
     setSelectedTool("palette");
+    setSelectedPatternId(null);
     setPickerMode("color");
     setPatternModalVisible(false);
     setSignatureModalVisible(false);
@@ -390,20 +393,16 @@ export default function VirtualCreativityScreen() {
   const handleApplyPattern = useCallback(
     (preset: PatternPreset) => {
       setSelectedPatternId(preset.id);
-      const patternUri =
-        preset.imageUri ??
-        (preset.textureSource
-          ? RNImage.resolveAssetSource(preset.textureSource).uri
-          : undefined);
+      const patternUri = RNImage.resolveAssetSource(preset.source).uri;
 
       setBrushForActiveLayer({
         kind: "pattern",
-        color: preset.tintColor,
+        color: brush.color,
         patternUri,
       });
       setPatternModalVisible(false);
     },
-    [setBrushForActiveLayer],
+    [brush.color, setBrushForActiveLayer],
   );
   const handleApplySignature = useCallback((selection: SignatureSelection) => {
     setSelectedSignatureId(selection.id);
@@ -452,9 +451,14 @@ export default function VirtualCreativityScreen() {
           canDelete={canDeleteLayer}
           isZoomActive={isZoomMode}
           hideNext={viewMode === "single"}
+          horizontalInset={HORIZONTAL_GUTTER}
         />
 
-        <View style={{ flex: 1 }} ref={viewShotRef} collapsable={false}>
+        <View
+          style={styles.canvasRegion}
+          ref={viewShotRef}
+          collapsable={false}
+        >
           <CanvasViewer
             layers={displayedLayers}
             activeLayerId={
@@ -472,6 +476,7 @@ export default function VirtualCreativityScreen() {
           layers={stripLayers}
           selectedLayerId={selectedLayerId}
           onSelectLayer={handleSelectLayer}
+          horizontalInset={HORIZONTAL_GUTTER}
         />
 
         <BottomBar
@@ -486,6 +491,7 @@ export default function VirtualCreativityScreen() {
           previewBadge={snapshots.length}
           mode={viewMode === "single" ? "single" : "default"}
           layers={bottomBarLayers}
+          horizontalInset={HORIZONTAL_GUTTER}
         />
 
         <ColorPickerModal
@@ -536,9 +542,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: HORIZONTAL_GUTTER,
     paddingTop: 8,
     paddingBottom: 4,
+  },
+  canvasRegion: {
+    flex: 1,
+    marginHorizontal: HORIZONTAL_GUTTER,
+    marginBottom: CANVAS_BOTTOM_GAP,
+    overflow: "hidden",
   },
   headerTitle: {
     fontSize: 20,

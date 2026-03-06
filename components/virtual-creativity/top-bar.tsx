@@ -34,6 +34,7 @@ interface TopBarProps {
   canDelete?: boolean;
   isZoomActive?: boolean;
   hideNext?: boolean;
+  horizontalInset?: number;
 }
 
 const SOFT_LAYOUT = LinearTransition.springify()
@@ -57,11 +58,15 @@ const TopBarComponent: React.FC<TopBarProps> = ({
   canDelete = hasSelection,
   isZoomActive = false,
   hideNext = false,
+  horizontalInset = 16,
 }) => {
   const { theme, isDark } = useTheme();
 
   return (
-    <Animated.View style={styles.container} layout={SOFT_LAYOUT}>
+    <Animated.View
+      style={[styles.container, { paddingHorizontal: horizontalInset }]}
+      layout={SOFT_LAYOUT}
+    >
       <View style={styles.toolsContainer}>
         {/* Undo */}
         <Pressable

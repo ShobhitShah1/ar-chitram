@@ -171,10 +171,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
-    // backgroundColor: "#ffffff", // Clean white background
-    marginHorizontal: 16,
-    // borderRadius: 12,
-    marginBottom: 10,
   },
   content: {
     flex: 1,

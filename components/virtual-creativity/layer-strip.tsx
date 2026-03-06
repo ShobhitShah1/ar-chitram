@@ -9,12 +9,14 @@ interface LayerStripProps {
   layers: VirtualLayer[];
   selectedLayerId: string | null;
   onSelectLayer: (id: string) => void;
+  horizontalInset?: number;
 }
 
 export const LayerStrip: React.FC<LayerStripProps> = ({
   layers,
   selectedLayerId,
   onSelectLayer,
+  horizontalInset = 16,
 }) => {
   if (!layers || layers.length === 0) {
     return null;
@@ -28,7 +30,10 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingHorizontal: horizontalInset },
+        ]}
       >
         {orderedLayers.map((layer, index) => (
           <Pressable
@@ -92,7 +97,6 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   scrollContent: {
-    paddingHorizontal: 24,
     alignItems: "center",
   },
   thumbnailWrapper: {

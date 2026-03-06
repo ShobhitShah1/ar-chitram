@@ -14,12 +14,22 @@ const VirtualCreativityPreview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { imageUri, signatureText, signatureFont } = useLocalSearchParams();
+  const normalizedSignatureText = Array.isArray(signatureText)
+    ? signatureText[0]
+    : signatureText;
+  const normalizedSignatureFont = Array.isArray(signatureFont)
+    ? signatureFont[0]
+    : signatureFont;
 
   const handleContinue = () => {
     // Navigate to Guide with the image Uri
     router.push({
       pathname: "/drawing/guide",
-      params: { imageUri: imageUri },
+      params: {
+        imageUri: imageUri,
+        signatureText: normalizedSignatureText,
+        signatureFont: normalizedSignatureFont,
+      },
     });
   };
 

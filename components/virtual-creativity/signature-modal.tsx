@@ -163,9 +163,14 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
       backdropOpacity={isDark ? 0.2 : 0.18}
       animationIn="slideInUp"
       animationOut="slideOutDown"
-      backdropTransitionOutTiming={0}
+      animationInTiming={260}
+      animationOutTiming={220}
+      backdropTransitionInTiming={220}
+      backdropTransitionOutTiming={220}
       avoidKeyboard
       useNativeDriver
+      useNativeDriverForBackdrop
+      propagateSwipe
     >
       <KeyboardAvoidingView
         behavior="padding"
@@ -380,15 +385,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 2,
   },
   signatureRowSelected: {
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(29,29,29,0.06)",
+    borderColor: "#1D1D1D",
   },
   signatureRowFaded: {
-    opacity: 0.85,
+    opacity: 0.75,
   },
   signatureText: {
     fontSize: 34,

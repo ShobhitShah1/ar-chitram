@@ -14,6 +14,25 @@ export const ic_check = require("@/assets/icons/ic_check.webp");
 
 export const ic_plus = require("@/assets/icons/ic_plus.png");
 
+export const PATTERN_TEXTURES = [
+  require("./patern/patern_01.png"),
+  require("./patern/patern_02.png"),
+  require("./patern/patern_03.png"),
+  require("./patern/patern_04.png"),
+  require("./patern/patern_05.png"),
+  require("./patern/patern_06.png"),
+  require("./patern/patern_07.png"),
+  require("./patern/patern_08.png"),
+  require("./patern/patern_09.png"),
+  require("./patern/patern_010.png"),
+  require("./patern/patern_011.png"),
+  require("./patern/patern_012.png"),
+  require("./patern/patern_013.png"),
+  require("./patern/patern_014.png"),
+  require("./patern/patern_015.png"),
+  require("./patern/patern_016.png"),
+] as const;
+
 export const ic_facebook = require("@/assets/icons/ic_facebook.png");
 export const ic_whatsapp = require("@/assets/icons/ic_whatsapp.png");
 export const ic_snapchat = require("@/assets/icons/ic_snap.png");
