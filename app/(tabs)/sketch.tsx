@@ -12,6 +12,7 @@ export default function Sketch() {
   const commonStyles = useCommonThemedStyles();
   const router = useRouter();
   const {
+    data,
     categories,
     selectedCategory,
     setSelectedCategory,
@@ -19,7 +20,24 @@ export default function Sketch() {
     shuffle,
     isLoading,
     isError,
+    refetch,
   } = useSketchesTabGrid();
+
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = useCallback(() => {
+    if (refreshing) {
+      return;
+    }
+
+    setRefreshing(true);
+    void refetch().finally(() => {
+      setRefreshing(false);
+    });
+  }, [refetch, refreshing]);
+
+  const isInitialLoading = isLoading && !data;
+  const showErrorState = isError && !data;
 
   const handlePress = useCallback(
     (item: GridAssetItem) => {
@@ -41,6 +59,19 @@ export default function Sketch() {
     },
     [router],
   );
+  const emptyState = isInitialLoading ? (
+    <EmptyState showLoading title="Loading sketch assets..." />
+  ) : showErrorState ? (
+    <EmptyState
+      title="Unable to load sketches"
+      description="Please try again in a moment."
+    />
+  ) : gridItems.length === 0 ? (
+    <EmptyState
+      title="No sketch assets"
+      description="No images found for this category."
+    />
+  ) : null;
 
   return (
     <View style={commonStyles.container}>
@@ -52,21 +83,13 @@ export default function Sketch() {
         onSelect={setSelectedCategory}
       />
 
-      {isLoading ? (
-        <EmptyState showLoading title="Loading sketch assets..." />
-      ) : isError ? (
-        <EmptyState
-          title="Unable to load sketches"
-          description="Please try again in a moment."
-        />
-      ) : gridItems.length === 0 ? (
-        <EmptyState
-          title="No sketch assets"
-          description="No images found for this category."
-        />
-      ) : (
-        <ImageGrid data={gridItems} onPress={handlePress} />
-      )}
+      <ImageGrid
+        data={emptyState ? [] : gridItems}
+        onPress={handlePress}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        ListEmptyComponent={emptyState}
+      />
     </View>
   );
 }

@@ -13,6 +13,7 @@ export interface PatternPreset {
   colors: [string, string];
   tintColor: string;
   textureSource?: number;
+  imageUri?: string;
 }
 
 export interface SignatureFontPreset {

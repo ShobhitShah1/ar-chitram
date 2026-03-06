@@ -39,7 +39,7 @@ export const markAsReviewed = (): void => {
         ...status,
         hasReviewed: true,
         lastPromptDate: new Date().toISOString(),
-      })
+      }),
     );
   } catch (error) {
     console.error("Error saving review status:", error);
@@ -58,7 +58,7 @@ const incrementReviewCount = (): void => {
         ...status,
         reviewCount: status.reviewCount + 1,
         lastPromptDate: new Date().toISOString(),
-      })
+      }),
     );
   } catch (error) {
     console.error("Error updating review count:", error);
@@ -131,7 +131,7 @@ const openAppStore = async () => {
     console.error("Error opening app store:", error);
     Alert.alert(
       "Error",
-      "Unable to open the app store. Please search for Gigglam in your app store."
+      "Unable to open the app store. Please search for ArChitram in your app store.",
     );
   }
 };
@@ -171,7 +171,7 @@ export const shareAppWithFriends = async () => {
       [
         { text: "OK", style: "default" },
         { text: "Cancel", style: "cancel" },
-      ]
+      ],
     );
   }
 };

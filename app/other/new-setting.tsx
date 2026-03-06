@@ -173,7 +173,7 @@ const NewSetting = () => {
         >
           <SettingsItem
             title="Contact Us"
-            onPress={() => Linking.openURL("mailto:gigglam01@gmail.com")}
+            onPress={() => Linking.openURL("mailto:ArChitram01@gmail.com")}
           />
           <View
             style={[

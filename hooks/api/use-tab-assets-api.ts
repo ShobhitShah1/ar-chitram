@@ -8,7 +8,12 @@ import {
   fetchSketchesTabAssets,
 } from "@/services/api/tab-assets-service";
 import { useAuthStore } from "@/store/auth-store";
-import { QueryClient, keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { InteractionManager } from "react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -69,7 +74,7 @@ export const useSketchesTabAssets = () => {
   });
 };
 
-const shuffleItems = <T,>(items: readonly T[]): T[] => {
+const shuffleItems = <T>(items: readonly T[]): T[] => {
   const cloned = [...items];
   for (let idx = cloned.length - 1; idx > 0; idx -= 1) {
     const randomIndex = Math.floor(Math.random() * (idx + 1));
@@ -90,10 +95,13 @@ const useTabGridController = (
   queryData: CategorizedTabAssets | undefined,
 ): TabGridControllerResult => {
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [shuffledItems, setShuffledItems] = useState<TabAssetItem[] | null>(null);
+  const [shuffledItems, setShuffledItems] = useState<TabAssetItem[] | null>(
+    null,
+  );
 
   const categories = useMemo(() => {
-    const apiCategories = queryData?.categories.map((category) => category.name) ?? [];
+    const apiCategories =
+      queryData?.categories.map((category) => category.name) ?? [];
     return ["All", ...apiCategories];
   }, [queryData]);
 
@@ -106,7 +114,11 @@ const useTabGridController = (
       return queryData.flatAssets;
     }
 
-    return queryData.categories.find((category) => category.name === selectedCategory)?.assets ?? [];
+    return (
+      queryData.categories.find(
+        (category) => category.name === selectedCategory,
+      )?.assets ?? []
+    );
   }, [queryData, selectedCategory]);
 
   useEffect(() => {

@@ -130,7 +130,7 @@ function LegalDocumentViewer({
   if (loading) {
     return (
       <View style={[commonStyles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={theme.accent} />
+        <ActivityIndicator size="large" color={"black"} />
         <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
           Loading document...
         </Text>
@@ -141,12 +141,12 @@ function LegalDocumentViewer({
   if (error) {
     return (
       <View style={[commonStyles.container, styles.centerContent]}>
-        <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: "black" }]}>{error}</Text>
         <Pressable
-          style={[styles.retryButton, { backgroundColor: theme.accent }]}
+          style={[styles.retryButton, { backgroundColor: "black" }]}
           onPress={loadDocument}
         >
-          <Text style={[styles.retryButtonText, { color: theme.background }]}>
+          <Text style={[styles.retryButtonText, { color: "white" }]}>
             Retry
           </Text>
         </Pressable>

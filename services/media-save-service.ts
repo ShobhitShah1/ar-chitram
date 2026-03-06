@@ -2,15 +2,15 @@
  * Media Save Service
  *
  * Global service for saving images and videos to device gallery.
- * Saves to "Gigglam" album in Pictures folder.
+ * Saves to "ArChitram" album in Pictures folder.
  */
 
 import * as MediaLibrary from "expo-media-library";
 
-const ALBUM_NAME = "Gigglam";
+const ALBUM_NAME = "ArChitram";
 
 /**
- * Save an asset to the Gigglam album.
+ * Save an asset to the ArChitram album.
  *
  * Simple and reliable approach:
  * 1. Create the asset (goes to DCIM by default)
@@ -19,8 +19,8 @@ const ALBUM_NAME = "Gigglam";
  * @param assetUri - The URI of the asset to save (must be a file:// URI)
  * @returns The saved asset
  */
-export async function saveToGigglamAlbum(
-  assetUri: string
+export async function saveToArChitramAlbum(
+  assetUri: string,
 ): Promise<MediaLibrary.Asset> {
   // Request permissions
   const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -36,9 +36,8 @@ export async function saveToGigglamAlbum(
 
   if (!album) {
     // No album exists - create it with this asset
-    // copyAsset=true ensures it goes to Pictures/Gigglam
+    // copyAsset=true ensures it goes to Pictures/ArChitram
     album = await MediaLibrary.createAlbumAsync(ALBUM_NAME, asset, true);
-    console.log("Created new Gigglam album");
   } else {
     // Album exists - add asset to it (copy, not move)
     await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);

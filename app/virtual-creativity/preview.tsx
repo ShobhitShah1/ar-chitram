@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { preview_1 } from "@/assets/images";
@@ -8,11 +8,12 @@ import Header from "@/components/header";
 import { StoryFramePreviewCard } from "@/components/story/story-frame-preview-card";
 import PrimaryButton from "@/components/ui/primary-button";
 import { useTheme } from "@/context/theme-context";
+import { SignatureOverlay } from "@/components/signature/signature-overlay";
 
 const VirtualCreativityPreview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { imageUri } = useLocalSearchParams();
+  const { imageUri, signatureText, signatureFont } = useLocalSearchParams();
 
   const handleContinue = () => {
     // Navigate to Guide with the image Uri
@@ -34,7 +35,12 @@ const VirtualCreativityPreview = () => {
         <StoryFramePreviewCard
           source={displayImage}
           cardBackgroundColor={theme.cardBackground}
-        />
+        >
+          <SignatureOverlay
+            signatureText={signatureText as any}
+            signatureFontFamily={signatureFont as any}
+          />
+        </StoryFramePreviewCard>
       </View>
 
       {/* Footer */}

@@ -1,18 +1,11 @@
-import {
-  PATTERN_PRESETS,
-} from "@/components/virtual-creativity/editor-presets";
+import { PATTERN_PRESETS } from "@/components/virtual-creativity/editor-presets";
 import type { PatternPreset } from "@/components/virtual-creativity/editor-presets";
 import { SheetHeader } from "@/components/virtual-creativity/sheet-header";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import Modal from "react-native-modal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -57,14 +50,9 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
           style={[
             styles.tileWrap,
             {
-              borderColor: isDark
-                ? "rgba(20,20,20,0.08)"
-                : "rgba(0,0,0,0.06)",
+              borderColor: isDark ? "rgba(20,20,20,0.08)" : "rgba(0,0,0,0.06)",
             },
-            selected && [
-              styles.tileWrapSelected,
-              { borderColor: "#1D1D1D" },
-            ],
+            selected && [styles.tileWrapSelected, { borderColor: "#1D1D1D" }],
           ]}
         >
           <LinearGradient
@@ -91,22 +79,23 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
     <Modal
       isVisible={visible}
       style={styles.modal}
-      hasBackdrop={false}
+      hasBackdrop={true}
       animationIn="slideInUp"
       animationOut="slideOutDown"
       onBackButtonPress={onClose}
+      onBackdropPress={onClose}
+      backdropOpacity={0.5}
+      useNativeDriver
+      useNativeDriverForBackdrop
+      hideModalContentWhileAnimating
+      backdropTransitionOutTiming={0}
     >
       <View
         style={[
           styles.overlay,
-          {
-            backgroundColor: isDark
-              ? "rgba(0,0,0,0.2)"
-              : "rgba(0,0,0,0.18)",
-          },
+          { backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.18)" },
         ]}
       >
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View
           style={[
             styles.card,
@@ -116,7 +105,11 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
             },
           ]}
         >
-          <SheetHeader title="Pattern" onClose={onClose} onConfirm={handleApply} />
+          <SheetHeader
+            title="Pattern"
+            onClose={onClose}
+            onConfirm={handleApply}
+          />
 
           <FlatList
             data={PATTERN_PRESETS}
@@ -145,8 +138,8 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
+    // flex: 1,
+    // justifyContent: "flex-end",
   },
   card: {
     borderTopLeftRadius: 24,

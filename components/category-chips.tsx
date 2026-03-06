@@ -90,7 +90,7 @@ export const CategoryChips = ({
             });
           });
         }}
-        fadingEdgeLength={50}
+        // fadingEdgeLength={50}
       />
     </View>
   );

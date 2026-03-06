@@ -11,6 +11,7 @@ import {
   DrawingPath,
   VirtualLayer,
   useVirtualCreativityStore,
+  BrushKind,
 } from "@/store/virtual-creativity-store";
 import { DrawingCanvas } from "./drawing-canvas";
 
@@ -20,6 +21,8 @@ interface CanvasViewerProps {
   isZoomMode: boolean;
   currentColor: string;
   zoomResetKey?: number;
+  currentBrushKind?: BrushKind;
+  currentPatternUri?: string;
 }
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({
@@ -28,6 +31,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   isZoomMode,
   currentColor,
   zoomResetKey = 0,
+  currentBrushKind,
+  currentPatternUri,
 }) => {
   const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
   const bringToFront = useVirtualCreativityStore((state) => state.bringToFront);
@@ -136,7 +141,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 style={styles.image}
                 contentFit="contain"
               />
-              {/* Drawing Overlay */}
+
               <View
                 style={StyleSheet.absoluteFill}
                 pointerEvents={layer.id === activeLayerId ? "auto" : "none"}
@@ -147,6 +152,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                   isZoomMode={isZoomMode}
                   onAddPath={(p) => handleAddPath(p, layer.id)}
                   currentColor={currentColor}
+                  brushKind={currentBrushKind}
+                  patternUri={currentPatternUri}
                   enabled={layer.id === activeLayerId}
                   layerWidth={layer.width}
                   layerHeight={layer.height}
@@ -164,9 +171,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
-    backgroundColor: "#ffffff", // Clean white background
+    // backgroundColor: "#ffffff", // Clean white background
     marginHorizontal: 16,
-    borderRadius: 12,
+    // borderRadius: 12,
     marginBottom: 10,
   },
   content: {

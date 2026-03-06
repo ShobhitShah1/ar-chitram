@@ -28,7 +28,6 @@ export const StoryIcon: React.FC<StoryIconProps> = ({
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
 
-  console.log(image);
   const gradientColors = isDark
     ? ["rgba(126, 126, 126, 1)", "rgba(107, 107, 107, 1)"]
     : ["rgba(185, 184, 184, 1)", "rgba(125, 125, 125, 1)"];

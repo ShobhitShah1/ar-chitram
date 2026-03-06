@@ -26,7 +26,7 @@ function GalleryScreen() {
         return;
       }
 
-      const album = await MediaLibrary.getAlbumAsync("Gigglam");
+      const album = await MediaLibrary.getAlbumAsync("ArChitram");
       if (!album) {
         setImages([]);
         return;

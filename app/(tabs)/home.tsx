@@ -6,12 +6,14 @@ import { View } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
 import { useHomeTabAssets } from "@/hooks/api";
 import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
+import { pickImageUris } from "@/utiles/image-picker";
 import { useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import React from "react";
 import {
   InteractionManager,
   Platform,
+  RefreshControl,
   StatusBar,
   StyleSheet,
 } from "react-native";
@@ -19,18 +21,27 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
 
 export default function Home() {
-  const resetVirtualCreativity = useVirtualCreativityStore(
-    (state) => state.reset,
+  const addImageLayersFromUris = useVirtualCreativityStore(
+    (state) => state.addImageLayersFromUris,
   );
-  const { data, isLoading, isError } = useHomeTabAssets();
+  const { data, isLoading, isError, refetch } = useHomeTabAssets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [refreshing, setRefreshing] = React.useState(false);
   const hasAutoRequestedPermission = React.useRef(false);
+
+  const onRefresh = React.useCallback(() => {
+    if (refreshing) {
+      return;
+    }
+
+    setRefreshing(true);
+    void refetch().finally(() => {
+      setRefreshing(false);
+    });
+  }, [refetch, refreshing]);
 
   useFocusEffect(
     React.useCallback(() => {
-      // Clear virtual creativity store when returning to Home
-      resetVirtualCreativity();
-
       const canAutoRequest =
         cameraPermission &&
         !cameraPermission.granted &&
@@ -43,13 +54,26 @@ export default function Home() {
           void requestCameraPermission();
         });
       }
-    }, [cameraPermission, requestCameraPermission, resetVirtualCreativity]),
+    }, [cameraPermission, requestCameraPermission]),
   );
 
   const contestStoryData = data?.stories ?? [];
   const galleryImages = data?.galleryImages ?? [];
+  const hasHomeContent =
+    contestStoryData.length > 0 || galleryImages.length > 0;
+  const isInitialLoading = isLoading && !hasHomeContent;
+  const showErrorState = isError && !hasHomeContent;
 
   const handleLikePress = () => {};
+
+  const handleUploadPress = async () => {
+    const uris = await pickImageUris({ allowMultiple: true });
+    if (!uris.length) {
+      return;
+    }
+
+    addImageLayersFromUris(uris);
+  };
 
   return (
     <View style={{ paddingTop: (StatusBar.currentHeight ?? 0) + 10, flex: 1 }}>
@@ -57,21 +81,29 @@ export default function Home() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <TabsHeader />
+        <TabsHeader onUploadPress={handleUploadPress} />
 
         <Animated.ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#000000"]}
+              tintColor="#000000"
+            />
+          }
         >
-          {isLoading ? (
+          {isInitialLoading ? (
             <EmptyState
               showLoading
               title="Loading home assets..."
               containerStyle={{ minHeight: 240 }}
             />
-          ) : isError ? (
+          ) : showErrorState ? (
             <EmptyState
               title="Unable to load home assets"
               description="Please try again in a moment."

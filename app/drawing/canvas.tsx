@@ -38,7 +38,9 @@ const Canvas = () => {
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
   const sliderWidth = width - 210;
-  const virtualSnapshots = useVirtualCreativityStore((state) => state.snapshots);
+  const virtualSnapshots = useVirtualCreativityStore(
+    (state) => state.snapshots,
+  );
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
@@ -52,7 +54,8 @@ const Canvas = () => {
   const [showAnimation, setShowAnimation] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [targetPosition, setTargetPosition] = useState({ x: 0, y: 0 });
-  const [activeVirtualSnapshotIndex, setActiveVirtualSnapshotIndex] = useState(0);
+  const [activeVirtualSnapshotIndex, setActiveVirtualSnapshotIndex] =
+    useState(0);
   const hasInitializedSnapshotIndex = useRef(false);
 
   const cameraRef = useRef<CameraView>(null);
@@ -135,12 +138,15 @@ const Canvas = () => {
 
     try {
       if (cameraRef.current) {
-        const normalizedUri = await takeNormalizedStoryPicture(cameraRef.current, {
-          quality: 0.8,
-          targetWidth: STORY_FRAME_WIDTH,
-          targetHeight: STORY_FRAME_HEIGHT,
-          fit: "contain",
-        });
+        const normalizedUri = await takeNormalizedStoryPicture(
+          cameraRef.current,
+          {
+            quality: 0.8,
+            targetWidth: STORY_FRAME_WIDTH,
+            targetHeight: STORY_FRAME_HEIGHT,
+            fit: "contain",
+          },
+        );
 
         if (normalizedUri) {
           const newSnapshot: Snapshot = {
@@ -167,12 +173,15 @@ const Canvas = () => {
       });
     } else if (cameraRef.current) {
       try {
-        const normalizedUri = await takeNormalizedStoryPicture(cameraRef.current, {
-          quality: 1,
-          targetWidth: STORY_FRAME_WIDTH,
-          targetHeight: STORY_FRAME_HEIGHT,
-          fit: "contain",
-        });
+        const normalizedUri = await takeNormalizedStoryPicture(
+          cameraRef.current,
+          {
+            quality: 1,
+            targetWidth: STORY_FRAME_WIDTH,
+            targetHeight: STORY_FRAME_HEIGHT,
+            fit: "contain",
+          },
+        );
 
         if (normalizedUri) {
           router.push({
@@ -204,7 +213,9 @@ const Canvas = () => {
 
   if (!permission) {
     return (
-      <View style={[styles.permissionLoadingContainer, { backgroundColor: "#000" }]}>
+      <View
+        style={[styles.permissionLoadingContainer, { backgroundColor: "#000" }]}
+      >
         <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );

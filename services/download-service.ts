@@ -2,7 +2,7 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system/legacy";
 import { ImageProcessor } from "./image-processor";
 import { QualityOption } from "@/components/quality-selection-modal";
-import { saveToGigglamAlbum } from "./media-save-service";
+import { saveToArChitramAlbum } from "./media-save-service";
 
 export interface DownloadProgress {
   progress: number; // 0-1
@@ -25,7 +25,7 @@ export class DownloadService {
   static async downloadWithQuality(
     imageUri: string,
     quality: QualityOption,
-    onProgress?: (progress: DownloadProgress) => void
+    onProgress?: (progress: DownloadProgress) => void,
   ): Promise<DownloadResult> {
     let tempUri: string | null = null;
 
@@ -63,7 +63,7 @@ export class DownloadService {
 
       const processedImage = await ImageProcessor.processImageForQuality(
         imageUri,
-        quality
+        quality,
       );
 
       // Step 4: Save to gallery using global media save service
@@ -73,7 +73,7 @@ export class DownloadService {
         message: "Saving to gallery...",
       });
 
-      const asset = await saveToGigglamAlbum(processedImage.uri);
+      const asset = await saveToArChitramAlbum(processedImage.uri);
 
       // Step 5: Complete
       onProgress?.({

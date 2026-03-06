@@ -61,11 +61,11 @@ async function getLocalFilePath(uri: string): Promise<string> {
  */
 async function fileToBase64(
   filePath: string,
-  type: "image" | "video"
+  type: "image" | "video",
 ): Promise<string> {
   const base64 = await FileSystem.readAsStringAsync(
     filePath.startsWith("file://") ? filePath : `file://${filePath}`,
-    { encoding: FileSystem.EncodingType.Base64 }
+    { encoding: FileSystem.EncodingType.Base64 },
   );
 
   const mimeType = type === "video" ? "video/mp4" : "image/jpeg";
@@ -103,7 +103,7 @@ export const shareImage = async ({
       console.log("Using base64 for image");
     } else {
       // For videos, copy to cache directory with clean filename
-      const cleanFilename = `gigglam_video_${Date.now()}.mp4`;
+      const cleanFilename = `ArChitram_video_${Date.now()}.mp4`;
       const cacheUri = `${FileSystem.cacheDirectory}${cleanFilename}`;
 
       const sourcePath = localPath.startsWith("file://")
@@ -123,7 +123,7 @@ export const shareImage = async ({
       await Share.open({
         url: shareUrl,
         type: type === "video" ? "video/mp4" : "image/jpeg",
-        message: "I made this with Gigglam!",
+        message: "I made this with ArChitram!",
       });
       onSuccess?.();
       return;
@@ -152,8 +152,9 @@ export const shareImage = async ({
       url: shareUrl,
       type: type === "video" ? "video/*" : "image/*",
       social,
-      filename: type === "video" ? "gigglam_video.mp4" : "gigglam_image.jpg",
-      message: "I made this with Gigglam!",
+      filename:
+        type === "video" ? "ArChitram_video.mp4" : "ArChitram_image.jpg",
+      message: "I made this with ArChitram!",
     };
 
     await Share.shareSingle(shareOptions);

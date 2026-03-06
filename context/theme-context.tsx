@@ -14,7 +14,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const THEME_STORAGE_KEY = "@gigglam/theme_mode";
+const THEME_STORAGE_KEY = "@ArChitram/theme_mode";
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -88,7 +88,7 @@ export const useTheme = (): ThemeContextType => {
 
 // Hook to get themed styles
 export const useThemedStyles = <T extends Record<string, any>>(
-  styleCreator: (theme: Theme) => T
+  styleCreator: (theme: Theme) => T,
 ): T => {
   const { theme } = useTheme();
   return styleCreator(theme);

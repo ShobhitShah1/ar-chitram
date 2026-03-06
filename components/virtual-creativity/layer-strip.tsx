@@ -20,11 +20,7 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
     return null;
   }
 
-  const orderedLayers = [...layers].sort((a, b) => {
-    const aIndex = Number(a.id.split("-")[1]) || 0;
-    const bIndex = Number(b.id.split("-")[1]) || 0;
-    return aIndex - bIndex;
-  });
+  const orderedLayers = [...layers].sort((a, b) => a.zIndex - b.zIndex);
   const strokeScale = 0.12;
 
   return (
@@ -40,11 +36,11 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
             onPress={() => onSelectLayer(layer.id)}
             style={[
               styles.thumbnailWrapper,
-              // Negative margin to overlap items
               index > 0 && { marginLeft: -15 },
-              // ZIndex to ensure first items are on top of later items
               { zIndex: orderedLayers.length - index },
-              layer.id === selectedLayerId && styles.selectedWrapper,
+              selectedLayerId && layer.id === selectedLayerId
+                ? styles.selectedWrapper
+                : null,
             ]}
           >
             <View style={styles.thumbnail}>
@@ -64,7 +60,10 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
                         key={path.id}
                         d={path.path}
                         stroke={path.color}
-                        strokeWidth={Math.max(1, path.strokeWidth * strokeScale)}
+                        strokeWidth={Math.max(
+                          1,
+                          path.strokeWidth * strokeScale,
+                        )}
                         fill="none"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -99,11 +98,12 @@ const styles = StyleSheet.create({
   thumbnailWrapper: {
     width: 40,
     height: 40,
+    borderWidth: 1,
     borderRadius: 8,
+    borderColor: "transparent",
   },
   selectedWrapper: {
-    borderWidth: 1,
-    borderColor: "#007AFF", // Blue border for selection
+    borderColor: "#000",
   },
   thumbnail: {
     width: "100%",

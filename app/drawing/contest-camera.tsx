@@ -26,12 +26,15 @@ const ContestCamera = () => {
     if (cameraRef.current && !processing) {
       try {
         setProcessing(true);
-        const normalizedUri = await takeNormalizedStoryPicture(cameraRef.current, {
-          quality: 0.8,
-          targetWidth: STORY_FRAME_WIDTH,
-          targetHeight: STORY_FRAME_HEIGHT,
-          fit: "contain",
-        });
+        const normalizedUri = await takeNormalizedStoryPicture(
+          cameraRef.current,
+          {
+            quality: 0.8,
+            targetWidth: STORY_FRAME_WIDTH,
+            targetHeight: STORY_FRAME_HEIGHT,
+            fit: "contain",
+          },
+        );
 
         // Mock API call delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -72,7 +75,6 @@ const ContestCamera = () => {
         ratio="16:9"
       />
 
-      {/* Overlay UI */}
       <View style={[styles.overlay, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color="white" />
@@ -85,9 +87,6 @@ const ContestCamera = () => {
           { paddingBottom: Math.max(insets.bottom, 40) },
         ]}
       >
-        <View style={styles.iconContainer}>
-          <Ionicons name="camera" size={40} color="#555" />
-        </View>
         <Text style={styles.description}>
           Capture your artwork to join the contest and share with the world!
         </Text>
@@ -95,8 +94,8 @@ const ContestCamera = () => {
           title={processing ? "Processing..." : "Join Contest"}
           onPress={handleJoinContest}
           style={styles.captureButton}
-          colors={["#fff", "#fff"]} // White button
-          textStyle={{ color: "#000" }} // Black text
+          colors={["#fff", "#fff"]}
+          textStyle={{ color: "#000" }}
           disabled={processing}
         />
       </View>
@@ -140,8 +139,9 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   description: {
-    fontFamily: FontFamily.regular,
-    fontSize: 14,
+    fontFamily: FontFamily.medium,
+    fontSize: 15,
+    lineHeight: 20,
     color: "rgba(255,255,255,0.8)",
     textAlign: "center",
     marginBottom: 30,

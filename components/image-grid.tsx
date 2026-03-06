@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import React from "react";
-import { Dimensions, StyleSheet, View } from "react-native";
+import { Dimensions, RefreshControl, StyleSheet, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -22,7 +22,10 @@ interface ImageGridProps {
   data: GridAssetItem[];
   onPress: (item: GridAssetItem) => void;
   ListHeaderComponent?: React.ReactNode;
+  ListEmptyComponent?: React.ReactNode;
   contentContainerStyle?: any;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 const GAP = 12;
@@ -34,68 +37,90 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   data,
   onPress,
   ListHeaderComponent,
+  ListEmptyComponent,
   contentContainerStyle,
+  refreshing = false,
+  onRefresh,
 }) => {
   const { theme } = useTheme();
+  const isEmpty = data.length === 0;
 
   return (
     <Animated.ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.container, contentContainerStyle]}
+      contentContainerStyle={[
+        styles.container,
+        isEmpty ? styles.emptyContainer : null,
+        contentContainerStyle,
+      ]}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#000000"]}
+            tintColor="#000000"
+          />
+        ) : undefined
+      }
     >
       {ListHeaderComponent}
 
-      <View style={styles.grid}>
-        {data.map((item, index) => {
-          // Pattern: 2 items (Half), 1 item (Full)
-          // Index % 3 === 2 -> Full, else Half
-          const isFullWidth = index % 3 === 2;
+      {isEmpty ? (
+        ListEmptyComponent ?? null
+      ) : (
+        <View style={styles.grid}>
+          {data.map((item, index) => {
+            // Pattern: 2 items (Half), 1 item (Full)
+            // Index % 3 === 2 -> Full, else Half
+            const isFullWidth = index % 3 === 2;
 
-          const itemWidth = isFullWidth ? FULL_WIDTH : CARD_WIDTH;
-          const isSingle = isFullWidth; // For image styling logic
+            const itemWidth = isFullWidth ? FULL_WIDTH : CARD_WIDTH;
+            const isSingle = isFullWidth; // For image styling logic
 
-          const cardStyle = isSingle ? styles.cardSingle : styles.cardPair;
-          const imageStyle = isSingle ? styles.imageSingle : styles.imagePair;
+            const cardStyle = isSingle ? styles.cardSingle : styles.cardPair;
+            const imageStyle = isSingle ? styles.imageSingle : styles.imagePair;
 
-          return (
-            <Animated.View
-              key={String(item.id)}
-              layout={LinearTransition.springify()
-                .mass(1)
-                .damping(20)
-                .stiffness(100)}
-              entering={FadeIn.duration(300)}
-              exiting={FadeOut.duration(200)}
-              style={{ width: itemWidth }}
-            >
-              <Pressable
-                style={[
-                  cardStyle,
-                  {
-                    width: "100%", // Fill wrapper
-                    backgroundColor: item.color || theme.drawingCardBackground,
-                    boxShadow: theme.drawingCardShadow,
-                  } as any,
-                ]}
-                onPress={() => onPress(item)}
+            return (
+              <Animated.View
+                key={String(item.id)}
+                layout={LinearTransition.springify()
+                  .mass(1)
+                  .damping(20)
+                  .stiffness(100)}
+                entering={FadeIn.duration(300)}
+                exiting={FadeOut.duration(200)}
+                style={{ width: itemWidth }}
               >
-                {item.image ? (
-                  <Image
-                    source={
-                      typeof item.image === "string"
-                        ? { uri: item.image }
-                        : item.image
-                    }
-                    contentFit="contain"
-                    style={imageStyle}
-                    transition={200}
-                  />
-                ) : item.color ? null : null}
-              </Pressable>
-            </Animated.View>
-          );
-        })}
-      </View>
+                <Pressable
+                  style={[
+                    cardStyle,
+                    {
+                      width: "100%", // Fill wrapper
+                      backgroundColor: item.color || theme.drawingCardBackground,
+                      boxShadow: theme.drawingCardShadow,
+                    } as any,
+                  ]}
+                  onPress={() => onPress(item)}
+                >
+                  {item.image ? (
+                    <Image
+                      source={
+                        typeof item.image === "string"
+                          ? { uri: item.image }
+                          : item.image
+                      }
+                      contentFit="contain"
+                      style={imageStyle}
+                      transition={200}
+                    />
+                  ) : item.color ? null : null}
+                </Pressable>
+              </Animated.View>
+            );
+          })}
+        </View>
+      )}
     </Animated.ScrollView>
   );
 };
@@ -107,6 +132,10 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     paddingHorizontal: PADDING,
     paddingBottom: 130,
+  },
+  emptyContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   grid: {
     flexDirection: "row",

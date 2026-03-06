@@ -1,10 +1,18 @@
 import { create } from "zustand";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+
+export type BrushKind = "solid" | "pattern" | "signature";
 
 export interface DrawingPath {
   id: string;
   path: string; // SVG Path data
   color: string;
   strokeWidth: number;
+  brushKind?: BrushKind;
+  patternUri?: string;
+  // Pre-sampled points along the path (for pattern images)
+  patternStamps?: { x: number; y: number }[];
+  signatureId?: string;
 }
 
 export interface VirtualLayer {
@@ -39,11 +47,14 @@ interface VirtualCreativityStore {
   snapshots: VirtualCreativitySnapshot[];
   selectedLayerId: string | null;
   canvasSize: { width: number; height: number };
+  pendingUploadUris: string[];
 
   // Actions
   setCanvasSize: (size: { width: number; height: number }) => void;
   setLayers: (layers: VirtualLayer[], selectedLayerId?: string | null) => void;
   addLayer: (layer: VirtualLayer) => void;
+  addImageLayerFromUri: (uri: string) => void;
+  addImageLayersFromUris: (uris: string[]) => void;
   removeLayer: (id: string) => void;
   updateLayer: (
     id: string,
@@ -55,6 +66,10 @@ interface VirtualCreativityStore {
   setSnapshots: (snapshots: VirtualCreativitySnapshot[]) => void;
   removeSnapshot: (id: string) => void;
   clearSnapshots: () => void;
+
+  // Upload coordination
+  setPendingUploadUris: (uris: string[]) => void;
+  clearPendingUploadUris: () => void;
 
   // Z-Index / Order
   bringToFront: (id: string, addToHistory?: boolean) => void;
@@ -91,6 +106,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     snapshots: [],
     selectedLayerId: null,
     canvasSize: { width: 0, height: 0 },
+    pendingUploadUris: [],
     history: { past: [], future: [] },
 
     setCanvasSize: (size) => set({ canvasSize: size }),
@@ -109,6 +125,41 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
         layers: nextLayers,
         selectedLayerId: layer.id,
         history: newHistory,
+      });
+    },
+
+    addImageLayerFromUri: (uri) => {
+      const { layers, history } = get();
+      const id = `upload-${Date.now()}-${layers.length + 1}`;
+      const newLayer: VirtualLayer = {
+        id,
+        type: "image",
+        uri,
+        x: 0,
+        y: 0,
+        width: STORY_FRAME_WIDTH,
+        height: STORY_FRAME_HEIGHT,
+        rotation: 0,
+        scale: 1,
+        opacity: 1,
+        zIndex: layers.length + 1,
+      };
+
+      const newHistory = buildHistory(history, layers);
+      const nextLayers = normalizeZIndex([...layers, newLayer]);
+
+      set({
+        layers: nextLayers,
+        selectedLayerId: id,
+        history: newHistory,
+      });
+    },
+
+    addImageLayersFromUris: (uris) => {
+      uris.forEach((uri) => {
+        if (uri) {
+          get().addImageLayerFromUri(uri);
+        }
       });
     },
 
@@ -158,6 +209,9 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
         snapshots: state.snapshots.filter((snapshot) => snapshot.id !== id),
       })),
     clearSnapshots: () => set({ snapshots: [] }),
+
+    setPendingUploadUris: (uris) => set({ pendingUploadUris: uris }),
+    clearPendingUploadUris: () => set({ pendingUploadUris: [] }),
 
     bringToFront: (id, addToHistory = true) => {
       const { layers, history } = get();
@@ -243,6 +297,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
         layers: [],
         snapshots: [],
         selectedLayerId: null,
+        pendingUploadUris: [],
         history: { past: [], future: [] },
       }),
   }),

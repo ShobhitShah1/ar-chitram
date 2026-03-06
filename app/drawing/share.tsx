@@ -184,31 +184,52 @@ const ShareScreen = () => {
 
           <View style={[styles.content, { paddingBottom: bottom + 20 }]}>
             <View style={styles.socialContainer}>
-              {socialButtons.map((button, index) => (
-                <Pressable
-                  key={index}
-                  style={[
-                    styles.socialButton,
-                    { backgroundColor: button.color },
-                  ]}
-                  onPress={() => handleSocialShare(button.platform)}
-                >
-                  <Image
-                    source={button.icon}
-                    tintColor={
-                      button.platform === "more" ||
-                      button.platform === "instagram"
-                        ? "#fff"
-                        : undefined
-                    }
-                    contentFit="contain"
-                    style={[
-                      styles.socialIcon,
-                      button.platform === "more" && { right: 1.5 },
+              {socialButtons.map((button, index) => {
+                const isInstagram = button.platform === "instagram";
+
+                return isInstagram ? (
+                  <LinearGradient
+                    colors={[
+                      "#FEDA75",
+                      "#FA7E1E",
+                      "#D62976",
+                      "#962FBF",
+                      "#4F5BD5",
                     ]}
-                  />
-                </Pressable>
-              ))}
+                    style={styles.socialButton}
+                    start={{ x: 0, y: 1 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Image
+                      source={button.icon}
+                      tintColor="white"
+                      contentFit="contain"
+                      style={styles.socialIcon}
+                    />
+                  </LinearGradient>
+                ) : (
+                  <Pressable
+                    key={index}
+                    style={[
+                      styles.socialButton,
+                      { backgroundColor: button.color },
+                    ]}
+                    onPress={() => handleSocialShare(button.platform)}
+                  >
+                    <Image
+                      source={button.icon}
+                      tintColor={
+                        button.platform === "more" ? "#fff" : undefined
+                      }
+                      contentFit="contain"
+                      style={[
+                        styles.socialIcon,
+                        button.platform === "more" && { right: 1.5 },
+                      ]}
+                    />
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         </View>

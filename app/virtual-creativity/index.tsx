@@ -21,9 +21,16 @@ import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { normalizeStoryImageUri } from "@/services/story-media-service";
 import {
+  BrushKind,
   VirtualLayer,
   useVirtualCreativityStore,
 } from "@/store/virtual-creativity-store";
+import {
+  BrushState,
+  useBrush,
+  useCanvasInitialization,
+} from "@/hooks/use-virtual-creativity-canvas";
+import { pickImageUris } from "@/utiles/image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 import { useRouter } from "expo-router";
@@ -53,8 +60,15 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const EMPTY_LAYERS: VirtualLayer[] = [];
 
 const MAIN_IMAGE_URI = RNImage.resolveAssetSource(test_deer).uri;
-const SUB_IMAGE_URIS = [animal_1, animal_2, animal_3, animal_4, animal_5, animal_6, animal_7]
-  .map((asset) => RNImage.resolveAssetSource(asset).uri);
+const SUB_IMAGE_URIS = [
+  animal_1,
+  animal_2,
+  animal_3,
+  animal_4,
+  animal_5,
+  animal_6,
+  animal_7,
+].map((asset) => RNImage.resolveAssetSource(asset).uri);
 
 const getInitialLayers = (): VirtualLayer[] => {
   const subLayers = SUB_IMAGE_URIS.map((uri, index) => ({
@@ -110,6 +124,9 @@ export default function VirtualCreativityScreen() {
     sendToBack,
     selectedLayerId,
     selectLayer,
+    pendingUploadUris,
+    clearPendingUploadUris,
+    addImageLayersFromUris,
   } = useVirtualCreativityStore();
 
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
@@ -126,7 +143,6 @@ export default function VirtualCreativityScreen() {
 
   // Canvas & Zoom State
   const [isZoomMode, setIsZoomMode] = useState(false);
-  const [selectedColor, setSelectedColor] = useState("#000000");
   const [zoomResetKey, setZoomResetKey] = useState(0);
 
   // Snapshot State
@@ -134,16 +150,20 @@ export default function VirtualCreativityScreen() {
   const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
   const [showSnapshotAnim, setShowSnapshotAnim] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [viewMode, setViewMode] = useState<"composite" | "single">("composite");
   const [compositePreviewLayers, setCompositePreviewLayers] = useState<
     VirtualLayer[]
   >([]);
 
-  // Always preload the main image + animal sub images.
-  React.useEffect(() => {
-    setLayers(getInitialLayers(), null);
-    setViewMode("composite");
-  }, []);
+  const [signatureSelection, setSignatureSelection] =
+    useState<SignatureSelection | null>(null);
+
+  const { viewMode, setViewMode } = useCanvasInitialization(
+    layers,
+    pendingUploadUris,
+    setLayers,
+    clearPendingUploadUris,
+    getInitialLayers,
+  );
 
   React.useEffect(() => {
     if (viewMode === "single" && !selectedLayerId) {
@@ -169,24 +189,28 @@ export default function VirtualCreativityScreen() {
     [layers],
   );
   const activeEditableLayerId = useMemo(
-    () => (viewMode === "single" ? selectedLayerId : hasMainLayer ? "main-image" : null),
+    () =>
+      viewMode === "single"
+        ? selectedLayerId
+        : hasMainLayer
+          ? "main-image"
+          : null,
     [hasMainLayer, selectedLayerId, viewMode],
   );
   const activeOrderLayerId =
-    viewMode === "single" ? selectedLayerId : hasMainLayer ? "main-image" : null;
+    viewMode === "single"
+      ? selectedLayerId
+      : hasMainLayer
+        ? "main-image"
+        : null;
   const canDeleteLayer =
-    viewMode === "single" && !!selectedLayerId && selectedLayerId !== "main-image";
+    viewMode === "single" &&
+    !!selectedLayerId &&
+    selectedLayerId !== "main-image";
 
-  const applyColorToActiveLayer = useCallback(
-    (color: string) => {
-      setSelectedColor(color);
-      if (!activeEditableLayerId) return;
-      // Paint-style behavior: color applies to new strokes only.
-      if (activeEditableLayerId !== "main-image") {
-        bringToFront(activeEditableLayerId, false);
-      }
-    },
-    [activeEditableLayerId, bringToFront],
+  const { brush, setBrushForActiveLayer, onSelectColor } = useBrush(
+    activeEditableLayerId,
+    bringToFront,
   );
 
   const handleUndo = useCallback(() => undo(), [undo]);
@@ -239,9 +263,16 @@ export default function VirtualCreativityScreen() {
     try {
       const uri = await captureCanvasSnapshot(1);
       if (uri) {
+        const params: Record<string, string> = { imageUri: uri };
+
+        if (signatureSelection) {
+          params.signatureText = signatureSelection.value;
+          params.signatureFont = signatureSelection.fontFamily;
+        }
+
         router.push({
           pathname: "/virtual-creativity/preview",
-          params: { imageUri: uri },
+          params,
         });
       }
     } catch (e) {
@@ -250,9 +281,16 @@ export default function VirtualCreativityScreen() {
   }, [captureCanvasSnapshot, router, viewMode]);
 
   // Bottom Bar Actions
-  const handleGallery = useCallback(() => {
+  const handleGallery = useCallback(async () => {
     setSelectedTool("gallery");
-  }, []);
+
+    const uris = await pickImageUris({ allowMultiple: true });
+    if (!uris.length) {
+      return;
+    }
+
+    addImageLayersFromUris(uris);
+  }, [addImageLayersFromUris]);
 
   const handlePalette = useCallback(() => {
     setSelectedTool("palette");
@@ -300,76 +338,78 @@ export default function VirtualCreativityScreen() {
     setShowPreviewModal(true);
   }, []);
 
-  const onSelectColor = useCallback(
-    (color: string) => {
-      applyColorToActiveLayer(color);
+  const handleSelectLayer = useCallback(
+    (id: string) => {
+      setCompositePreviewLayers(compositeVisibleLayers);
+      selectLayer(id);
+      setViewMode("single");
     },
-    [applyColorToActiveLayer],
+    [compositeVisibleLayers, selectLayer],
   );
-
-  const handleSelectLayer = useCallback((id: string) => {
-    setCompositePreviewLayers(compositeVisibleLayers);
-    selectLayer(id);
-    setViewMode("single");
-  }, [compositeVisibleLayers, selectLayer]);
 
   const displayedLayers =
     viewMode === "composite"
       ? compositeVisibleLayers
       : allLayersSorted.filter((layer) => layer.id === selectedLayerId);
+
   const stripLayers = useMemo(
-    () =>
-      [...layers]
-        .filter((layer) => layer.id !== "main-image")
-        .sort((a, b) => {
-          const aIndex = Number(a.id.split("-")[1]) || 0;
-          const bIndex = Number(b.id.split("-")[1]) || 0;
-          return aIndex - bIndex;
-        }),
+    () => [...layers].filter((layer) => layer.id !== "main-image"),
     [layers],
   );
+
   const bottomBarLayers = useMemo(
-    () =>
-      viewMode === "single"
-        ? compositePreviewLayers
-        : EMPTY_LAYERS,
+    () => (viewMode === "single" ? compositePreviewLayers : EMPTY_LAYERS),
     [compositePreviewLayers, viewMode],
   );
+
   const handleZoomReset = useCallback(
     () => setZoomResetKey((prev) => prev + 1),
     [],
   );
+
   const handleCompositeRestore = useCallback(() => {
     setViewMode("composite");
+    selectLayer(null);
   }, []);
+
   const handleCloseColorPicker = useCallback(
     () => setColorPickerVisible(false),
     [],
   );
+
   const handleClosePatternModal = useCallback(
     () => setPatternModalVisible(false),
     [],
   );
+
   const handleCloseSignatureModal = useCallback(
     () => setSignatureModalVisible(false),
     [],
   );
+
   const handleApplyPattern = useCallback(
     (preset: PatternPreset) => {
       setSelectedPatternId(preset.id);
-      applyColorToActiveLayer(preset.tintColor);
+      const patternUri =
+        preset.imageUri ??
+        (preset.textureSource
+          ? RNImage.resolveAssetSource(preset.textureSource).uri
+          : undefined);
+
+      setBrushForActiveLayer({
+        kind: "pattern",
+        color: preset.tintColor,
+        patternUri,
+      });
       setPatternModalVisible(false);
     },
-    [applyColorToActiveLayer],
+    [setBrushForActiveLayer],
   );
-  const handleApplySignature = useCallback(
-    (selection: SignatureSelection) => {
-      setSelectedSignatureId(selection.id);
-      setSelectedColor("#101010");
-      setSignatureModalVisible(false);
-    },
-    [],
-  );
+  const handleApplySignature = useCallback((selection: SignatureSelection) => {
+    setSelectedSignatureId(selection.id);
+    setSignatureSelection(selection);
+    setSignatureModalVisible(false);
+  }, []);
   const handleSnapshotAnimDone = useCallback(
     () => setShowSnapshotAnim(false),
     [],
@@ -414,18 +454,20 @@ export default function VirtualCreativityScreen() {
           hideNext={viewMode === "single"}
         />
 
-        {/* Canvas Viewer Container for Snapshot */}
         <View style={{ flex: 1 }} ref={viewShotRef} collapsable={false}>
           <CanvasViewer
             layers={displayedLayers}
-            activeLayerId={viewMode === "single" ? selectedLayerId : "main-image"}
+            activeLayerId={
+              viewMode === "single" ? selectedLayerId : "main-image"
+            }
             isZoomMode={isZoomMode}
-            currentColor={selectedColor}
+            currentColor={brush.color}
             zoomResetKey={zoomResetKey}
+            currentBrushKind={brush.kind}
+            currentPatternUri={brush.patternUri}
           />
         </View>
 
-        {/* Layer Thumbnails Strip - Always Visible */}
         <LayerStrip
           layers={stripLayers}
           selectedLayerId={selectedLayerId}
@@ -450,16 +492,18 @@ export default function VirtualCreativityScreen() {
           visible={colorPickerVisible}
           onClose={handleCloseColorPicker}
           onSelectColor={onSelectColor}
-          initialColor={selectedColor}
+          initialColor={brush.color}
           mode={pickerMode}
           onSelectGradient={handleSelectGradient}
         />
+
         <PatternModal
           visible={patternModalVisible}
           selectedPatternId={selectedPatternId}
           onClose={handleClosePatternModal}
           onApply={handleApplyPattern}
         />
+
         <SignatureModal
           visible={signatureModalVisible}
           selectedSignatureId={selectedSignatureId}
@@ -473,6 +517,7 @@ export default function VirtualCreativityScreen() {
           targetPosition={snapshotTargetPosition}
           onAnimationComplete={handleSnapshotAnimDone}
         />
+
         <CapturePreviewModal
           visible={showPreviewModal}
           onClose={handleClosePreviewModal}

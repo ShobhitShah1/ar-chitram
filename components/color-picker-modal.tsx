@@ -296,6 +296,9 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
       hasBackdrop={false}
       animationIn="slideInUp"
       animationOut="slideOutDown"
+      backdropTransitionOutTiming={0}
+      hideModalContentWhileAnimating
+      useNativeDriver
       onBackButtonPress={onClose}
     >
       <GestureHandlerRootView style={styles.overlay}>
@@ -322,7 +325,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 styles.applyBtn,
                 {
                   backgroundColor: "white",
-                  boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)" as any,
+                  boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)",
                 },
               ]}
             >
@@ -381,7 +384,9 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
           {/* Color Preview (for color mode) */}
           {mode === "color" && (
             <View style={styles.colorPreviewContainer}>
-              <View style={[styles.colorPreview, { backgroundColor: color1 }]} />
+              <View
+                style={[styles.colorPreview, { backgroundColor: color1 }]}
+              />
             </View>
           )}
 

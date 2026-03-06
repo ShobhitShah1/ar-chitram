@@ -22,7 +22,7 @@ const TabsHeader = ({
 
   return (
     <View style={styles.headerContainer}>
-      <Text style={[styles.gigglamText, { color: theme.textPrimary }]}>
+      <Text style={[styles.ArChitramText, { color: theme.textPrimary }]}>
         AR Chitram
       </Text>
 
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  gigglamText: {
+  ArChitramText: {
     fontFamily: FontFamily.galada,
     fontSize: 23,
   },

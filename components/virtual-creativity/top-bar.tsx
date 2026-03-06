@@ -141,7 +141,7 @@ const TopBarComponent: React.FC<TopBarProps> = ({
             pressed && styles.pressed,
             {
               backgroundColor: isZoomActive
-                ? theme.accent
+                ? theme.textPrimary
                 : isDark
                   ? "#D5D5D5"
                   : "#EBEBEB",

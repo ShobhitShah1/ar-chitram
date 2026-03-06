@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { preview_1 } from "@/assets/images";
 import Header from "@/components/header";
 import { StoryFramePreviewCard } from "@/components/story/story-frame-preview-card";
+import { SignatureOverlay } from "@/components/signature/signature-overlay";
 import PrimaryButton from "@/components/ui/primary-button";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
@@ -13,7 +14,7 @@ import { useTheme } from "@/context/theme-context";
 const Preview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { imageUri } = useLocalSearchParams();
+  const { imageUri, signatureText, signatureFont } = useLocalSearchParams();
 
   const handleContinue = () => {
     // Navigate to Contest Camera step
@@ -32,7 +33,12 @@ const Preview = () => {
         <StoryFramePreviewCard
           source={displayImage}
           cardBackgroundColor={theme.cardBackground}
-        />
+        >
+          <SignatureOverlay
+            signatureText={signatureText as any}
+            signatureFontFamily={signatureFont as any}
+          />
+        </StoryFramePreviewCard>
       </View>
 
       {/* Footer */}
