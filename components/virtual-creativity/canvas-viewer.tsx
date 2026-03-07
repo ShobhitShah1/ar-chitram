@@ -8,10 +8,10 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 import {
+  BrushKind,
   DrawingPath,
   VirtualLayer,
   useVirtualCreativityStore,
-  BrushKind,
 } from "@/store/virtual-creativity-store";
 import { DrawingCanvas } from "./drawing-canvas";
 
@@ -37,7 +37,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
   const bringToFront = useVirtualCreativityStore((state) => state.bringToFront);
 
-  // View Transformation Values
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -45,7 +44,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   const translateY = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Keep zoom state when toggling zoom mode. Reset only when layer focus changes.
   React.useEffect(() => {
     scale.value = withSpring(1);
     translateX.value = withSpring(0);
@@ -53,9 +51,16 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-  }, [activeLayerId]);
+  }, [
+    activeLayerId,
+    savedScale,
+    savedTranslateX,
+    savedTranslateY,
+    scale,
+    translateX,
+    translateY,
+  ]);
 
-  // Explicit reset-to-fit trigger from long-press on zoom button.
   React.useEffect(() => {
     scale.value = withSpring(1);
     translateX.value = withSpring(0);
@@ -63,21 +68,25 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
-  }, [zoomResetKey]);
+  }, [
+    zoomResetKey,
+    savedScale,
+    savedTranslateX,
+    savedTranslateY,
+    scale,
+    translateX,
+    translateY,
+  ]);
 
-  // Zoom/Pan Gestures
   const panGesture = Gesture.Pan()
     .enabled(isZoomMode)
     .onStart(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
     })
-    .onUpdate((e) => {
-      translateX.value = savedTranslateX.value + e.translationX;
-      translateY.value = savedTranslateY.value + e.translationY;
-    })
-    .onEnd(() => {
-      // Momentum or snap logic could go here
+    .onUpdate((event) => {
+      translateX.value = savedTranslateX.value + event.translationX;
+      translateY.value = savedTranslateY.value + event.translationY;
     });
 
   const pinchGesture = Gesture.Pinch()
@@ -85,12 +94,11 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     .onStart(() => {
       savedScale.value = scale.value;
     })
-    .onUpdate((e) => {
-      scale.value = savedScale.value * e.scale;
+    .onUpdate((event) => {
+      scale.value = savedScale.value * event.scale;
     })
     .onEnd(() => {
       if (scale.value < 1) {
-        // Snap back to original size if zoomed out
         scale.value = withSpring(1);
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
@@ -112,19 +120,25 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     ],
   }));
 
-  const handleAddPath = (path: DrawingPath, layerId: string) => {
-    const targetLayer = layers.find((l) => l.id === layerId);
-    if (targetLayer) {
-      const currentPaths = targetLayer.paths || [];
-      const newPaths = [...currentPaths, path];
-      updateLayer(layerId, { paths: newPaths });
+  const handleAddPath = React.useCallback(
+    (path: DrawingPath, layerId: string) => {
+      const targetLayer = layers.find((layer) => layer.id === layerId);
+      if (!targetLayer) {
+        return;
+      }
+
+      const nextPaths = [...(targetLayer.paths || []), path];
+      updateLayer(layerId, { paths: nextPaths });
       if (layerId !== "main-image") {
         bringToFront(layerId, false);
       }
-    }
-  };
+    },
+    [bringToFront, layers, updateLayer],
+  );
 
-  if (!layers || layers.length === 0) return <View style={styles.container} />;
+  if (!layers || layers.length === 0) {
+    return <View style={styles.container} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -147,16 +161,16 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 pointerEvents={layer.id === activeLayerId ? "auto" : "none"}
               >
                 <DrawingCanvas
-                  layerId={layer.id}
                   paths={layer.paths || []}
                   isZoomMode={isZoomMode}
-                  onAddPath={(p) => handleAddPath(p, layer.id)}
+                  onAddPath={(path) => handleAddPath(path, layer.id)}
                   currentColor={currentColor}
                   brushKind={currentBrushKind}
                   patternUri={currentPatternUri}
                   enabled={layer.id === activeLayerId}
                   layerWidth={layer.width}
                   layerHeight={layer.height}
+                  zoomScale={scale}
                 />
               </View>
             </View>

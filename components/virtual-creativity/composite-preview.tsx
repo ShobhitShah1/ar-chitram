@@ -1,9 +1,11 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Defs, Image as SvgImage, Path, Pattern } from "react-native-svg";
 import { VirtualLayer } from "@/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+
+const PATTERN_TILE_SIZE = 60;
 
 interface CompositePreviewProps {
   layers: VirtualLayer[];
@@ -18,49 +20,111 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
   height = STORY_FRAME_HEIGHT,
   showDrawings = false,
 }) => {
-  // Render layers in order (zIndex is already handled by array order usually, or we sort)
   const sortedLayers = [...layers].sort((a, b) => a.zIndex - b.zIndex);
 
   return (
     <View style={styles.container}>
-      {sortedLayers.map((layer, index) => (
-        <View key={`${layer.id}-${index}`} style={StyleSheet.absoluteFill}>
-          {/* Layer Image */}
-          {layer.uri && (
-            <Image
-              source={{ uri: layer.uri }}
-              style={styles.image}
-              contentFit="contain"
-            />
-          )}
+      {sortedLayers.map((layer, index) => {
+        const patternUris = Array.from(
+          new Set(
+            (layer.paths || [])
+              .filter((path) => path.brushKind === "pattern" && path.patternUri)
+              .map((path) => path.patternUri as string),
+          ),
+        );
 
-          {showDrawings ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { zIndex: 10, backgroundColor: "transparent" },
-              ]}
-            >
-              <Svg
-                style={StyleSheet.absoluteFill}
-                viewBox={`0 0 ${layer.width || width} ${layer.height || height}`}
+        return (
+          <View key={`${layer.id}-${index}`} style={StyleSheet.absoluteFill}>
+            {layer.uri && (
+              <Image
+                source={{ uri: layer.uri }}
+                style={styles.image}
+                contentFit="contain"
+              />
+            )}
+
+            {showDrawings ? (
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { zIndex: 10, backgroundColor: "transparent" },
+                ]}
               >
-                {layer.paths?.map((p) => (
-                  <Path
-                    key={p.id}
-                    d={p.path}
-                    stroke={p.color}
-                    strokeWidth={Math.max(1, p.strokeWidth * 0.12)}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                ))}
-              </Svg>
-            </View>
-          ) : null}
-        </View>
-      ))}
+                <Svg
+                  style={StyleSheet.absoluteFill}
+                  viewBox={`0 0 ${layer.width || width} ${layer.height || height}`}
+                >
+                  {patternUris.length > 0 ? (
+                    <Defs>
+                      {patternUris.map((uri, patternIndex) => (
+                        <Pattern
+                          key={`pp${patternIndex}`}
+                          id={`pp${patternIndex}`}
+                          patternUnits="userSpaceOnUse"
+                          width={PATTERN_TILE_SIZE}
+                          height={PATTERN_TILE_SIZE}
+                        >
+                          <SvgImage
+                            href={{ uri }}
+                            x={0}
+                            y={0}
+                            width={PATTERN_TILE_SIZE}
+                            height={PATTERN_TILE_SIZE}
+                            preserveAspectRatio="xMidYMid slice"
+                          />
+                        </Pattern>
+                      ))}
+                    </Defs>
+                  ) : null}
+                  {layer.paths?.map((path) => {
+                    const isPattern =
+                      path.brushKind === "pattern" && path.patternUri;
+                    const patternIndex = isPattern
+                      ? patternUris.indexOf(path.patternUri!)
+                      : -1;
+
+                    if (isPattern && patternIndex >= 0) {
+                      return (
+                        <React.Fragment key={path.id}>
+                          <Path
+                            d={path.path}
+                            stroke={path.color || "#888"}
+                            strokeWidth={Math.max(1, path.strokeWidth * 0.12)}
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity={0.35}
+                          />
+                          <Path
+                            d={path.path}
+                            stroke={`url(#pp${patternIndex})`}
+                            strokeWidth={Math.max(1, path.strokeWidth * 0.12)}
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </React.Fragment>
+                      );
+                    }
+
+                    return (
+                      <Path
+                        key={path.id}
+                        d={path.path}
+                        stroke={path.color}
+                        strokeWidth={Math.max(1, path.strokeWidth * 0.12)}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    );
+                  })}
+                </Svg>
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
     </View>
   );
 };
@@ -68,7 +132,7 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff", // Main background
+    backgroundColor: "#fff",
     overflow: "hidden",
   },
   image: {
