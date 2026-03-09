@@ -28,14 +28,20 @@ function upsertGradleProperty(properties, key, value) {
   return properties;
 }
 
+function removeGradleProperty(properties, key) {
+  return properties.filter(item => !(item.type === 'property' && item.key === key));
+}
+
 function withAndroidSigning(config, signingOptions = {}) {
   const signing = {
     ...DEFAULT_ANDROID_SIGNING,
     ...signingOptions,
   };
+  const releaseSigningCondition =
+    "project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') && file(ARCHITRAM_UPLOAD_STORE_FILE).exists()";
 
   config = withGradleProperties(config, config => {
-    const props = config.modResults;
+    let props = config.modResults;
     const projectRoot = config.modRequest.projectRoot;
     // Resolve storeFile relative to android/app (where it's used by Gradle file())
     const storeFilePath = path.isAbsolute(signing.storeFile)
@@ -48,6 +54,10 @@ function withAndroidSigning(config, signingOptions = {}) {
       upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS', signing.keyAlias);
       upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD', signing.keyPassword);
     } else {
+      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_FILE');
+      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_PASSWORD');
+      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS');
+      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD');
       console.warn(`[withAndroidSigning] Keystore file not found at ${storeFilePath}. Skipping release signing config.`);
     }
     config.modResults = props;
@@ -57,12 +67,17 @@ function withAndroidSigning(config, signingOptions = {}) {
   config = withAppBuildGradle(config, config => {
     let buildGradle = config.modResults.contents;
     const releaseSigningLine =
-      "            signingConfig project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug";
+      `            signingConfig ${releaseSigningCondition} ? signingConfigs.release : signingConfigs.debug`;
+
+    buildGradle = buildGradle.replace(
+      /project\.hasProperty\('ARCHITRAM_UPLOAD_STORE_FILE'\)(?!\s*&&\s*file\(ARCHITRAM_UPLOAD_STORE_FILE\)\.exists\(\))/g,
+      releaseSigningCondition
+    );
 
     if (!buildGradle.includes('ARCHITRAM_UPLOAD_KEY_ALIAS')) {
       buildGradle = buildGradle.replace(
         /(signingConfigs\s*\{\s*debug\s*\{[\s\S]*?keyPassword\s*'android'\s*\}\s*)/m,
-        `$1        release {\n            if (project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE')) {\n                storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)\n                storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD\n                keyAlias ARCHITRAM_UPLOAD_KEY_ALIAS\n                keyPassword ARCHITRAM_UPLOAD_KEY_PASSWORD\n            }\n        }\n`
+        `$1        release {\n            if (${releaseSigningCondition}) {\n                storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)\n                storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD\n                keyAlias ARCHITRAM_UPLOAD_KEY_ALIAS\n                keyPassword ARCHITRAM_UPLOAD_KEY_PASSWORD\n            }\n        }\n`
       );
     }
 
@@ -149,11 +164,11 @@ function withShareFileProvider(config, props = {}) {
     if (!application.provider) {
       application.provider = [];
     }
-    
+
     const hasFileProvider = application.provider.some(
       p => p.$['android:name'] === 'androidx.core.content.FileProvider'
     );
-    
+
     if (!hasFileProvider) {
       application.provider.push(providerElement);
     }
@@ -163,7 +178,7 @@ function withShareFileProvider(config, props = {}) {
 
   config = withMainApplication(config, async (config) => {
     let mainApplicationFile = config.modResults.contents;
-    
+
     // Add import for ShareApplication
     if (!mainApplicationFile.includes('cl.json.ShareApplication')) {
       const lines = mainApplicationFile.split('\n');
@@ -195,7 +210,7 @@ function withShareFileProvider(config, props = {}) {
   }
 
   override fun `;
-      
+
       if (mainApplicationFile.includes('override fun onConfigurationChanged')) {
         mainApplicationFile = mainApplicationFile.replace(
           /  override fun onConfigurationChanged/,
@@ -241,3 +256,4 @@ function withShareFileProvider(config, props = {}) {
 }
 
 module.exports = withShareFileProvider;
+

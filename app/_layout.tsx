@@ -16,6 +16,7 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
@@ -147,8 +148,10 @@ function RootLayoutNav() {
           <UserProvider>
             <ProfileProvider>
               <KeyboardProvider>
-                <ThemedNavigator />
-                <Toast config={toastConfig} position="bottom" />
+                <BottomSheetModalProvider>
+                  <ThemedNavigator />
+                  <Toast config={toastConfig} position="bottom" />
+                </BottomSheetModalProvider>
               </KeyboardProvider>
             </ProfileProvider>
           </UserProvider>

@@ -1,6 +1,9 @@
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
+import { SolidDrawMode } from "@/store/virtual-creativity-store";
+import { ic_check } from "@/assets/icons";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
@@ -14,22 +17,25 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import Modal from "react-native-modal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
-import { Pressable, Text } from "./themed"; // Assuming themed exports Text and Pressable
-import { Image } from "expo-image";
-import { ic_check } from "@/assets/icons";
-import Modal from "react-native-modal";
 
-// import { ic_check } from "@/assets/icons"; // Removed as likely missing, using Ionicons instead
+import { Pressable, Text } from "./themed";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PICKER_WIDTH = SCREEN_WIDTH - 48;
-const PICKER_HEIGHT = 130; // 200
-const HUE_BAR_HEIGHT = 30; // 32
+const PICKER_HEIGHT = 130;
+const HUE_BAR_HEIGHT = 30;
 const THUMB_SIZE = 22;
 
-// HSV to RGB conversion
+const COLOR_MODE_OPTIONS: { mode: SolidDrawMode; label: string }[] = [
+  { mode: "free-draw", label: "Free" },
+  { mode: "object-draw", label: "Object" },
+  { mode: "tap-fill", label: "Tap" },
+  { mode: "erase", label: "Erase" },
+];
+
 const hsvToRgb = (
   h: number,
   s: number,
@@ -39,32 +45,27 @@ const hsvToRgb = (
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = v - c;
 
-  let r = 0,
-    g = 0,
-    b = 0;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+
   if (h < 60) {
     r = c;
     g = x;
-    b = 0;
   } else if (h < 120) {
     r = x;
     g = c;
-    b = 0;
   } else if (h < 180) {
-    r = 0;
     g = c;
     b = x;
   } else if (h < 240) {
-    r = 0;
     g = x;
     b = c;
   } else if (h < 300) {
     r = x;
-    g = 0;
     b = c;
   } else {
     r = c;
-    g = 0;
     b = x;
   }
 
@@ -124,7 +125,9 @@ const rgbToHsv = (
       h = (rn - gn) / delta + 4;
     }
     h *= 60;
-    if (h < 0) h += 360;
+    if (h < 0) {
+      h += 360;
+    }
   }
 
   const s = max === 0 ? 0 : delta / max;
@@ -136,10 +139,11 @@ const rgbToHsv = (
 interface ColorPickerModalProps {
   visible: boolean;
   onClose: () => void;
-  onSelectColor: (color: string) => void;
+  onSelectColor: (color: string, solidMode: SolidDrawMode) => void;
   onSelectGradient?: (colors: [string, string]) => void;
   mode?: "color" | "gradient";
   initialColor?: string;
+  initialSolidMode?: SolidDrawMode;
 }
 
 export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
@@ -149,53 +153,76 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   onSelectGradient,
   mode = "color",
   initialColor,
+  initialSolidMode,
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Color 1 (or solid color) - Start with a nice vibrant color in center
   const [hue1, setHue1] = useState(180);
   const [saturation1, setSaturation1] = useState(0.7);
   const [brightness1, setBrightness1] = useState(0.8);
 
-  // Color 2 (for gradient) - Start with a complementary color
   const [hue2, setHue2] = useState(320);
   const [saturation2, setSaturation2] = useState(0.7);
   const [brightness2, setBrightness2] = useState(0.8);
 
   const [activeColor, setActiveColor] = useState<1 | 2>(1);
+  const [solidMode, setSolidMode] = useState<SolidDrawMode>(
+    initialSolidMode ?? "free-draw",
+  );
 
-  // Get current colors
   const rgb1 = hsvToRgb(hue1, saturation1, brightness1);
   const color1 = rgbToHex(...rgb1);
   const rgb2 = hsvToRgb(hue2, saturation2, brightness2);
   const color2 = rgbToHex(...rgb2);
 
-  // Shared values for smooth animation - Start centered
   const hueThumbX = useSharedValue(PICKER_WIDTH / 2);
   const satBrightX = useSharedValue(PICKER_WIDTH * 0.7);
   const satBrightY = useSharedValue(PICKER_HEIGHT * 0.2);
   const thumbScale = useSharedValue(1);
 
+  const syncPickerState = useCallback(() => {
+    if (mode === "color") {
+      setSolidMode(initialSolidMode ?? "free-draw");
+      setActiveColor(1);
+
+      if (!initialColor) {
+        return;
+      }
+
+      const rgb = hexToRgb(initialColor);
+      if (!rgb) {
+        return;
+      }
+
+      const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+      setHue1(h);
+      setSaturation1(s);
+      setBrightness1(v);
+
+      hueThumbX.value = (h / 360) * PICKER_WIDTH;
+      satBrightX.value = s * PICKER_WIDTH;
+      satBrightY.value = (1 - v) * PICKER_HEIGHT;
+      return;
+    }
+
+    setActiveColor(1);
+  }, [
+    hueThumbX,
+    initialColor,
+    initialSolidMode,
+    mode,
+    satBrightX,
+    satBrightY,
+  ]);
+
   useEffect(() => {
-    if (!visible || mode !== "color" || !initialColor) {
+    if (!visible) {
       return;
     }
 
-    const rgb = hexToRgb(initialColor);
-    if (!rgb) {
-      return;
-    }
-
-    const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
-    setHue1(h);
-    setSaturation1(s);
-    setBrightness1(v);
-
-    hueThumbX.value = (h / 360) * PICKER_WIDTH;
-    satBrightX.value = s * PICKER_WIDTH;
-    satBrightY.value = (1 - v) * PICKER_HEIGHT;
-  }, [visible, mode, initialColor]);
+    syncPickerState();
+  }, [syncPickerState, visible]);
 
   const updateColor = useCallback(
     (h: number, s: number, b: number) => {
@@ -209,17 +236,16 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
         setBrightness1(b);
       }
     },
-    [mode, activeColor],
+    [activeColor, mode],
   );
 
-  // Saturation/Brightness picker gesture
   const satBrightGesture = Gesture.Pan()
     .onBegin(() => {
       thumbScale.value = withSpring(1.2);
     })
-    .onUpdate((e) => {
-      const x = Math.max(0, Math.min(PICKER_WIDTH, e.x));
-      const y = Math.max(0, Math.min(PICKER_HEIGHT, e.y));
+    .onUpdate((event) => {
+      const x = Math.max(0, Math.min(PICKER_WIDTH, event.x));
+      const y = Math.max(0, Math.min(PICKER_HEIGHT, event.y));
       satBrightX.value = x;
       satBrightY.value = y;
 
@@ -232,13 +258,12 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
       thumbScale.value = withSpring(1);
     });
 
-  // Hue picker gesture
   const hueGesture = Gesture.Pan()
     .onBegin(() => {
       thumbScale.value = withSpring(1.2);
     })
-    .onUpdate((e) => {
-      const x = Math.max(0, Math.min(PICKER_WIDTH, e.x));
+    .onUpdate((event) => {
+      const x = Math.max(0, Math.min(PICKER_WIDTH, event.x));
       hueThumbX.value = x;
 
       const h = (x / PICKER_WIDTH) * 360;
@@ -270,30 +295,33 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   const currentHue = mode === "gradient" && activeColor === 2 ? hue2 : hue1;
   const hueColor = rgbToHex(...hsvToRgb(currentHue, 1, 1));
 
-  const handleApply = () => {
+  const handleApply = useCallback(() => {
     if (mode === "color") {
-      onSelectColor(color1);
-    } else {
-      if (onSelectGradient) onSelectGradient([color1, color2]);
+      onSelectColor(color1, solidMode);
+    } else if (onSelectGradient) {
+      onSelectGradient([color1, color2]);
     }
     onClose();
-  };
+  }, [color1, color2, mode, onClose, onSelectColor, onSelectGradient, solidMode]);
 
-  const switchActiveColor = (colorNum: 1 | 2) => {
-    setActiveColor(colorNum);
-    const h = colorNum === 1 ? hue1 : hue2;
-    const s = colorNum === 1 ? saturation1 : saturation2;
-    const b = colorNum === 1 ? brightness1 : brightness2;
-    hueThumbX.value = withSpring((h / 360) * PICKER_WIDTH);
-    satBrightX.value = withSpring(s * PICKER_WIDTH);
-    satBrightY.value = withSpring((1 - b) * PICKER_HEIGHT);
-  };
+  const switchActiveColor = useCallback(
+    (colorNum: 1 | 2) => {
+      setActiveColor(colorNum);
+      const h = colorNum === 1 ? hue1 : hue2;
+      const s = colorNum === 1 ? saturation1 : saturation2;
+      const b = colorNum === 1 ? brightness1 : brightness2;
+      hueThumbX.value = withSpring((h / 360) * PICKER_WIDTH);
+      satBrightX.value = withSpring(s * PICKER_WIDTH);
+      satBrightY.value = withSpring((1 - b) * PICKER_HEIGHT);
+    },
+    [brightness1, brightness2, hue1, hue2, hueThumbX, saturation1, saturation2, satBrightX, satBrightY],
+  );
 
   return (
     <Modal
       isVisible={visible}
       style={styles.modal}
-      hasBackdrop={true}
+      hasBackdrop
       animationIn="slideInUp"
       animationOut="slideOutDown"
       animationInTiming={260}
@@ -304,7 +332,9 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
       backdropOpacity={isDark ? 0.2 : 0.18}
       useNativeDriver
       useNativeDriverForBackdrop
+      hideModalContentWhileAnimating
       propagateSwipe
+      onModalWillShow={syncPickerState}
       onBackdropPress={onClose}
       onBackButtonPress={onClose}
     >
@@ -318,12 +348,11 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             },
           ]}
         >
-          {/* Header */}
           <View style={styles.header}>
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color="#000" />
             </Pressable>
-            <Text style={[styles.title, { color: "#000" }]}>
+            <Text style={styles.title}>
               {mode === "color" ? "Pick a Color" : "Create Gradient"}
             </Text>
             <Pressable
@@ -331,7 +360,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
               style={[
                 styles.applyBtn,
                 {
-                  backgroundColor: "white",
+                  backgroundColor: "#FFFFFF",
                   boxShadow: "0px 4px 20px 0px rgba(0, 0, 0, 0.15)",
                 },
               ]}
@@ -345,8 +374,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             </Pressable>
           </View>
 
-          {/* Gradient Preview (for gradient mode) */}
-          {mode === "gradient" && (
+          {mode === "gradient" ? (
             <View style={styles.gradientPreviewContainer}>
               <LinearGradient
                 colors={[color1, color2]}
@@ -363,9 +391,9 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                     activeColor === 1 && styles.activeColorSwatch,
                   ]}
                 >
-                  {activeColor === 1 && (
+                  {activeColor === 1 ? (
                     <Ionicons name="pencil" size={16} color="#fff" />
-                  )}
+                  ) : null}
                 </Pressable>
                 <Ionicons
                   name="arrow-forward"
@@ -380,24 +408,51 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                     activeColor === 2 && styles.activeColorSwatch,
                   ]}
                 >
-                  {activeColor === 2 && (
+                  {activeColor === 2 ? (
                     <Ionicons name="pencil" size={16} color="#fff" />
-                  )}
+                  ) : null}
                 </Pressable>
               </View>
             </View>
-          )}
+          ) : null}
 
-          {/* Color Preview (for color mode) */}
-          {mode === "color" && (
-            <View style={styles.colorPreviewContainer}>
-              <View
-                style={[styles.colorPreview, { backgroundColor: color1 }]}
-              />
-            </View>
-          )}
+          {mode === "color" ? (
+            <>
+              <View style={styles.colorPreviewContainer}>
+                <View
+                  style={[styles.colorPreview, { backgroundColor: color1 }]}
+                />
+              </View>
 
-          {/* Saturation/Brightness Picker */}
+              <View style={styles.modeSelectorSection}>
+                <Text style={styles.modeSelectorLabel}>Brush Mode</Text>
+                <View style={styles.modeSelectorRow}>
+                  {COLOR_MODE_OPTIONS.map((option) => {
+                    const isActive = solidMode === option.mode;
+                    return (
+                      <Pressable
+                        key={option.mode}
+                        onPress={() => setSolidMode(option.mode)}
+                        style={[
+                          styles.modeChip,
+                          isActive && styles.modeChipActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.modeChipText,
+                            isActive && styles.modeChipTextActive,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            </>
+          ) : null}
 
           <GestureDetector gesture={satBrightGesture}>
             <View style={styles.satBrightPicker}>
@@ -429,7 +484,6 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             </View>
           </GestureDetector>
 
-          {/* Hue Picker */}
           <GestureDetector gesture={hueGesture}>
             <View style={styles.huePicker}>
               <LinearGradient
@@ -454,7 +508,6 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             </View>
           </GestureDetector>
 
-          {/* Quick Colors */}
           <View style={styles.quickColorsContainer}>
             <ScrollView
               horizontal
@@ -473,11 +526,11 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 "#1ABC9C",
                 "#FFFFFF",
                 "#000000",
-              ].map((c) => (
+              ].map((color) => (
                 <Pressable
-                  key={c}
+                  key={color}
                   onPress={() => {
-                    const rgb = hexToRgb(c);
+                    const rgb = hexToRgb(color);
                     if (rgb) {
                       const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
                       setHue1(h);
@@ -489,19 +542,19 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                     }
 
                     if (mode === "color") {
-                      onSelectColor(c);
+                      onSelectColor(color, solidMode);
                       onClose();
-                    } else {
-                      // Gradient quick-pick not used in this screen yet.
                     }
                   }}
                   style={[
                     styles.quickColor,
-                    { backgroundColor: c },
-                    c === "#FFFFFF" && {
-                      borderWidth: 1,
-                      borderColor: "rgba(0,0,0,0.12)",
-                    },
+                    { backgroundColor: color },
+                    color === "#FFFFFF"
+                      ? {
+                          borderWidth: 1,
+                          borderColor: "rgba(0,0,0,0.12)",
+                        }
+                      : null,
                   ]}
                 />
               ))}
@@ -544,6 +597,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontFamily: FontFamily.semibold,
+    color: "#000",
   },
   applyBtn: {
     width: 40,
@@ -597,9 +651,40 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "rgba(255,255,255,0.3)",
   },
-  colorHex: {
-    fontSize: 16,
+  modeSelectorSection: {
+    paddingHorizontal: 24,
+    marginBottom: 16,
+    gap: 10,
+  },
+  modeSelectorLabel: {
+    fontSize: 12,
+    fontFamily: FontFamily.semibold,
+    color: "rgba(0,0,0,0.55)",
+  },
+  modeSelectorRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  modeChip: {
+    width: "22%",
+    minHeight: 40,
+    borderRadius: 20,
+    backgroundColor: "#F2F2F2",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  modeChipActive: {
+    backgroundColor: "#000000",
+  },
+  modeChipText: {
+    fontSize: 13,
     fontFamily: FontFamily.medium,
+    color: "rgba(0,0,0,0.68)",
+  },
+  modeChipTextActive: {
+    color: "#FFFFFF",
   },
   satBrightPicker: {
     width: PICKER_WIDTH,
@@ -651,12 +736,9 @@ const styles = StyleSheet.create({
     height: THUMB_SIZE - 6,
     borderRadius: (THUMB_SIZE - 6) / 2,
   },
-  quickColorsContainer: {
-    // paddingHorizontal: 24,
-  },
+  quickColorsContainer: {},
   quickColors: {
     flexDirection: "row",
-    // flexWrap: "wrap",
     gap: 10,
     marginTop: 10,
   },

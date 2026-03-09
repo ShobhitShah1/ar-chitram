@@ -105,7 +105,7 @@ android {
             keyPassword 'android'
         }
             release {
-            if (project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE')) {
+            if (project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') && file(ARCHITRAM_UPLOAD_STORE_FILE).exists()) {
                 storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)
                 storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD
                 keyAlias ARCHITRAM_UPLOAD_KEY_ALIAS
@@ -120,7 +120,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
+            signingConfig project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') && file(ARCHITRAM_UPLOAD_STORE_FILE).exists() ? signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

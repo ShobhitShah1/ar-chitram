@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BrushKind,
+  SolidDrawMode,
   type VirtualLayer,
 } from "@/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
@@ -8,6 +9,7 @@ import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 export type BrushState = {
   kind: BrushKind;
   color: string;
+  solidMode: SolidDrawMode;
   patternUri?: string;
   signatureId?: string;
 };
@@ -20,7 +22,9 @@ export function useCanvasInitialization(
   getInitialLayers: () => VirtualLayer[],
 ) {
   const [isInitialized, setIsInitialized] = useState(false);
-  const [viewMode, setViewMode] = useState<"composite" | "single">("composite");
+  const [viewMode, setViewMode] = useState<"composite" | "single">(
+    "composite",
+  );
 
   if (!isInitialized) {
     const hasMainImage = layers.some((layer) => layer.id === "main-image");
@@ -67,11 +71,26 @@ export function useCanvasInitialization(
 export function useBrush(
   activeEditableLayerId: string | null,
   bringToFront: (id: string, addToHistory?: boolean) => void,
+  initialColor: string,
 ) {
   const [brush, setBrush] = useState<BrushState>({
     kind: "solid",
-    color: "#000000",
+    color: initialColor,
+    solidMode: "free-draw",
   });
+
+  useEffect(() => {
+    setBrush((current) => {
+      if (current.color !== "#000000") {
+        return current;
+      }
+
+      return {
+        ...current,
+        color: initialColor,
+      };
+    });
+  }, [initialColor]);
 
   const setBrushForActiveLayer = useCallback(
     (nextBrush: BrushState) => {
@@ -85,13 +104,14 @@ export function useBrush(
   );
 
   const onSelectColor = useCallback(
-    (color: string) => {
+    (color: string, solidMode: SolidDrawMode = brush.solidMode) => {
       setBrushForActiveLayer({
         kind: "solid",
         color,
+        solidMode,
       });
     },
-    [setBrushForActiveLayer],
+    [brush.solidMode, setBrushForActiveLayer],
   );
 
   return { brush, setBrushForActiveLayer, onSelectColor };

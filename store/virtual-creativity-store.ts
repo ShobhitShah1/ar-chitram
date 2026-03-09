@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 
-export type BrushKind = "solid" | "pattern" | "signature";
+export type BrushKind = "solid" | "pattern" | "signature" | "smart-fill";
+export type SolidDrawMode = "free-draw" | "object-draw" | "tap-fill" | "erase";
 
 export interface DrawingPath {
   id: string;
@@ -10,6 +11,11 @@ export interface DrawingPath {
   strokeWidth: number;
   brushKind?: BrushKind;
   patternUri?: string;
+  clipPath?: string;
+  pathSpace?: "layer" | "image";
+  pathSpaceWidth?: number;
+  pathSpaceHeight?: number;
+  regionTransform?: string;
   // Pre-sampled points along the path (for pattern images)
   patternStamps?: { x: number; y: number }[];
   signatureId?: string;
@@ -98,7 +104,10 @@ const buildHistory = (history: HistoryState, layers: VirtualLayer[]) => ({
 const resolveSelectedLayerId = (
   selectedLayerId: string | null,
   layers: VirtualLayer[],
-) => (selectedLayerId && layers.some((layer) => layer.id === selectedLayerId) ? selectedLayerId : null);
+) =>
+  selectedLayerId && layers.some((layer) => layer.id === selectedLayerId)
+    ? selectedLayerId
+    : null;
 
 export const useVirtualCreativityStore = create<VirtualCreativityStore>(
   (set, get) => ({
@@ -166,7 +175,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     removeLayer: (id) => {
       const { layers, history } = get();
       const newHistory = buildHistory(history, layers);
-      const nextLayers = normalizeZIndex(layers.filter((l) => l.id !== id));
+      const nextLayers = normalizeZIndex(layers.filter((layer) => layer.id !== id));
       set({
         layers: nextLayers,
         selectedLayerId: null,
@@ -176,13 +185,12 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
 
     updateLayer: (id, updates, addToHistory = true) => {
       const { layers, history } = get();
-      const index = layers.findIndex((l) => l.id === id);
+      const index = layers.findIndex((layer) => layer.id === id);
       if (index === -1) return;
       const previousLayer = layers[index];
 
       const hasMeaningfulChange = Object.entries(updates).some(
-        ([key, value]) =>
-          previousLayer[key as keyof VirtualLayer] !== value,
+        ([key, value]) => previousLayer[key as keyof VirtualLayer] !== value,
       );
       if (!hasMeaningfulChange) return;
 
@@ -215,7 +223,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
 
     bringToFront: (id, addToHistory = true) => {
       const { layers, history } = get();
-      const index = layers.findIndex((l) => l.id === id);
+      const index = layers.findIndex((layer) => layer.id === id);
       if (index === -1 || index === layers.length - 1) return;
 
       const newLayers = [...layers];
@@ -235,7 +243,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
 
     sendToBack: (id, addToHistory = true) => {
       const { layers, history } = get();
-      const index = layers.findIndex((l) => l.id === id);
+      const index = layers.findIndex((layer) => layer.id === id);
       if (index === -1 || index === 0) return;
 
       const newLayers = [...layers];
@@ -302,3 +310,5 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
       }),
   }),
 );
+
+
