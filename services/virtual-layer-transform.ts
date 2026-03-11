@@ -106,7 +106,7 @@ export const getResizeScaleDelta = ({
   direction,
   rawDelta,
   stageScale,
-  divisor = 2.8,
+  divisor = 0.35,
 }: ResizeDeltaParams) => {
   "worklet";
   const resizeReferenceSize =

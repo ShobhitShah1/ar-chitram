@@ -61,7 +61,6 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
         if (!homeEvent.defaultPrevented) {
           requestAnimationFrame(() => {
             navigation.navigate(routeName);
-            requestAnimationFrame(onCreatePress);
           });
         }
         return;

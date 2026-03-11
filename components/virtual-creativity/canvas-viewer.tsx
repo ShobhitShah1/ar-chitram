@@ -40,6 +40,7 @@ interface CanvasViewerProps {
   selectedLayerId?: string | null;
   onSelectLayer?: (id: string) => void;
   onClearSelection?: () => void;
+  onClearSelectionToDraw?: () => void;
   onExitFocusPlacement?: () => void;
   isZoomMode: boolean;
   currentColor: string;
@@ -58,6 +59,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   selectedLayerId,
   onSelectLayer,
   onClearSelection,
+  onClearSelectionToDraw,
   onExitFocusPlacement,
   isZoomMode,
   currentColor,
@@ -165,6 +167,10 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       canvasSize.height,
     );
   }, [canvasSize.height, canvasSize.width]);
+  const mainLayerImageSource = React.useMemo(
+    () => (mainLayer?.uri ? { uri: mainLayer.uri } : null),
+    [mainLayer?.uri],
+  );
 
   React.useEffect(() => {
     scale.value = withSpring(1);
@@ -533,7 +539,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
             isActiveEditable={false}
             onTapSelected={onExitFocusPlacement}
             gesturesEnabled={!isZoomMode}
-            enablePinchResize
+            enablePinchResize={false}
             hideSelectionUI={hideSelectionUI}
             zoomScale={scale}
             isZoomMode={isZoomMode}
@@ -583,6 +589,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
   const isMainCanvasEnabled =
     !!mainLayer && mainLayer.id === activeLayerId && !subLayerGesturesEnabled;
+  const shouldCaptureSubLayerTouches =
+    !!onSelectLayer || subLayerGesturesEnabled;
 
   return (
     <View style={styles.container} onLayout={handleCanvasLayout}>
@@ -601,11 +609,12 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
               ]}
             >
               <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-                {mainLayer.uri ? (
+                {mainLayerImageSource ? (
                   <Image
-                    source={{ uri: mainLayer.uri }}
+                    source={mainLayerImageSource}
                     style={styles.image}
                     contentFit="contain"
+                    transition={0}
                   />
                 ) : null}
 
@@ -621,49 +630,57 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 {isMainCanvasEnabled ? renderDrawingSurface(mainLayer) : null}
               </View>
 
-              {__DEV__ && subLayerGesturesEnabled && selectedLayerId ? (
-                <View pointerEvents="none" style={styles.debugStageBounds} />
+              {subLayerGesturesEnabled &&
+              selectedLayerId &&
+              onClearSelectionToDraw ? (
+                <Pressable
+                  style={StyleSheet.absoluteFill}
+                  onPress={onClearSelectionToDraw}
+                />
               ) : null}
 
-              {subLayers.map((layer) => (
-                <CanvasLayer
-                  key={layer.id}
-                  layer={layer}
-                  canvasWidth={STORY_FRAME_WIDTH}
-                  canvasHeight={STORY_FRAME_HEIGHT}
-                  stageScale={stageLayout.scale}
-                  isSelected={selectedLayerId === layer.id}
-                  isActiveEditable={activeLayerId === layer.id}
-                  onSelect={onSelectLayer ? () => onSelectLayer(layer.id) : undefined}
-                  onTapSelected={
-                    selectedLayerId === layer.id ? onClearSelection : undefined
-                  }
-                  gesturesEnabled={subLayerGesturesEnabled && selectedLayerId === layer.id}
-                  enablePinchResize={
-                    subLayerGesturesEnabled && selectedLayerId === layer.id
-                  }
-                  hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
-                  zoomScale={scale}
-                  isZoomMode={isZoomMode}
-                  currentColor={currentColor}
-                  currentBrushKind={currentBrushKind}
-                  currentPatternUri={currentPatternUri}
-                  currentSolidMode={currentSolidMode}
-                  smartFillSpace={
-                    activeLayerId === layer.id ? activeSmartFillSpace : null
-                  }
-                  onAddPath={(path) => handleAddPath(path, layer.id)}
-                  onTapFill={(point) => handleTapFill(layer.id, point)}
-                  onEraseSessionStart={() => beginEraseSession(layer.id)}
-                  onEraseSessionEnd={endEraseSession}
-                  onEraseAt={(point, radius) =>
-                    handleEraseAt(layer.id, point, radius)
-                  }
-                  resolveSmartFillPath={(point) =>
-                    handleResolveSmartFillPath(layer.id, point)
-                  }
-                />
-              ))}
+              <View
+                style={StyleSheet.absoluteFill}
+                pointerEvents={shouldCaptureSubLayerTouches ? "box-none" : "none"}
+              >
+                {subLayers.map((layer) => (
+                  <CanvasLayer
+                    key={layer.id}
+                    layer={layer}
+                    canvasWidth={STORY_FRAME_WIDTH}
+                    canvasHeight={STORY_FRAME_HEIGHT}
+                    stageScale={stageLayout.scale}
+                    isSelected={selectedLayerId === layer.id}
+                    isActiveEditable={activeLayerId === layer.id}
+                    onSelect={onSelectLayer ? () => onSelectLayer(layer.id) : undefined}
+                    onTapSelected={
+                      selectedLayerId === layer.id ? onClearSelection : undefined
+                    }
+                    gesturesEnabled={subLayerGesturesEnabled && selectedLayerId === layer.id}
+                    enablePinchResize={false}
+                    hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
+                    zoomScale={scale}
+                    isZoomMode={isZoomMode}
+                    currentColor={currentColor}
+                    currentBrushKind={currentBrushKind}
+                    currentPatternUri={currentPatternUri}
+                    currentSolidMode={currentSolidMode}
+                    smartFillSpace={
+                      activeLayerId === layer.id ? activeSmartFillSpace : null
+                    }
+                    onAddPath={(path) => handleAddPath(path, layer.id)}
+                    onTapFill={(point) => handleTapFill(layer.id, point)}
+                    onEraseSessionStart={() => beginEraseSession(layer.id)}
+                    onEraseSessionEnd={endEraseSession}
+                    onEraseAt={(point, radius) =>
+                      handleEraseAt(layer.id, point, radius)
+                    }
+                    resolveSmartFillPath={(point) =>
+                      handleResolveSmartFillPath(layer.id, point)
+                    }
+                  />
+                ))}
+              </View>
             </View>
           ) : (
             renderLegacyScene()
@@ -689,13 +706,6 @@ const styles = StyleSheet.create({
   stage: {
     position: "absolute",
     overflow: "visible",
-  },
-  debugStageBounds: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "rgba(251, 191, 36, 0.95)",
-    backgroundColor: "rgba(251, 191, 36, 0.04)",
   },
   image: {
     width: "100%",

@@ -143,6 +143,12 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
 
   const [selectedIndex, setSelectedIndex] = useState(0);
 
+  // Prevents the viewability callback from fighting with programmatic scrolls
+  const isProgrammaticScroll = useRef(false);
+  const programmaticScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   const sheetBottomPadding = Math.max(insets.bottom, 12);
   const previewWidth = Math.max(screenWidth, 1);
   const previewCardWidth = Math.max(
@@ -213,18 +219,37 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
       if (!assets.length) return;
 
       const safeIndex = Math.max(0, Math.min(index, assets.length - 1));
+
+      // Lock out viewability callback to prevent feedback loop
+      if (programmaticScrollTimer.current) {
+        clearTimeout(programmaticScrollTimer.current);
+      }
+      isProgrammaticScroll.current = true;
+      programmaticScrollTimer.current = setTimeout(
+        () => {
+          isProgrammaticScroll.current = false;
+        },
+        animated ? 450 : 50,
+      );
+
       setSelectedIndex(safeIndex);
 
-      previewListRef.current?.scrollToIndex({ index: safeIndex, animated });
+      // scrollToOffset is more reliable than scrollToIndex for paged lists
+      previewListRef.current?.scrollToOffset({
+        offset: safeIndex * previewWidth,
+        animated,
+      });
       syncThumbnailToIndex(safeIndex, animated);
     },
-    [assets.length, syncThumbnailToIndex],
+    [assets.length, previewWidth, syncThumbnailToIndex],
   );
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 });
 
   const handleViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+      // Skip when we triggered the scroll ourselves to avoid the feedback loop
+      if (isProgrammaticScroll.current) return;
       if (!viewableItems.length || viewableItems[0].index === null) return;
 
       const index = viewableItems[0].index;
@@ -277,13 +302,14 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
   const handlePreviewScrollFailed = useCallback(
     (info: { index: number }) => {
       requestAnimationFrame(() => {
-        previewListRef.current?.scrollToIndex({
-          index: Math.max(0, Math.min(info.index, assets.length - 1)),
+        previewListRef.current?.scrollToOffset({
+          offset:
+            Math.max(0, Math.min(info.index, assets.length - 1)) * previewWidth,
           animated: true,
         });
       });
     },
-    [assets.length],
+    [assets.length, previewWidth],
   );
 
   const handleThumbScrollFailed = useCallback(

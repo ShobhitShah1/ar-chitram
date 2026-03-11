@@ -6,7 +6,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import {
   Gesture,
   GestureDetector,
@@ -17,10 +23,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import Modal from "react-native-modal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { ControlledBottomSheet } from "./controlled-bottom-sheet";
 import { Pressable, Text } from "./themed";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -28,6 +34,9 @@ const PICKER_WIDTH = SCREEN_WIDTH - 48;
 const PICKER_HEIGHT = 130;
 const HUE_BAR_HEIGHT = 30;
 const THUMB_SIZE = 22;
+const COLOR_SHEET_MIN_HEIGHT = 420;
+const COLOR_SHEET_PREFERRED_HEIGHT = 560;
+const GRADIENT_SHEET_PREFERRED_HEIGHT = 470;
 
 const COLOR_MODE_OPTIONS: { mode: SolidDrawMode; label: string }[] = [
   { mode: "object-draw", label: "Object" },
@@ -157,6 +166,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [hue1, setHue1] = useState(180);
   const [saturation1, setSaturation1] = useState(0.7);
@@ -317,34 +327,36 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
     [brightness1, brightness2, hue1, hue2, hueThumbX, saturation1, saturation2, satBrightX, satBrightY],
   );
 
+  const sheetMaxHeight = Math.min(screenHeight - 12, screenHeight * 0.86);
+  const sheetPreferredHeight = Math.min(
+    sheetMaxHeight,
+    Math.max(
+      COLOR_SHEET_MIN_HEIGHT,
+      mode === "color"
+        ? COLOR_SHEET_PREFERRED_HEIGHT
+        : GRADIENT_SHEET_PREFERRED_HEIGHT,
+    ),
+  );
+
   return (
-    <Modal
-      isVisible={visible}
-      style={styles.modal}
-      hasBackdrop
-      animationIn="slideInUp"
-      animationOut="slideOutDown"
-      animationInTiming={260}
-      animationOutTiming={220}
-      backdropTransitionInTiming={220}
-      backdropTransitionOutTiming={220}
-      backdropColor="#000"
-      backdropOpacity={isDark ? 0.2 : 0.18}
-      useNativeDriver
-      useNativeDriverForBackdrop
-      hideModalContentWhileAnimating
-      propagateSwipe
-      onModalWillShow={syncPickerState}
-      onBackdropPress={onClose}
-      onBackButtonPress={onClose}
+    <ControlledBottomSheet
+      visible={visible}
+      onClose={onClose}
+      onWillPresent={syncPickerState}
+      snapPoints={[sheetPreferredHeight]}
+      enableDynamicSizing
+      showHandle={false}
+      backgroundStyle={styles.sheetBackground}
+      contentContainerStyle={styles.sheetContent}
     >
-      <GestureHandlerRootView style={styles.overlay}>
+      <GestureHandlerRootView style={styles.sheetRoot}>
         <View
           style={[
             styles.container,
             {
               backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
               paddingBottom: insets.bottom + 16,
+              maxHeight: sheetMaxHeight,
             },
           ]}
         >
@@ -562,18 +574,22 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
           </View>
         </View>
       </GestureHandlerRootView>
-    </Modal>
+    </ControlledBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
-  modal: {
-    margin: 0,
-    justifyContent: "flex-end",
+  sheetBackground: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
+  sheetContent: {
+    flex: 0,
+  },
+  sheetRoot: {
+    width: "100%",
   },
   container: {
     borderTopLeftRadius: 24,

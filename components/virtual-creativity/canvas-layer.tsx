@@ -3,11 +3,11 @@ import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   type SharedValue,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { runOnJS } from "react-native-worklets";
 import { Image } from "expo-image";
 
 import { DrawingCanvas } from "@/components/virtual-creativity/drawing-canvas";
@@ -39,6 +39,7 @@ type CanvasPoint = {
 };
 
 type ResizeHandleCorner = "topLeft" | "bottomRight";
+const TRANSFORM_COMMIT_EPSILON = 0.001;
 
 interface CanvasLayerProps {
   layer: VirtualLayer;
@@ -93,7 +94,121 @@ const getHandleStyle = (corner: ResizeHandleCorner) => {
 };
 
 const getDiagonalDelta = (translationX: number, translationY: number) =>
-  (translationX + translationY) / 2;
+  {
+    "worklet";
+    return (translationX + translationY) / 2;
+  };
+
+const clampLayerXPosition = ({
+  canvasWidth,
+  layerWidth,
+  maxFitScale,
+  nextScale,
+  nextX,
+}: {
+  canvasWidth: number;
+  layerWidth: number;
+  maxFitScale: number;
+  nextScale: number;
+  nextX: number;
+}) => {
+  "worklet";
+
+  return clampLayerAxisPosition({
+    canvasSize: canvasWidth,
+    layerSize: layerWidth,
+    maxFitScale,
+    nextPosition: nextX,
+    nextScale,
+  });
+};
+
+const clampLayerYPosition = ({
+  canvasHeight,
+  layerHeight,
+  maxFitScale,
+  nextScale,
+  nextY,
+}: {
+  canvasHeight: number;
+  layerHeight: number;
+  maxFitScale: number;
+  nextScale: number;
+  nextY: number;
+}) => {
+  "worklet";
+
+  return clampLayerAxisPosition({
+    canvasSize: canvasHeight,
+    layerSize: layerHeight,
+    maxFitScale,
+    nextPosition: nextY,
+    nextScale,
+  });
+};
+
+const commitLayerTransform = ({
+  canvasHeight,
+  canvasWidth,
+  layerHeight,
+  layerId,
+  layerWidth,
+  maxFitScale,
+  nextRotation,
+  nextScale,
+  nextX,
+  nextY,
+}: {
+  canvasHeight: number;
+  canvasWidth: number;
+  layerHeight: number;
+  layerId: string;
+  layerWidth: number;
+  maxFitScale: number;
+  nextRotation: number;
+  nextScale: number;
+  nextX: number;
+  nextY: number;
+}) => {
+  requestAnimationFrame(() => {
+    const fittedScale = Math.min(nextScale, maxFitScale);
+    const { layers, updateLayer } = useVirtualCreativityStore.getState();
+    const currentLayer = layers.find((candidate) => candidate.id === layerId);
+    const clampedX = clampLayerXPosition({
+      canvasWidth,
+      layerWidth,
+      maxFitScale,
+      nextScale: fittedScale,
+      nextX,
+    });
+    const clampedY = clampLayerYPosition({
+      canvasHeight,
+      layerHeight,
+      maxFitScale,
+      nextScale: fittedScale,
+      nextY,
+    });
+
+    if (
+      currentLayer &&
+      Math.abs(currentLayer.x - clampedX) < TRANSFORM_COMMIT_EPSILON &&
+      Math.abs(currentLayer.y - clampedY) < TRANSFORM_COMMIT_EPSILON &&
+      Math.abs(currentLayer.scale - fittedScale) <
+        TRANSFORM_COMMIT_EPSILON &&
+      Math.abs(currentLayer.rotation - nextRotation) <
+        TRANSFORM_COMMIT_EPSILON
+    ) {
+      return;
+    }
+
+    updateLayer(layerId, {
+      x: clampedX,
+      y: clampedY,
+      scale: fittedScale,
+      rotation: nextRotation,
+    });
+  });
+};
 
 export const CanvasLayer = React.memo<CanvasLayerProps>(
   ({
@@ -120,12 +235,14 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     onEraseSessionStart,
     onEraseSessionEnd,
     onEraseAt,
-    resolveSmartFillPath,
+  resolveSmartFillPath,
     renderReferenceWidth = STORY_FRAME_WIDTH,
     renderReferenceHeight = STORY_FRAME_HEIGHT,
   }) => {
-    const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
-
+    const layerImageSource = React.useMemo(
+      () => (layer.uri ? { uri: layer.uri } : null),
+      [layer.uri],
+    );
     const translateX = useSharedValue(layer.x);
     const translateY = useSharedValue(layer.y);
     const scale = useSharedValue(layer.scale);
@@ -147,34 +264,22 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       [canvasHeight, canvasWidth, layer.height, layer.width],
     );
 
-    const clampX = React.useCallback(
-      (nextX: number, nextScale: number) =>
-        clampLayerAxisPosition({
-          canvasSize: canvasWidth,
-          layerSize: layer.width,
-          maxFitScale,
-          nextPosition: nextX,
-          nextScale,
-        }),
-      [canvasWidth, layer.width, maxFitScale],
-    );
-
-    const clampY = React.useCallback(
-      (nextY: number, nextScale: number) =>
-        clampLayerAxisPosition({
-          canvasSize: canvasHeight,
-          layerSize: layer.height,
-          maxFitScale,
-          nextPosition: nextY,
-          nextScale,
-        }),
-      [canvasHeight, layer.height, maxFitScale],
-    );
-
     React.useEffect(() => {
       const nextScale = Math.min(layer.scale, maxFitScale);
-      const nextX = clampX(layer.x, nextScale);
-      const nextY = clampY(layer.y, nextScale);
+      const nextX = clampLayerXPosition({
+        canvasWidth,
+        layerWidth: layer.width,
+        maxFitScale,
+        nextScale,
+        nextX: layer.x,
+      });
+      const nextY = clampLayerYPosition({
+        canvasHeight,
+        layerHeight: layer.height,
+        maxFitScale,
+        nextScale,
+        nextY: layer.y,
+      });
 
       translateX.value = withSpring(nextX);
       translateY.value = withSpring(nextY);
@@ -185,10 +290,12 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       startScale.value = nextScale;
       startRotation.value = layer.rotation;
     }, [
-      clampX,
-      clampY,
+      canvasHeight,
+      canvasWidth,
       layer.rotation,
       layer.scale,
+      layer.height,
+      layer.width,
       layer.x,
       layer.y,
       maxFitScale,
@@ -201,26 +308,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       translateX,
       translateY,
     ]);
-
-    const queueTransformCommit = React.useCallback(
-      (
-        nextX: number,
-        nextY: number,
-        nextScale: number,
-        nextRotation: number,
-      ) => {
-        requestAnimationFrame(() => {
-          const fittedScale = Math.min(nextScale, maxFitScale);
-          updateLayer(layer.id, {
-            x: clampX(nextX, fittedScale),
-            y: clampY(nextY, fittedScale),
-            scale: fittedScale,
-            rotation: nextRotation,
-          });
-        });
-      },
-      [clampX, clampY, layer.id, maxFitScale, updateLayer],
-    );
 
     const queueSelect = React.useCallback(() => {
       deferCallback(onSelect);
@@ -238,21 +325,21 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       () =>
         Gesture.Tap()
           .enabled(canTapToSelect || canTapSelected)
-          .runOnJS(true)
-          .maxDistance(12)
-          .maxDuration(220)
+          .maxDistance(18)
+          .maxDuration(280)
           .onEnd((_event, success) => {
+            "worklet";
             if (!success) {
               return;
             }
 
             if (canTapSelected) {
-              queueSelectedTap();
+              runOnJS(queueSelectedTap)();
               return;
             }
 
             if (canTapToSelect) {
-              queueSelect();
+              runOnJS(queueSelect)();
             }
           }),
       [canTapSelected, canTapToSelect, queueSelect, queueSelectedTap],
@@ -262,7 +349,8 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       () =>
         Gesture.Pan()
           .enabled(gesturesEnabled && isSelected)
-          .minDistance(0)
+          .minDistance(4)
+          .maxPointers(1)
           .shouldCancelWhenOutside(false)
           .onStart(() => {
             startX.value = translateX.value;
@@ -275,13 +363,37 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             const nextY =
               startY.value + event.translationY / (stageScale * currentZoom);
 
-            translateX.value = clampX(nextX, scale.value);
-            translateY.value = clampY(nextY, scale.value);
+            translateX.value = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale: scale.value,
+              nextX,
+            });
+            translateY.value = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale: scale.value,
+              nextY,
+            });
           })
           .onFinalize(() => {
             const nextScale = Math.min(scale.value, maxFitScale);
-            const nextX = clampX(translateX.value, nextScale);
-            const nextY = clampY(translateY.value, nextScale);
+            const nextX = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale,
+              nextX: translateX.value,
+            });
+            const nextY = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale,
+              nextY: translateY.value,
+            });
             const nextRotation = rotation.value;
 
             translateX.value = nextX;
@@ -289,20 +401,28 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             scale.value = nextScale;
             startX.value = nextX;
             startY.value = nextY;
-            runOnJS(queueTransformCommit)(
+            runOnJS(commitLayerTransform)({
+              canvasHeight,
+              canvasWidth,
+              layerHeight: layer.height,
+              layerId: layer.id,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextRotation,
+              nextScale,
               nextX,
               nextY,
-              nextScale,
-              nextRotation,
-            );
+            });
           }),
       [
-        clampX,
-        clampY,
+        canvasHeight,
+        canvasWidth,
         gesturesEnabled,
         isSelected,
+        layer.height,
+        layer.id,
+        layer.width,
         maxFitScale,
-        queueTransformCommit,
         rotation,
         scale,
         stageScale,
@@ -328,13 +448,37 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             );
 
             scale.value = nextScale;
-            translateX.value = clampX(translateX.value, nextScale);
-            translateY.value = clampY(translateY.value, nextScale);
+            translateX.value = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale,
+              nextX: translateX.value,
+            });
+            translateY.value = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale,
+              nextY: translateY.value,
+            });
           })
           .onFinalize(() => {
             const nextScale = Math.min(scale.value, maxFitScale);
-            const nextX = clampX(translateX.value, nextScale);
-            const nextY = clampY(translateY.value, nextScale);
+            const nextX = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale,
+              nextX: translateX.value,
+            });
+            const nextY = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale,
+              nextY: translateY.value,
+            });
             const nextRotation = rotation.value;
 
             scale.value = nextScale;
@@ -343,21 +487,29 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             startScale.value = nextScale;
             startX.value = nextX;
             startY.value = nextY;
-            runOnJS(queueTransformCommit)(
+            runOnJS(commitLayerTransform)({
+              canvasHeight,
+              canvasWidth,
+              layerHeight: layer.height,
+              layerId: layer.id,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextRotation,
+              nextScale,
               nextX,
               nextY,
-              nextScale,
-              nextRotation,
-            );
+            });
           }),
       [
-        clampX,
-        clampY,
+        canvasHeight,
+        canvasWidth,
         enablePinchResize,
         gesturesEnabled,
         isSelected,
+        layer.height,
+        layer.id,
+        layer.width,
         maxFitScale,
-        queueTransformCommit,
         rotation,
         scale,
         startScale,
@@ -380,8 +532,20 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
           })
           .onFinalize(() => {
             const nextScale = Math.min(scale.value, maxFitScale);
-            const nextX = clampX(translateX.value, nextScale);
-            const nextY = clampY(translateY.value, nextScale);
+            const nextX = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale,
+              nextX: translateX.value,
+            });
+            const nextY = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale,
+              nextY: translateY.value,
+            });
             const nextRotation = rotation.value;
 
             translateX.value = nextX;
@@ -390,20 +554,28 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             startX.value = nextX;
             startY.value = nextY;
             startRotation.value = nextRotation;
-            runOnJS(queueTransformCommit)(
+            runOnJS(commitLayerTransform)({
+              canvasHeight,
+              canvasWidth,
+              layerHeight: layer.height,
+              layerId: layer.id,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextRotation,
+              nextScale,
               nextX,
               nextY,
-              nextScale,
-              nextRotation,
-            );
+            });
           }),
       [
-        clampX,
-        clampY,
+        canvasHeight,
+        canvasWidth,
         gesturesEnabled,
         isSelected,
+        layer.height,
+        layer.id,
+        layer.width,
         maxFitScale,
-        queueTransformCommit,
         rotation,
         scale,
         startRotation,
@@ -419,6 +591,10 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         Gesture.Pan()
           .enabled(gesturesEnabled && isSelected)
           .minDistance(0)
+          .blocksExternalGesture(panGesture)
+          .blocksExternalGesture(tapGesture)
+          .blocksExternalGesture(pinchGesture)
+          .blocksExternalGesture(rotationGesture)
           .shouldCancelWhenOutside(false)
           .onStart(() => {
             startScale.value = scale.value;
@@ -444,13 +620,37 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             );
 
             scale.value = nextScale;
-            translateX.value = clampX(translateX.value, nextScale);
-            translateY.value = clampY(translateY.value, nextScale);
+            translateX.value = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale,
+              nextX: translateX.value,
+            });
+            translateY.value = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale,
+              nextY: translateY.value,
+            });
           })
           .onFinalize(() => {
             const nextScale = Math.min(scale.value, maxFitScale);
-            const nextX = clampX(translateX.value, nextScale);
-            const nextY = clampY(translateY.value, nextScale);
+            const nextX = clampLayerXPosition({
+              canvasWidth,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextScale,
+              nextX: translateX.value,
+            });
+            const nextY = clampLayerYPosition({
+              canvasHeight,
+              layerHeight: layer.height,
+              maxFitScale,
+              nextScale,
+              nextY: translateY.value,
+            });
             const nextRotation = rotation.value;
 
             scale.value = nextScale;
@@ -459,28 +659,38 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             startScale.value = nextScale;
             startX.value = nextX;
             startY.value = nextY;
-            runOnJS(queueTransformCommit)(
+            runOnJS(commitLayerTransform)({
+              canvasHeight,
+              canvasWidth,
+              layerHeight: layer.height,
+              layerId: layer.id,
+              layerWidth: layer.width,
+              maxFitScale,
+              nextRotation,
+              nextScale,
               nextX,
               nextY,
-              nextScale,
-              nextRotation,
-            );
+            });
           }),
       [
         canvasHeight,
         canvasWidth,
-        clampX,
-        clampY,
         gesturesEnabled,
         isSelected,
+        layer.height,
+        layer.id,
+        layer.width,
         maxFitScale,
-        queueTransformCommit,
+        panGesture,
+        pinchGesture,
         rotation,
+        rotationGesture,
         scale,
         stageScale,
         startScale,
         startX,
         startY,
+        tapGesture,
         translateX,
         translateY,
         zoomScale,
@@ -497,8 +707,9 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
 
     const layerGesture = React.useMemo(
       () =>
-        Gesture.Simultaneous(
-          Gesture.Race(panGesture, tapGesture),
+        Gesture.Race(
+          tapGesture,
+          panGesture,
           Gesture.Simultaneous(pinchGesture, rotationGesture),
         ),
       [panGesture, pinchGesture, rotationGesture, tapGesture],
@@ -541,15 +752,21 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const showPlacementUI = isSelected && !hideSelectionUI;
     const shouldUseFixedInteractionBounds =
       gesturesEnabled && isSelected && !shouldShowDrawingCanvas;
+    const shouldCaptureTouches =
+      shouldShowDrawingCanvas ||
+      canTapToSelect ||
+      canTapSelected ||
+      (gesturesEnabled && isSelected);
 
     const renderLayerContent = () => (
       <>
         <View style={styles.frame}>
-          {layer.uri ? (
+          {layerImageSource ? (
             <Image
-              source={{ uri: layer.uri }}
+              source={layerImageSource}
               style={styles.image}
               contentFit="contain"
+              transition={0}
             />
           ) : null}
 
@@ -606,13 +823,21 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       </>
     );
 
-    const renderLayerShell = () => (
-      <Animated.View style={[styles.assetAnchor, visualFrameStyle]}>
+    const renderLayerShell = (pointerEvents: "auto" | "none" = "auto") => (
+      <Animated.View
+        collapsable={false}
+        pointerEvents={pointerEvents}
+        style={[styles.assetAnchor, visualFrameStyle]}
+      >
         <Animated.View style={[styles.assetTransform, rotatedContentStyle]}>
           {renderLayerContent()}
         </Animated.View>
       </Animated.View>
     );
+
+    if (!shouldCaptureTouches) {
+      return renderLayerShell("none");
+    }
 
     if (shouldUseFixedInteractionBounds) {
       return (
@@ -631,9 +856,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
               },
             ]}
           >
-            {__DEV__ ? (
-              <View pointerEvents="none" style={styles.debugDragBounds} />
-            ) : null}
             {renderLayerShell()}
           </View>
         </GestureDetector>
@@ -642,7 +864,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
 
     return (
       <GestureDetector gesture={layerGesture}>
-        <View style={styles.layer}>{renderLayerShell()}</View>
+        {renderLayerShell()}
       </GestureDetector>
     );
   },
@@ -656,13 +878,6 @@ const styles = StyleSheet.create({
   interactionBounds: {
     backgroundColor: "transparent",
     overflow: "visible",
-  },
-  debugDragBounds: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "rgba(239, 68, 68, 0.95)",
-    backgroundColor: "rgba(239, 68, 68, 0.08)",
   },
   assetAnchor: {
     position: "absolute",

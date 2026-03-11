@@ -1,12 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect } from "react";
 import {
-  Dimensions,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -17,6 +14,7 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/context/theme-context";
 import { FontFamily } from "@/constants/fonts";
+import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
 
 import {
   COLUMNS,
@@ -99,11 +97,14 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
   */
 
   return (
-    <Modal
+    <ControlledBottomSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onClose={onClose}
+      snapPoints={["100%"]}
+      showHandle={false}
+      showBackdrop={false}
+      backgroundStyle={styles.sheetBackground}
+      contentContainerStyle={styles.sheetContent}
     >
       <SafeAreaView
         style={[styles.root, { backgroundColor: theme.background }]}
@@ -171,11 +172,19 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
           */}
         </GestureHandlerRootView>
       </SafeAreaView>
-    </Modal>
+    </ControlledBottomSheet>
   );
 };
 
 const styles = StyleSheet.create({
+  sheetBackground: {
+    borderWidth: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
+  sheetContent: {
+    flex: 1,
+  },
   root: {
     flex: 1,
   },

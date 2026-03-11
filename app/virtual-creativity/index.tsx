@@ -357,12 +357,19 @@ export default function VirtualCreativityScreen() {
   }, []);
 
   const handleGallery = useCallback(() => {
+    const shouldOpenAssetPicker =
+      !hasMainLayer || (viewMode === "composite" && selectedTool === "gallery");
+
     setSelectedTool("gallery");
+    setIsFocusPlacementActive(false);
     setColorPickerVisible(false);
     setPatternModalVisible(false);
     setSignatureModalVisible(false);
-    assetPickerModalRef.current?.present();
-  }, []);
+
+    if (shouldOpenAssetPicker) {
+      assetPickerModalRef.current?.present();
+    }
+  }, [hasMainLayer, selectedTool, viewMode]);
 
   const handleApplyUploadAsset = useCallback(
     async (item: CreateFlowPickerAssetItem) => {
@@ -504,6 +511,16 @@ export default function VirtualCreativityScreen() {
     restoreDrawingTool();
   }, [restoreDrawingTool, selectLayer, viewMode]);
 
+  const handleClearSelectionToDraw = useCallback(() => {
+    if (viewMode !== "composite") {
+      return;
+    }
+
+    selectLayer(null);
+    setIsFocusPlacementActive(false);
+    restoreDrawingTool();
+  }, [restoreDrawingTool, selectLayer, viewMode]);
+
   const handleZoomReset = useCallback(() => {
     setZoomResetKey((prev) => prev + 1);
   }, []);
@@ -598,9 +615,12 @@ export default function VirtualCreativityScreen() {
               activeLayerId={activeCanvasLayerId}
               selectedLayerId={selectedSubLayerId}
               onSelectLayer={
-                viewMode === "composite" ? handleSelectCanvasLayer : undefined
+                viewMode === "composite"
+                  ? handleSelectCanvasLayer
+                  : undefined
               }
               onClearSelection={handleClearSelection}
+              onClearSelectionToDraw={handleClearSelectionToDraw}
               onExitFocusPlacement={handleExitFocusPlacement}
               isZoomMode={isZoomMode}
               currentColor={brush.color}

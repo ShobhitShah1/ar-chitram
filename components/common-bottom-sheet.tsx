@@ -10,6 +10,9 @@ import {
 import React, { memo, useCallback, useMemo } from "react";
 import { StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 
+export const COMMON_SHEET_BACKDROP_COLOR = "#000000";
+export const COMMON_SHEET_BACKDROP_OPACITY = 0.5;
+
 interface CommonBottomSheetProps {
   modalRef: React.RefObject<BottomSheetModal | null>;
   children: React.ReactNode;
@@ -24,6 +27,7 @@ interface CommonBottomSheetProps {
   enableHandlePanningGesture?: boolean;
   showBackdrop?: boolean;
   backdropOpacity?: number;
+  backdropColor?: string;
   showHandle?: boolean;
 }
 
@@ -41,7 +45,8 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
     enableContentPanningGesture = false,
     enableHandlePanningGesture = false,
     showBackdrop = true,
-    backdropOpacity = 0.24,
+    backdropOpacity = COMMON_SHEET_BACKDROP_OPACITY,
+    backdropColor = COMMON_SHEET_BACKDROP_COLOR,
     showHandle = true,
   }) => {
     const { theme } = useTheme();
@@ -66,9 +71,10 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
           disappearsOnIndex={-1}
           opacity={backdropOpacity}
           pressBehavior="close"
+          style={[props.style, { backgroundColor: backdropColor }]}
         />
       ),
-      [backdropOpacity],
+      [backdropColor, backdropOpacity],
     );
 
     const renderHiddenHandle = useCallback(

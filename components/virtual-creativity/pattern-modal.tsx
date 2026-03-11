@@ -1,11 +1,17 @@
 import { PATTERN_PRESETS } from "@/components/virtual-creativity/editor-presets";
 import type { PatternPreset } from "@/components/virtual-creativity/editor-presets";
 import { SheetHeader } from "@/components/virtual-creativity/sheet-header";
+import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import React from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
-import Modal from "react-native-modal";
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface PatternModalProps {
@@ -23,6 +29,7 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
 }) => {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
   const [pendingId, setPendingId] = React.useState<string | null>(
     selectedPatternId ?? null,
   );
@@ -64,69 +71,61 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
     [pendingId],
   );
 
-  return (
-    <Modal
-      isVisible={visible}
-      style={styles.modal}
-      hasBackdrop={true}
-      animationIn="slideInUp"
-      animationOut="slideOutDown"
-      animationInTiming={260}
-      animationOutTiming={220}
-      backdropTransitionInTiming={220}
-      backdropTransitionOutTiming={220}
-      onBackButtonPress={onClose}
-      onBackdropPress={onClose}
-      backdropOpacity={0.5}
-      useNativeDriver
-      useNativeDriverForBackdrop
-      propagateSwipe
-    >
-      <View style={styles.overlay}>
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
-              paddingBottom: Math.max(insets.bottom, 12),
-            },
-          ]}
-        >
-          <SheetHeader
-            title="Pattern"
-            onClose={onClose}
-            onConfirm={handleApply}
-          />
+  const sheetHeight = Math.min(screenHeight - 12, 320 + insets.bottom);
 
-          <FlatList
-            data={PATTERN_PRESETS}
-            keyExtractor={(item) => item.id}
-            numColumns={6}
-            renderItem={renderPatternItem}
-            columnWrapperStyle={styles.column}
-            contentContainerStyle={styles.gridContent}
-            showsVerticalScrollIndicator={false}
-            removeClippedSubviews
-            initialNumToRender={12}
-            maxToRenderPerBatch={18}
-            windowSize={3}
-          />
-        </View>
+  return (
+    <ControlledBottomSheet
+      visible={visible}
+      onClose={onClose}
+      snapPoints={[sheetHeight]}
+      showHandle={false}
+      backgroundStyle={styles.sheetBackground}
+      contentContainerStyle={styles.sheetContent}
+    >
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
+            paddingBottom: Math.max(insets.bottom, 12),
+          },
+        ]}
+      >
+        <SheetHeader
+          title="Pattern"
+          onClose={onClose}
+          onConfirm={handleApply}
+        />
+
+        <FlatList
+          data={PATTERN_PRESETS}
+          keyExtractor={(item) => item.id}
+          numColumns={6}
+          renderItem={renderPatternItem}
+          columnWrapperStyle={styles.column}
+          contentContainerStyle={styles.gridContent}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          initialNumToRender={12}
+          maxToRenderPerBatch={18}
+          windowSize={3}
+        />
       </View>
-    </Modal>
+    </ControlledBottomSheet>
   );
 };
 
 export const PatternModal = React.memo(PatternModalComponent);
 
 const styles = StyleSheet.create({
-  modal: {
-    margin: 0,
-    justifyContent: "flex-end",
+  sheetBackground: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  overlay: {
-    flex: 1,
-    justifyContent: "flex-end",
+  sheetContent: {
+    flex: 0,
   },
   card: {
     borderTopLeftRadius: 24,

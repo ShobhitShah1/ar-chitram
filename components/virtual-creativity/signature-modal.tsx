@@ -3,27 +3,27 @@ import {
   SIGNATURE_FONT_PRESETS,
 } from "@/components/virtual-creativity/editor-presets";
 import type { SignatureSelection } from "@/components/virtual-creativity/editor-presets";
+import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
 import { SheetHeader } from "@/components/virtual-creativity/sheet-header";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
-  Dimensions,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
-import Modal from "react-native-modal";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SignatureTab = "custom" | "artist";
-const SHEET_MAX_HEIGHT = Dimensions.get("window").height * 0.86;
 const SHEET_MIN_HEIGHT = 420;
+const SHEET_CUSTOM_PREFERRED_HEIGHT = 560;
+const SHEET_ARTIST_PREFERRED_HEIGHT = 500;
 
 interface SignatureModalProps {
   visible: boolean;
@@ -41,7 +41,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   onApply,
 }) => {
   const { theme, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
 
   const [tab, setTab] = React.useState<SignatureTab>("custom");
   const [typedName, setTypedName] = React.useState(defaultName);
@@ -153,24 +153,26 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     [selectedArtistId],
   );
 
+  const sheetMaxHeight = Math.min(screenHeight - 12, screenHeight * 0.86);
+  const sheetPreferredHeight = Math.min(
+    sheetMaxHeight,
+    Math.max(
+      SHEET_MIN_HEIGHT,
+      tab === "custom"
+        ? SHEET_CUSTOM_PREFERRED_HEIGHT
+        : SHEET_ARTIST_PREFERRED_HEIGHT,
+    ),
+  );
+
   return (
-    <Modal
-      isVisible={visible}
-      onBackdropPress={onClose}
-      onBackButtonPress={onClose}
-      style={styles.modal}
-      backdropColor="#000"
-      backdropOpacity={isDark ? 0.2 : 0.18}
-      animationIn="slideInUp"
-      animationOut="slideOutDown"
-      animationInTiming={260}
-      animationOutTiming={220}
-      backdropTransitionInTiming={220}
-      backdropTransitionOutTiming={220}
-      avoidKeyboard
-      useNativeDriver
-      useNativeDriverForBackdrop
-      propagateSwipe
+    <ControlledBottomSheet
+      visible={visible}
+      onClose={onClose}
+      snapPoints={[sheetPreferredHeight]}
+      enableDynamicSizing
+      showHandle={false}
+      backgroundStyle={styles.sheetBackground}
+      contentContainerStyle={styles.sheetContent}
     >
       <KeyboardAvoidingView
         behavior="padding"
@@ -182,6 +184,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             styles.card,
             {
               backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
+              maxHeight: sheetMaxHeight,
             },
           ]}
         >
@@ -287,20 +290,24 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           </View>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </ControlledBottomSheet>
   );
 };
 
 export const SignatureModal = React.memo(SignatureModalComponent);
 
 const styles = StyleSheet.create({
-  modal: {
-    justifyContent: "flex-end",
-    margin: 0,
+  sheetBackground: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  sheetContent: {
+    flex: 0,
   },
   keyboardWrap: {
     width: "100%",
-    justifyContent: "flex-end",
   },
   card: {
     width: "100%",
@@ -309,7 +316,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingHorizontal: 16,
     minHeight: SHEET_MIN_HEIGHT,
-    maxHeight: SHEET_MAX_HEIGHT,
   },
   tabsRow: {
     flexDirection: "row",
