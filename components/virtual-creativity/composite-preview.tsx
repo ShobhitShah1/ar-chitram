@@ -1,9 +1,11 @@
-import React from "react";
+﻿import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 
 import { DrawingLayerSvg } from "@/components/virtual-creativity/drawing-layer-svg";
-import { VirtualLayer } from "@/store/virtual-creativity-store";
+import { getSmartFillDisplayLayout } from "@/services/smart-fill-layout";
+import { getVirtualLayerRenderMetrics } from "@/services/virtual-layer-service";
+import { type VirtualLayer } from "@/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
 
 interface CompositePreviewProps {
@@ -19,39 +21,95 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
   height = STORY_FRAME_HEIGHT,
   showDrawings = false,
 }) => {
-  const sortedLayers = [...layers].sort((a, b) => a.zIndex - b.zIndex);
+  const sortedLayers = React.useMemo(
+    () => [...layers].sort((a, b) => a.zIndex - b.zIndex),
+    [layers],
+  );
+  const [containerSize, setContainerSize] = React.useState({ width, height });
+
+  const stageLayout = React.useMemo(
+    () =>
+      getSmartFillDisplayLayout(
+        STORY_FRAME_WIDTH,
+        STORY_FRAME_HEIGHT,
+        containerSize.width,
+        containerSize.height,
+      ),
+    [containerSize.height, containerSize.width],
+  );
 
   return (
-    <View style={styles.container}>
-      {sortedLayers.map((layer, index) => (
-        <View key={`${layer.id}-${index}`} style={StyleSheet.absoluteFill}>
-          {layer.uri ? (
-            <Image
-              source={{ uri: layer.uri }}
-              style={styles.image}
-              contentFit="contain"
-            />
-          ) : null}
+    <View
+      style={styles.container}
+      onLayout={(event) => {
+        const nextWidth = Math.round(event.nativeEvent.layout.width) || width;
+        const nextHeight = Math.round(event.nativeEvent.layout.height) || height;
+        setContainerSize((current) => {
+          if (current.width === nextWidth && current.height === nextHeight) {
+            return current;
+          }
 
-          {showDrawings ? (
+          return {
+            width: nextWidth,
+            height: nextHeight,
+          };
+        });
+      }}
+    >
+      <View
+        style={[
+          styles.stage,
+          {
+            left: stageLayout.offsetX,
+            top: stageLayout.offsetY,
+            width: stageLayout.renderedWidth,
+            height: stageLayout.renderedHeight,
+          },
+        ]}
+      >
+        {sortedLayers.map((layer) => {
+          const metrics = getVirtualLayerRenderMetrics(layer, stageLayout.scale);
+          return (
             <View
+              key={layer.id}
               style={[
-                StyleSheet.absoluteFill,
-                { zIndex: 10, backgroundColor: "transparent" },
+                styles.layer,
+                {
+                  left: metrics.baseLeft,
+                  top: metrics.baseTop,
+                  width: metrics.width,
+                  height: metrics.height,
+                  zIndex: layer.zIndex,
+                  transform: [
+                    { translateX: layer.x * stageLayout.scale },
+                    { translateY: layer.y * stageLayout.scale },
+                    { scale: layer.scale },
+                    { rotate: `${layer.rotation}rad` },
+                  ],
+                },
               ]}
             >
-              <DrawingLayerSvg
-                idPrefix={`composite-${layer.id}`}
-                paths={layer.paths || []}
-                layerWidth={layer.width || width}
-                layerHeight={layer.height || height}
-                strokeScale={0.12}
-                minimumStrokeWidth={1}
-              />
+              {layer.uri ? (
+                <Image
+                  source={{ uri: layer.uri }}
+                  style={styles.image}
+                  contentFit="contain"
+                />
+              ) : null}
+              {showDrawings ? (
+                <DrawingLayerSvg
+                  idPrefix={`preview-${layer.id}`}
+                  paths={layer.paths || []}
+                  layerWidth={layer.width}
+                  layerHeight={layer.height}
+                  strokeScale={0.12}
+                  minimumStrokeWidth={1}
+                />
+              ) : null}
             </View>
-          ) : null}
-        </View>
-      ))}
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -61,6 +119,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
     overflow: "hidden",
+  },
+  stage: {
+    position: "absolute",
+  },
+  layer: {
+    position: "absolute",
   },
   image: {
     width: "100%",

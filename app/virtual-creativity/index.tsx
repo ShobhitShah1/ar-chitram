@@ -1,4 +1,4 @@
-﻿import { ColorPickerModal } from "@/components/color-picker-modal";
+import { ColorPickerModal } from "@/components/color-picker-modal";
 import { UploadAssetSheet } from "@/components/virtual-creativity/upload-asset-sheet";
 import {
   CapturePreviewModal,
@@ -28,8 +28,12 @@ import {
   useBrush,
   useCanvasInitialization,
 } from "@/hooks/use-virtual-creativity-canvas";
-import { primeSmartFillLookups } from "@/services/smart-fill-path-service";
+import { primeSmartFillLookup } from "@/services/smart-fill-path-service";
 import { normalizeStoryImageUri } from "@/services/story-media-service";
+import {
+  createMainImageLayer,
+  createSubImageLayer,
+} from "@/services/virtual-layer-service";
 import {
   VirtualLayer,
   useVirtualCreativityStore,
@@ -62,6 +66,7 @@ export default function VirtualCreativityScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const assetPickerModalRef = useRef<BottomSheetModal | null>(null);
+  const lastDrawingToolRef = useRef<ToolType>("palette");
 
   const {
     assets: uploadSheetAssets,
@@ -79,6 +84,7 @@ export default function VirtualCreativityScreen() {
   const {
     layers,
     snapshots,
+    addLayer,
     addSnapshot,
     setSnapshots,
     removeSnapshot,
@@ -93,12 +99,11 @@ export default function VirtualCreativityScreen() {
     selectLayer,
     pendingUploadUris,
     clearPendingUploadUris,
-    addImageLayersFromUris,
   } = useVirtualCreativityStore();
 
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<"color" | "gradient">("color");
-  const [selectedTool, setSelectedTool] = useState<ToolType>("gallery");
+  const [selectedTool, setSelectedTool] = useState<ToolType>("palette");
   const [patternModalVisible, setPatternModalVisible] = useState(false);
   const [signatureModalVisible, setSignatureModalVisible] = useState(false);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(
@@ -107,17 +112,17 @@ export default function VirtualCreativityScreen() {
   const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(
     null,
   );
+  const [isFocusPlacementActive, setIsFocusPlacementActive] = useState(false);
 
   const [isZoomMode, setIsZoomMode] = useState(false);
   const [zoomResetKey, setZoomResetKey] = useState(0);
+  const [isCanvasCaptureInProgress, setIsCanvasCaptureInProgress] =
+    useState(false);
 
   const viewShotRef = useRef<View>(null);
   const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
   const [showSnapshotAnim, setShowSnapshotAnim] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [compositePreviewLayers, setCompositePreviewLayers] = useState<
-    VirtualLayer[]
-  >([]);
 
   const [signatureSelection, setSignatureSelection] =
     useState<SignatureSelection | null>(null);
@@ -136,31 +141,27 @@ export default function VirtualCreativityScreen() {
   React.useEffect(() => {
     if (viewMode === "single" && !selectedLayerId) {
       setViewMode("composite");
+      setIsFocusPlacementActive(false);
     }
-  }, [viewMode, selectedLayerId, setViewMode]);
+  }, [selectedLayerId, setViewMode, viewMode]);
 
   const allLayersSorted = useMemo(
     () => [...layers].sort((a, b) => a.zIndex - b.zIndex),
     [layers],
   );
-  const imageLayerUris = useMemo(
+  const mainImageUri = useMemo(
     () =>
-      Array.from(
-        new Set(
-          allLayersSorted
-            .filter((layer) => layer.type === "image" && !!layer.uri)
-            .map((layer) => layer.uri as string),
-        ),
-      ),
+      allLayersSorted.find((layer) => layer.id === "main-image")?.uri ?? null,
     [allLayersSorted],
   );
 
   React.useEffect(() => {
-    const urisToPrime = imageLayerUris.filter(
-      (uri) => !preloadedSmartFillUrisRef.current.has(uri),
-    );
+    if (!mainImageUri) {
+      setIsSmartFillPreloading(false);
+      return;
+    }
 
-    if (urisToPrime.length === 0) {
+    if (preloadedSmartFillUrisRef.current.has(mainImageUri)) {
       setIsSmartFillPreloading(false);
       return;
     }
@@ -169,15 +170,13 @@ export default function VirtualCreativityScreen() {
     const jobId = ++preloadJobRef.current;
     setIsSmartFillPreloading(true);
 
-    void primeSmartFillLookups(urisToPrime)
-      .then((primedUris) => {
+    void primeSmartFillLookup({ imageUri: mainImageUri })
+      .then(() => {
         if (cancelled || preloadJobRef.current !== jobId) {
           return;
         }
 
-        for (const uri of primedUris) {
-          preloadedSmartFillUrisRef.current.add(uri);
-        }
+        preloadedSmartFillUrisRef.current.add(mainImageUri);
       })
       .finally(() => {
         if (!cancelled && preloadJobRef.current === jobId) {
@@ -188,40 +187,41 @@ export default function VirtualCreativityScreen() {
     return () => {
       cancelled = true;
     };
-  }, [imageLayerUris]);
+  }, [mainImageUri]);
 
-  const compositeVisibleLayers = useMemo(
-    () =>
-      allLayersSorted.filter((layer) => {
-        if (layer.id === "main-image") return true;
-        return (layer.paths?.length ?? 0) > 0;
-      }),
-    [allLayersSorted],
-  );
+  const compositeVisibleLayers = useMemo(() => allLayersSorted, [allLayersSorted]);
 
   const hasMainLayer = useMemo(
     () => layers.some((layer) => layer.id === "main-image"),
     [layers],
   );
-  const activeEditableLayerId = useMemo(
+  const selectedSubLayerId = useMemo(
     () =>
-      viewMode === "single"
+      selectedLayerId && selectedLayerId !== "main-image"
         ? selectedLayerId
+        : null,
+    [selectedLayerId],
+  );
+  const isSingleSubLayerView =
+    viewMode === "single" && !!selectedSubLayerId;
+  const brushTargetLayerId = useMemo(
+    () =>
+      isSingleSubLayerView
+        ? selectedSubLayerId
         : hasMainLayer
           ? "main-image"
           : null,
-    [hasMainLayer, selectedLayerId, viewMode],
+    [hasMainLayer, isSingleSubLayerView, selectedSubLayerId],
   );
-  const activeOrderLayerId =
-    viewMode === "single"
-      ? selectedLayerId
-      : hasMainLayer
-        ? "main-image"
-        : null;
-  const canDeleteLayer =
-    viewMode === "single" &&
-    !!selectedLayerId &&
-    selectedLayerId !== "main-image";
+  const activeCanvasLayerId = useMemo(() => {
+    if (selectedTool === "gallery" || isFocusPlacementActive) {
+      return null;
+    }
+
+    return brushTargetLayerId;
+  }, [brushTargetLayerId, isFocusPlacementActive, selectedTool]);
+  const activeOrderLayerId = selectedSubLayerId;
+  const canDeleteLayer = !!selectedSubLayerId;
 
   const defaultBrushColor =
     typeof theme.accent === "string" && theme.accent.startsWith("#")
@@ -229,10 +229,46 @@ export default function VirtualCreativityScreen() {
       : "#3259F4";
 
   const { brush, setBrushForActiveLayer, onSelectColor } = useBrush(
-    activeEditableLayerId,
+    brushTargetLayerId,
     bringToFront,
     defaultBrushColor,
   );
+
+  const displayedLayers = useMemo(() => {
+    if (viewMode === "single" && selectedSubLayerId) {
+      return allLayersSorted.filter((layer) => layer.id === selectedSubLayerId);
+    }
+
+    return compositeVisibleLayers;
+  }, [allLayersSorted, compositeVisibleLayers, selectedSubLayerId, viewMode]);
+
+  const stripLayers = useMemo(
+    () => allLayersSorted.filter((layer) => layer.id !== "main-image"),
+    [allLayersSorted],
+  );
+  const bottomBarLayers = useMemo(
+    () => (viewMode === "single" ? compositeVisibleLayers : EMPTY_LAYERS),
+    [compositeVisibleLayers, viewMode],
+  );
+
+  const waitForNextFrame = useCallback(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+    [],
+  );
+
+  const restoreDrawingTool = useCallback(() => {
+    setSelectedTool(lastDrawingToolRef.current);
+  }, []);
+
+  const warmSmartFillLookup = useCallback((imageUri?: string | null) => {
+    if (!imageUri) {
+      return;
+    }
+
+    void primeSmartFillLookup({ imageUri }).catch(() => {
+      // Warm cache in the background without interrupting the current flow.
+    });
+  }, []);
 
   const handleUndo = useCallback(() => undo(), [undo]);
   const handleRedo = useCallback(() => redo(), [redo]);
@@ -254,34 +290,46 @@ export default function VirtualCreativityScreen() {
   }, []);
 
   const handleDelete = useCallback(() => {
-    if (canDeleteLayer && selectedLayerId) {
-      removeLayer(selectedLayerId);
+    if (selectedSubLayerId) {
+      removeLayer(selectedSubLayerId);
+      setIsFocusPlacementActive(false);
+      setViewMode("composite");
     }
-  }, [canDeleteLayer, removeLayer, selectedLayerId]);
+  }, [removeLayer, selectedSubLayerId, setViewMode]);
 
-  const captureCanvasSnapshot = useCallback(async (quality: number) => {
-    if (!viewShotRef.current) {
-      return null;
-    }
+  const captureCanvasSnapshot = useCallback(
+    async (quality: number) => {
+      if (!viewShotRef.current) {
+        return null;
+      }
 
-    const capturedUri = await captureRef(viewShotRef, {
-      format: "png",
-      quality,
-    });
+      setIsCanvasCaptureInProgress(true);
+      await waitForNextFrame();
+      await waitForNextFrame();
 
-    return normalizeStoryImageUri(capturedUri, {
-      format: ImageManipulator.SaveFormat.PNG,
-      compress: 1,
-      targetWidth: STORY_FRAME_WIDTH,
-      targetHeight: STORY_FRAME_HEIGHT,
-      fit: "contain",
-    });
-  }, []);
+      try {
+        const capturedUri = await captureRef(viewShotRef, {
+          format: "png",
+          quality,
+        });
+
+        return normalizeStoryImageUri(capturedUri, {
+          format: ImageManipulator.SaveFormat.PNG,
+          compress: 1,
+          targetWidth: STORY_FRAME_WIDTH,
+          targetHeight: STORY_FRAME_HEIGHT,
+          fit: "contain",
+        });
+      } finally {
+        setIsCanvasCaptureInProgress(false);
+      }
+    },
+    [waitForNextFrame],
+  );
 
   const handleNext = useCallback(async () => {
     if (viewMode === "single") {
-      setViewMode("composite");
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      return;
     }
 
     try {
@@ -302,13 +350,7 @@ export default function VirtualCreativityScreen() {
     } catch (error) {
       console.error("Failed to capture snapshot for next step:", error);
     }
-  }, [
-    captureCanvasSnapshot,
-    router,
-    signatureSelection,
-    viewMode,
-    setViewMode,
-  ]);
+  }, [captureCanvasSnapshot, router, signatureSelection, viewMode]);
 
   const handleCloseAssetPicker = useCallback(() => {
     assetPickerModalRef.current?.dismiss();
@@ -323,35 +365,73 @@ export default function VirtualCreativityScreen() {
   }, []);
 
   const handleApplyUploadAsset = useCallback(
-    (item: CreateFlowPickerAssetItem) => {
-      addImageLayersFromUris([item.image]);
-      assetPickerModalRef.current?.dismiss();
+    async (item: CreateFlowPickerAssetItem) => {
+      try {
+        if (!hasMainLayer) {
+          setLayers([createMainImageLayer(item.image)], null);
+          selectLayer(null);
+          restoreDrawingTool();
+          setIsFocusPlacementActive(false);
+          warmSmartFillLookup(item.image);
+          setViewMode("composite");
+        } else {
+          const subLayer = await createSubImageLayer(
+            item.image,
+            allLayersSorted.length + 1,
+          );
+          addLayer(subLayer);
+          selectLayer(subLayer.id);
+          restoreDrawingTool();
+          setIsFocusPlacementActive(false);
+          warmSmartFillLookup(subLayer.uri);
+          setViewMode("single");
+        }
+
+        assetPickerModalRef.current?.dismiss();
+      } catch (error) {
+        console.error("Failed to apply upload asset:", error);
+      }
     },
-    [addImageLayersFromUris],
+    [addLayer, allLayersSorted.length, hasMainLayer, restoreDrawingTool, selectLayer, setLayers, setViewMode, warmSmartFillLookup],
   );
 
   const handlePalette = useCallback(() => {
+    lastDrawingToolRef.current = "palette";
+    if (viewMode === "composite") {
+      selectLayer(null);
+    }
+    setIsFocusPlacementActive(false);
     setSelectedTool("palette");
     setSelectedPatternId(null);
     setPickerMode("color");
     setPatternModalVisible(false);
     setSignatureModalVisible(false);
     setColorPickerVisible(true);
-  }, []);
+  }, [selectLayer, viewMode]);
 
   const handlePattern = useCallback(() => {
+    lastDrawingToolRef.current = "pattern";
+    if (viewMode === "composite") {
+      selectLayer(null);
+    }
+    setIsFocusPlacementActive(false);
     setSelectedTool("pattern");
     setColorPickerVisible(false);
     setSignatureModalVisible(false);
     setPatternModalVisible(true);
-  }, []);
+  }, [selectLayer, viewMode]);
 
   const handleStroke = useCallback(() => {
+    lastDrawingToolRef.current = "stroke";
+    if (viewMode === "composite") {
+      selectLayer(null);
+    }
+    setIsFocusPlacementActive(false);
     setSelectedTool("stroke");
     setColorPickerVisible(false);
     setPatternModalVisible(false);
     setSignatureModalVisible(true);
-  }, []);
+  }, [selectLayer, viewMode]);
 
   const handlePreview = useCallback(async () => {
     setSelectedTool("preview");
@@ -377,38 +457,56 @@ export default function VirtualCreativityScreen() {
     setShowPreviewModal(true);
   }, []);
 
-  const handleSelectLayer = useCallback(
+  const handleSelectCanvasLayer = useCallback(
     (id: string) => {
-      setCompositePreviewLayers(compositeVisibleLayers);
       selectLayer(id);
+      setSelectedTool("gallery");
+      setIsFocusPlacementActive(false);
+      setViewMode("composite");
+    },
+    [selectLayer, setViewMode],
+  );
+
+  const handleOpenLayerEditor = useCallback(
+    (id: string) => {
+      const targetLayer = allLayersSorted.find((layer) => layer.id === id);
+      selectLayer(id);
+      setIsFocusPlacementActive(false);
+      restoreDrawingTool();
+      warmSmartFillLookup(targetLayer?.uri);
       setViewMode("single");
     },
-    [compositeVisibleLayers, selectLayer, setViewMode],
+    [allLayersSorted, restoreDrawingTool, selectLayer, setViewMode, warmSmartFillLookup],
   );
 
-  const displayedLayers =
-    viewMode === "composite"
-      ? compositeVisibleLayers
-      : allLayersSorted.filter((layer) => layer.id === selectedLayerId);
+  const handleCompositeRestore = useCallback(() => {
+    setIsFocusPlacementActive(false);
+    setSelectedTool("gallery");
+    setViewMode("composite");
+  }, [setViewMode]);
 
-  const stripLayers = useMemo(
-    () => layers.filter((layer) => layer.id !== "main-image"),
-    [layers],
-  );
+  const handleExitFocusPlacement = useCallback(() => {
+    if (!isFocusPlacementActive) {
+      return;
+    }
 
-  const bottomBarLayers = useMemo(
-    () => (viewMode === "single" ? compositePreviewLayers : EMPTY_LAYERS),
-    [compositePreviewLayers, viewMode],
-  );
+    setIsFocusPlacementActive(false);
+    setSelectedTool(lastDrawingToolRef.current);
+  }, [isFocusPlacementActive]);
+
+  const handleClearSelection = useCallback(() => {
+    if (viewMode !== "composite") {
+      return;
+    }
+
+    selectLayer(null);
+    setIsFocusPlacementActive(false);
+    restoreDrawingTool();
+  }, [restoreDrawingTool, selectLayer, viewMode]);
 
   const handleZoomReset = useCallback(() => {
     setZoomResetKey((prev) => prev + 1);
   }, []);
-
-  const handleCompositeRestore = useCallback(() => {
-    setViewMode("composite");
-    selectLayer(null);
-  }, [selectLayer, setViewMode]);
 
   const handleCloseColorPicker = useCallback(() => {
     setColorPickerVisible(false);
@@ -481,7 +579,7 @@ export default function VirtualCreativityScreen() {
           onNext={handleNext}
           canUndo={history.past.length > 0}
           canRedo={history.future.length > 0}
-          hasSelection={viewMode === "single" && !!selectedLayerId}
+          hasSelection={!!selectedSubLayerId}
           canReorder={!!activeOrderLayerId}
           canDelete={canDeleteLayer}
           isZoomActive={isZoomMode}
@@ -497,23 +595,35 @@ export default function VirtualCreativityScreen() {
           ) : (
             <CanvasViewer
               layers={displayedLayers}
-              activeLayerId={
-                viewMode === "single" ? selectedLayerId : "main-image"
+              activeLayerId={activeCanvasLayerId}
+              selectedLayerId={selectedSubLayerId}
+              onSelectLayer={
+                viewMode === "composite" ? handleSelectCanvasLayer : undefined
               }
+              onClearSelection={handleClearSelection}
+              onExitFocusPlacement={handleExitFocusPlacement}
               isZoomMode={isZoomMode}
               currentColor={brush.color}
               zoomResetKey={zoomResetKey}
               currentBrushKind={brush.kind}
               currentPatternUri={brush.patternUri}
               currentSolidMode={brush.solidMode}
+              subLayerGesturesEnabled={
+                viewMode === "composite" &&
+                selectedTool === "gallery" &&
+                !!selectedSubLayerId &&
+                !isZoomMode
+              }
+              focusPlacementEnabled={false}
+              hideSelectionUI={isZoomMode || isCanvasCaptureInProgress}
             />
           )}
         </View>
 
         <LayerStrip
           layers={stripLayers}
-          selectedLayerId={selectedLayerId}
-          onSelectLayer={handleSelectLayer}
+          selectedLayerId={selectedSubLayerId}
+          onSelectLayer={handleOpenLayerEditor}
           horizontalInset={HORIZONTAL_GUTTER}
         />
 
@@ -616,6 +726,3 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
   },
 });
-
-
-

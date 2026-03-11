@@ -55,7 +55,6 @@ interface VirtualCreativityStore {
   canvasSize: { width: number; height: number };
   pendingUploadUris: string[];
 
-  // Actions
   setCanvasSize: (size: { width: number; height: number }) => void;
   setLayers: (layers: VirtualLayer[], selectedLayerId?: string | null) => void;
   addLayer: (layer: VirtualLayer) => void;
@@ -73,20 +72,16 @@ interface VirtualCreativityStore {
   removeSnapshot: (id: string) => void;
   clearSnapshots: () => void;
 
-  // Upload coordination
   setPendingUploadUris: (uris: string[]) => void;
   clearPendingUploadUris: () => void;
 
-  // Z-Index / Order
   bringToFront: (id: string, addToHistory?: boolean) => void;
   sendToBack: (id: string, addToHistory?: boolean) => void;
 
-  // History
   undo: () => void;
   redo: () => void;
   reset: () => void;
 
-  // Internal
   history: HistoryState;
 }
 
@@ -175,7 +170,9 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     removeLayer: (id) => {
       const { layers, history } = get();
       const newHistory = buildHistory(history, layers);
-      const nextLayers = normalizeZIndex(layers.filter((layer) => layer.id !== id));
+      const nextLayers = normalizeZIndex(
+        layers.filter((layer) => layer.id !== id),
+      );
       set({
         layers: nextLayers,
         selectedLayerId: null,
@@ -244,11 +241,19 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
     sendToBack: (id, addToHistory = true) => {
       const { layers, history } = get();
       const index = layers.findIndex((layer) => layer.id === id);
-      if (index === -1 || index === 0) return;
+      if (index === -1) return;
+
+      const mainLayerIndex = layers.findIndex((layer) => layer.id === "main-image");
+      const targetIndex =
+        mainLayerIndex >= 0 && id !== "main-image" ? mainLayerIndex + 1 : 0;
+
+      if (index === targetIndex) {
+        return;
+      }
 
       const newLayers = [...layers];
       const [item] = newLayers.splice(index, 1);
-      newLayers.unshift(item);
+      newLayers.splice(targetIndex, 0, item);
 
       if (addToHistory) {
         set({
@@ -310,5 +315,3 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
       }),
   }),
 );
-
-

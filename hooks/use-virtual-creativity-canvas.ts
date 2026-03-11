@@ -76,7 +76,7 @@ export function useBrush(
   const [brush, setBrush] = useState<BrushState>({
     kind: "solid",
     color: initialColor,
-    solidMode: "free-draw",
+    solidMode: "object-draw",
   });
 
   useEffect(() => {

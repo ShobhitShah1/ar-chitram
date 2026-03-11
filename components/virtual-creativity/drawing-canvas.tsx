@@ -210,10 +210,27 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     return null;
   }, [isObjectDrawMode, requestActiveRegion]);
 
-  const getBaseStrokeWidth = useCallback(
-    () => DRAW_STROKE_WIDTH / (zoomScale ? zoomScale.value : 1),
-    [zoomScale],
-  );
+  const getRenderScale = useCallback(() => {
+    const renderedWidth = viewWidth.value;
+    const renderedHeight = viewHeight.value;
+
+    if (renderedWidth <= 0 || renderedHeight <= 0) {
+      return 1;
+    }
+
+    return Math.max(
+      Math.min(
+        renderedWidth / Math.max(layerWidth, 1),
+        renderedHeight / Math.max(layerHeight, 1),
+      ),
+      0.0001,
+    );
+  }, [layerHeight, layerWidth, viewHeight, viewWidth]);
+
+  const getBaseStrokeWidth = useCallback(() => {
+    const zoomFactor = zoomScale ? zoomScale.value : 1;
+    return DRAW_STROKE_WIDTH / (zoomFactor * getRenderScale());
+  }, [getRenderScale, zoomScale]);
 
   const getObjectStrokeWidth = useCallback(
     (spaceWidth: number, spaceHeight: number) => {
@@ -377,10 +394,10 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     [onSmartFill],
   );
 
-  const getEraseRadius = useCallback(() => {
-    const scale = zoomScale ? zoomScale.value : 1;
-    return (DRAW_STROKE_WIDTH * 0.55) / scale;
-  }, [zoomScale]);
+  const getEraseRadius = useCallback(
+    () => getBaseStrokeWidth() * 0.55,
+    [getBaseStrokeWidth],
+  );
 
   const beginErase = useCallback(
     (point: CanvasPoint) => {

@@ -30,8 +30,8 @@ const HUE_BAR_HEIGHT = 30;
 const THUMB_SIZE = 22;
 
 const COLOR_MODE_OPTIONS: { mode: SolidDrawMode; label: string }[] = [
-  { mode: "free-draw", label: "Free" },
   { mode: "object-draw", label: "Object" },
+  { mode: "free-draw", label: "Free" },
   { mode: "tap-fill", label: "Tap" },
   { mode: "erase", label: "Erase" },
 ];
@@ -168,7 +168,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
   const [activeColor, setActiveColor] = useState<1 | 2>(1);
   const [solidMode, setSolidMode] = useState<SolidDrawMode>(
-    initialSolidMode ?? "free-draw",
+    initialSolidMode ?? "object-draw",
   );
 
   const rgb1 = hsvToRgb(hue1, saturation1, brightness1);
@@ -183,7 +183,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
   const syncPickerState = useCallback(() => {
     if (mode === "color") {
-      setSolidMode(initialSolidMode ?? "free-draw");
+      setSolidMode(initialSolidMode ?? "object-draw");
       setActiveColor(1);
 
       if (!initialColor) {
