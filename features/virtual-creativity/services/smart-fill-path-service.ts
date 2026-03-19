@@ -5,7 +5,7 @@ import {
   type SmartFillPreparedLookup,
 } from "smart-fill-segmentation";
 
-import { mapLayerPointToSmartFillSpace } from "@/services/smart-fill-layout";
+import { mapLayerPointToSmartFillSpace } from "@/features/virtual-creativity/services/smart-fill-layout";
 import { normalizeStoryImageUri } from "@/services/story-media-service";
 import { sanitizeSvgPathData } from "@/services/svg-path-utils";
 

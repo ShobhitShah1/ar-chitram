@@ -6,7 +6,7 @@ import {
   getContestTabAssetUrl,
   getDrawingAssetUrl,
   getSketchAssetUrl,
-} from "@/utiles/asset-url";
+} from "@/utils/asset-url";
 
 export interface TabAssetItem {
   id: string;

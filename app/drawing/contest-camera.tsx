@@ -8,7 +8,7 @@ import { CameraPermissionView } from "@/components/camera/camera-permission-view
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "@/components/ui/primary-button";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 const ContestCamera = () => {
   const insets = useSafeAreaInsets();

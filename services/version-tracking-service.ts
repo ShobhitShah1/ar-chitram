@@ -5,7 +5,7 @@
  * Uses MMKV storage that persists across app updates and logouts.
  */
 import { debugLog } from "@/constants/debug";
-import { storage } from "@/utiles/storage";
+import { storage } from "@/utils/storage";
 import Constants from "expo-constants";
 import { makeApiRequest } from "./api-service";
 

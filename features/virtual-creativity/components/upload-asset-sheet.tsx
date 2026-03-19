@@ -34,13 +34,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CommonBottomSheet } from "../common-bottom-sheet";
+import { CommonBottomSheet } from "@/components/common-bottom-sheet";
+import { UploadEntryButton } from "./upload-entry-button";
 
 const SHEET_HORIZONTAL_PADDING = 12;
 const SHEET_TOP_PADDING = 14;
 const HEADER_HEIGHT = 52;
 const SOURCE_FILTER_HEIGHT = 48;
 const CATEGORY_FILTER_HEIGHT = 36;
+const UPLOAD_SECTION_HEIGHT = 72;
 const SELECTION_META_HEIGHT = 20;
 const THUMB_SIZE = 72;
 const THUMB_IMAGE_INSET = 6;
@@ -62,6 +64,7 @@ interface UploadAssetSheetProps {
   assets: CreateFlowPickerAssetItem[];
   isLoading: boolean;
   isError: boolean;
+  bottomInset?: number;
   onClose: () => void;
   onDone: (item: CreateFlowPickerAssetItem) => void;
   onRetry?: () => void;
@@ -71,6 +74,8 @@ interface UploadAssetSheetProps {
   categoryOptions: readonly PickerFilterOption[];
   selectedCategoryId: string;
   onSelectCategory: (id: string) => void;
+  onUploadPress?: () => void;
+  isUploadActionBusy?: boolean;
 }
 
 interface ThumbnailTileProps {
@@ -155,13 +160,7 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
 );
 
 const SourceSegment: React.FC<SourceSegmentProps> = memo(
-  ({
-    label,
-    selected,
-    onPress,
-    textColor,
-    selectedTextColor,
-  }) => {
+  ({ label, selected, onPress, textColor, selectedTextColor }) => {
     const progress = useSharedValue(selected ? 1 : 0);
 
     useEffect(() => {
@@ -252,6 +251,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   assets,
   isLoading,
   isError,
+  bottomInset = 0,
   onClose,
   onDone,
   onRetry,
@@ -261,10 +261,13 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   categoryOptions,
   selectedCategoryId,
   onSelectCategory,
+  onUploadPress,
+  isUploadActionBusy = false,
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const resolvedBottomInset = Math.max(bottomInset, insets.bottom);
 
   const previewListRef = useRef<FlatList<CreateFlowPickerAssetItem> | null>(
     null,
@@ -276,7 +279,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [segmentedControlWidth, setSegmentedControlWidth] = useState(0);
 
-  const sheetBottomPadding = Math.max(insets.bottom, 12);
+  const sheetBottomPadding = Math.max(resolvedBottomInset, 12);
   const previewWidth = Math.max(screenWidth, 1);
   const previewCardWidth = Math.max(
     screenWidth - SHEET_HORIZONTAL_PADDING * 2,
@@ -289,6 +292,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
 
   const hasSourceFilters = sourceOptions.length > 1;
   const hasCategoryFilters = categoryOptions.length > 1;
+  const hasUploadAction = !!onUploadPress;
   const sourceSegmentCount = Math.max(sourceOptions.length, 1);
   const selectedSourceIndex = useMemo(
     () =>
@@ -304,9 +308,13 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
     0,
   );
   const sectionCount =
-    5 + Number(hasSourceFilters) + Number(hasCategoryFilters);
+    5 +
+    Number(hasSourceFilters) +
+    Number(hasCategoryFilters) +
+    Number(hasUploadAction);
   const occupiedHeight =
     HEADER_HEIGHT +
+    (hasUploadAction ? UPLOAD_SECTION_HEIGHT : 0) +
     THUMB_SECTION_HEIGHT +
     ACTION_SECTION_HEIGHT +
     SELECTION_META_HEIGHT +
@@ -316,7 +324,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   const fixedSheetHeight = useMemo(() => {
     const maxAllowed = Math.max(screenHeight - 12, 440);
     const minPreferred = Math.min(560, maxAllowed);
-    const target = Math.min(screenHeight * 0.82, maxAllowed);
+    const target = Math.min(screenHeight, maxAllowed);
 
     return Math.round(Math.max(minPreferred, target));
   }, [screenHeight]);
@@ -372,11 +380,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
         easing: Easing.out(Easing.cubic),
       },
     );
-  }, [
-    segmentedIndicatorOffset,
-    segmentedIndicatorWidth,
-    selectedSourceIndex,
-  ]);
+  }, [segmentedIndicatorOffset, segmentedIndicatorWidth, selectedSourceIndex]);
 
   const handleRequestClose = useCallback(() => {
     modalRef.current?.dismiss();
@@ -571,9 +575,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
       snapPoints={[fixedSheetHeight]}
       contentContainerStyle={[
         styles.sheetContent,
-        {
-          paddingBottom: sheetBottomPadding,
-        },
+        { paddingBottom: sheetBottomPadding },
       ]}
       backgroundStyle={{
         backgroundColor: sheetBackground,
@@ -608,8 +610,12 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
           </Pressable>
 
           <View style={styles.headerTextWrap}>
-            <Text style={[styles.headerTitle, { color: textPrimary }]}>Add Image</Text>
-            <Text style={[styles.headerSubtitle, { color: textSecondary }]}>Color, draw and sketch</Text>
+            <Text style={[styles.headerTitle, { color: textPrimary }]}>
+              Add Image
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: textSecondary }]}>
+              Color, draw and sketch
+            </Text>
           </View>
 
           <AnimatedPressable
@@ -683,7 +689,20 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
               keyExtractor={(item) => item.id}
               renderItem={renderCategoryTab}
               contentContainerStyle={styles.categoryTabsContent}
-              ItemSeparatorComponent={() => <View style={styles.categorySpacer} />}
+              ItemSeparatorComponent={() => (
+                <View style={styles.categorySpacer} />
+              )}
+            />
+          </View>
+        ) : null}
+
+        {hasUploadAction ? (
+          <View style={styles.uploadSection}>
+            <UploadEntryButton
+              title="Upload From Library"
+              subtitle="Use your own image with the same background-removal flow"
+              onPress={onUploadPress ?? (() => {})}
+              disabled={isUploadActionBusy}
             />
           </View>
         ) : null}
@@ -692,11 +711,15 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
           {isLoading ? (
             <View style={styles.stateWrap}>
               <ActivityIndicator color={loadingIndicatorColor} size="small" />
-              <Text style={[styles.stateText, { color: textSecondary }]}>Loading images...</Text>
+              <Text style={[styles.stateText, { color: textSecondary }]}>
+                Loading images...
+              </Text>
             </View>
           ) : isError && assets.length === 0 ? (
             <View style={styles.stateWrap}>
-              <Text style={[styles.stateText, { color: textPrimary }]}>Unable to load images.</Text>
+              <Text style={[styles.stateText, { color: textPrimary }]}>
+                Unable to load images.
+              </Text>
               {onRetry ? (
                 <Pressable
                   style={[
@@ -708,13 +731,17 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
                   ]}
                   onPress={onRetry}
                 >
-                  <Text style={[styles.retryText, { color: textPrimary }]}>Retry</Text>
+                  <Text style={[styles.retryText, { color: textPrimary }]}>
+                    Retry
+                  </Text>
                 </Pressable>
               ) : null}
             </View>
           ) : assets.length === 0 ? (
             <View style={styles.stateWrap}>
-              <Text style={[styles.stateText, { color: textPrimary }]}>No images available.</Text>
+              <Text style={[styles.stateText, { color: textPrimary }]}>
+                No images available.
+              </Text>
             </View>
           ) : (
             <AnimatedFlatList
@@ -742,11 +769,23 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
         <View style={styles.selectionMetaRow}>
           {selectedAsset ? (
             <>
-              <Text style={[styles.selectionMetaPrimary, { color: textPrimary }]}> 
+              <Text
+                style={[styles.selectionMetaPrimary, { color: textPrimary }]}
+              >
                 {selectedAsset.sourceLabel}
               </Text>
-              <View style={[styles.selectionMetaDot, { backgroundColor: borderColor }]} />
-              <Text style={[styles.selectionMetaSecondary, { color: textSecondary }]}> 
+              <View
+                style={[
+                  styles.selectionMetaDot,
+                  { backgroundColor: borderColor },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.selectionMetaSecondary,
+                  { color: textSecondary },
+                ]}
+              >
                 {selectedAsset.categoryName}
               </Text>
             </>
@@ -806,6 +845,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: CONTENT_VERTICAL_GAP,
+  },
+  uploadSection: {
+    paddingHorizontal: SHEET_HORIZONTAL_PADDING,
+    minHeight: UPLOAD_SECTION_HEIGHT,
   },
   headerRow: {
     flexDirection: "row",
@@ -1021,5 +1064,3 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
 });
-
-

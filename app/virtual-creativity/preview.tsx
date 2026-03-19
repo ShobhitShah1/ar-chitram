@@ -8,18 +8,11 @@ import Header from "@/components/header";
 import { StoryFramePreviewCard } from "@/components/story/story-frame-preview-card";
 import PrimaryButton from "@/components/ui/primary-button";
 import { useTheme } from "@/context/theme-context";
-import { SignatureOverlay } from "@/components/signature/signature-overlay";
 
 const VirtualCreativityPreview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { imageUri, signatureText, signatureFont } = useLocalSearchParams();
-  const normalizedSignatureText = Array.isArray(signatureText)
-    ? signatureText[0]
-    : signatureText;
-  const normalizedSignatureFont = Array.isArray(signatureFont)
-    ? signatureFont[0]
-    : signatureFont;
+  const { imageUri } = useLocalSearchParams();
 
   const handleContinue = () => {
     // Navigate to Guide with the image Uri
@@ -27,8 +20,6 @@ const VirtualCreativityPreview = () => {
       pathname: "/drawing/guide",
       params: {
         imageUri: imageUri,
-        signatureText: normalizedSignatureText,
-        signatureFont: normalizedSignatureFont,
       },
     });
   };
@@ -45,12 +36,7 @@ const VirtualCreativityPreview = () => {
         <StoryFramePreviewCard
           source={displayImage}
           cardBackgroundColor={theme.cardBackground}
-        >
-          <SignatureOverlay
-            signatureText={signatureText as any}
-            signatureFontFamily={signatureFont as any}
-          />
-        </StoryFramePreviewCard>
+        />
       </View>
 
       {/* Footer */}

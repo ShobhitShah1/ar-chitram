@@ -15,22 +15,22 @@ import Svg, {
   Pattern,
 } from "react-native-svg";
 
-import { DrawingLayerSvg } from "@/components/virtual-creativity/drawing-layer-svg";
+import { DrawingLayerSvg } from "@/features/virtual-creativity/components/drawing-layer-svg";
 import { sanitizeSvgPathData } from "@/services/svg-path-utils";
 import {
   getSmartFillDisplayLayout,
   mapLayerPointToSmartFillSpace,
-} from "@/services/smart-fill-layout";
+} from "@/features/virtual-creativity/services/smart-fill-layout";
 import type {
   SmartFillRegion,
   SmartFillSpace,
-} from "@/services/smart-fill-path-service";
+} from "@/features/virtual-creativity/services/smart-fill-path-service";
 import {
   BrushKind,
   DrawingPath,
   SolidDrawMode,
-} from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+} from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 const DRAW_STROKE_WIDTH = 50;
 const PATTERN_TILE_SIZE = 60;

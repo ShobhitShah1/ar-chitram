@@ -17,7 +17,7 @@ import Animated, {
   LinearTransition,
 } from "react-native-reanimated";
 
-import { VirtualLayer } from "@/store/virtual-creativity-store";
+import { VirtualLayer } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { CompositePreview } from "./composite-preview";
 
 export type ToolType = "gallery" | "palette" | "pattern" | "stroke" | "preview";
@@ -207,8 +207,14 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
             onLongPress={onPreviewLongPress}
             style={styles.btn}
           >
-            <View style={[styles.iconContainer, getIconContainerStyle("preview")]}>
-              <Image source={ic_preview_eye} style={styles.icon} contentFit="contain" />
+            <View
+              style={[styles.iconContainer, getIconContainerStyle("preview")]}
+            >
+              <Image
+                source={ic_preview_eye}
+                style={styles.icon}
+                contentFit="contain"
+              />
               {previewBadge > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{previewBadge}</Text>
@@ -237,7 +243,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 16,
+    // paddingBottom: 16,
+    paddingTop: 5,
   },
   btn: {
     width: 60,

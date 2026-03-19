@@ -5,7 +5,7 @@ import {
   STORY_FRAME_ASPECT_RATIO,
   STORY_FRAME_HEIGHT,
   STORY_FRAME_WIDTH,
-} from "@/utiles/story-frame";
+} from "@/utils/story-frame";
 
 export interface NormalizeStoryImageOptions {
   targetWidth?: number;

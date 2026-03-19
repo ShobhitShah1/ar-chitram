@@ -9,7 +9,7 @@ import {
 import { FontFamily } from "@/constants/fonts";
 import { FACEBOOK_LINK, INSTAGRAM_LINK } from "@/constants/server";
 import { useTheme } from "@/context/theme-context";
-import { openAppForRating, shareAppWithFriends } from "@/utiles/app-utilities";
+import { openAppForRating, shareAppWithFriends } from "@/utils/app-utilities";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";

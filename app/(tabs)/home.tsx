@@ -1,12 +1,13 @@
 import { EmptyState } from "@/components/empty-state";
 import { HorizontalGallery } from "@/components/horizontal-gallery";
+import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { StoryRow } from "@/components/story/story-row";
 import TabsHeader from "@/components/tabs-header";
 import { View } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
 import { useHomeTabAssets } from "@/hooks/api";
-import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
-import { pickImageUris } from "@/utiles/image-picker";
+import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import React from "react";
@@ -21,13 +22,26 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
 
 export default function Home() {
-  const addImageLayersFromUris = useVirtualCreativityStore(
-    (state) => state.addImageLayersFromUris,
+  const resetVirtualCreativity = useVirtualCreativityStore(
+    (state) => state.reset,
+  );
+  const setPendingUploadUris = useVirtualCreativityStore(
+    (state) => state.setPendingUploadUris,
   );
   const { data, isLoading, isError, refetch } = useHomeTabAssets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [refreshing, setRefreshing] = React.useState(false);
   const hasAutoRequestedPermission = React.useRef(false);
+  const { startUploadFlow, modalProps } = useImageUploadFlow({
+    title: "Start With Your Photo",
+    description:
+      "Upload one image, preview the background removal, then save it for Virtual Creativity.",
+    doneLabel: "Save",
+    onComplete: ({ finalUri }) => {
+      resetVirtualCreativity();
+      setPendingUploadUris([finalUri]);
+    },
+  });
 
   const onRefresh = React.useCallback(() => {
     if (refreshing) {
@@ -66,14 +80,9 @@ export default function Home() {
 
   const handleLikePress = () => {};
 
-  const handleUploadPress = async () => {
-    const uris = await pickImageUris({ allowMultiple: true });
-    if (!uris.length) {
-      return;
-    }
-
-    addImageLayersFromUris(uris);
-  };
+  const handleUploadPress = React.useCallback(() => {
+    void startUploadFlow();
+  }, [startUploadFlow]);
 
   return (
     <View style={{ paddingTop: (StatusBar.currentHeight ?? 0) + 10, flex: 1 }}>
@@ -129,6 +138,8 @@ export default function Home() {
           )}
         </Animated.ScrollView>
       </KeyboardAvoidingView>
+
+      <ImageUploadFlowModal {...modalProps} />
     </View>
   );
 }

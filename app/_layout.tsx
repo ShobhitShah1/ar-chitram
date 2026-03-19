@@ -8,8 +8,8 @@ import {
 import { UserProvider } from "@/context/user-context";
 import { initializeApiAuth } from "@/hooks/api/use-auth-api";
 import { handleVersionTracking } from "@/services/version-tracking-service";
-import { useCommonHeaderOptions } from "@/utiles/header-config";
-import { toastConfig } from "@/utiles/toast-config";
+import { useCommonHeaderOptions } from "@/utils/header-config";
+import { toastConfig } from "@/utils/toast-config";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   DarkTheme,

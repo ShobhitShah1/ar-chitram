@@ -12,16 +12,15 @@ import {
 import {
   CreateAssetPickerSheet,
   type CreateSheetAssetItem,
-} from "@/components/create-asset-picker-sheet";
+} from "@/features/virtual-creativity/components/create-asset-picker-sheet";
+import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import TabItem from "@/components/tab-item";
 import { ProfileProvider } from "@/context/profile-context";
 import { useTheme } from "@/context/theme-context";
 import { useCreateFlowTabAssetsGrid } from "@/hooks/api";
-import {
-  type VirtualLayer,
-  useVirtualCreativityStore,
-} from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Tabs, usePathname } from "expo-router";
@@ -179,23 +178,9 @@ export default function TabLayout() {
     createSheetRef.current?.dismiss();
   }, []);
 
-  const handleCreateDone = useCallback(
-    (item: CreateSheetAssetItem) => {
-      const mainLayer: VirtualLayer = {
-        id: "main-image",
-        type: "image",
-        uri: item.image,
-        x: 0,
-        y: 0,
-        width: STORY_FRAME_WIDTH,
-        height: STORY_FRAME_HEIGHT,
-        rotation: 0,
-        scale: 1,
-        opacity: 1,
-        zIndex: 1,
-      };
-
-      setLayers([mainLayer], "main-image");
+  const openCanvasWithImage = useCallback(
+    (uri: string) => {
+      setLayers([createMainImageLayer(uri)], null);
       closeCreateSheet();
 
       requestAnimationFrame(() => {
@@ -204,6 +189,23 @@ export default function TabLayout() {
     },
     [closeCreateSheet, setLayers],
   );
+
+  const handleCreateDone = useCallback(
+    (item: CreateSheetAssetItem) => {
+      openCanvasWithImage(item.image);
+    },
+    [openCanvasWithImage],
+  );
+
+  const { startUploadFlow, isPickingImage, modalProps } = useImageUploadFlow({
+    title: "Upload Your Own Image",
+    description:
+      "Pick a photo, preview the background removal, then continue into Virtual Creativity.",
+    doneLabel: "Continue",
+    onComplete: ({ finalUri }) => {
+      openCanvasWithImage(finalUri);
+    },
+  });
 
   const handleRetryCreateAssets = useCallback(() => {
     void refetch();
@@ -288,7 +290,13 @@ export default function TabLayout() {
           onClose={closeCreateSheet}
           onDone={handleCreateDone}
           onRetry={handleRetryCreateAssets}
+          onUploadPress={() => {
+            void startUploadFlow();
+          }}
+          isUploadActionBusy={isPickingImage}
         />
+
+        <ImageUploadFlowModal {...modalProps} />
       </>
     </ProfileProvider>
   );
@@ -320,7 +328,6 @@ const styles = StyleSheet.create({
     height: 55,
   },
 });
-
 
 
 

@@ -4,7 +4,7 @@ import {
   deleteFromSecureStore,
   getFromSecureStore,
   saveToSecureStore,
-} from "@/utiles/secure-storage";
+} from "@/utils/secure-storage";
 import axios, { AxiosError, AxiosResponse } from "axios";
 
 export interface ApiError {

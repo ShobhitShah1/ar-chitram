@@ -1,12 +1,11 @@
-﻿import React from "react";
+import React from "react";
 import { StyleSheet, View } from "react-native";
-import { Image } from "expo-image";
-
-import { DrawingLayerSvg } from "@/components/virtual-creativity/drawing-layer-svg";
-import { getSmartFillDisplayLayout } from "@/services/smart-fill-layout";
-import { getVirtualLayerRenderMetrics } from "@/services/virtual-layer-service";
-import { type VirtualLayer } from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+import { DrawingLayerSvg } from "@/features/virtual-creativity/components/drawing-layer-svg";
+import { VirtualLayerVisual } from "@/features/virtual-creativity/components/layer-visual";
+import { getSmartFillDisplayLayout } from "@/features/virtual-creativity/services/smart-fill-layout";
+import { getVirtualLayerRenderMetrics } from "@/features/virtual-creativity/services/virtual-layer-service";
+import { type VirtualLayer } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 interface CompositePreviewProps {
   layers: VirtualLayer[];
@@ -89,13 +88,7 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
                 },
               ]}
             >
-              {layer.uri ? (
-                <Image
-                  source={{ uri: layer.uri }}
-                  style={styles.image}
-                  contentFit="contain"
-                />
-              ) : null}
+              <VirtualLayerVisual layer={layer} />
               {showDrawings ? (
                 <DrawingLayerSvg
                   idPrefix={`preview-${layer.id}`}
@@ -125,9 +118,5 @@ const styles = StyleSheet.create({
   },
   layer: {
     position: "absolute",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
   },
 });

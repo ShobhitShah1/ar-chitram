@@ -1,4 +1,4 @@
-import { getStoryFrameSize, StoryFrameSize } from "@/utiles/story-frame";
+import { getStoryFrameSize, StoryFrameSize } from "@/utils/story-frame";
 import { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
 

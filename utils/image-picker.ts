@@ -1,5 +1,4 @@
 import * as ImagePicker from "expo-image-picker";
-import { MediaType } from "expo-media-library";
 
 interface PickImageOptions {
   allowMultiple?: boolean;
@@ -29,4 +28,9 @@ export const pickImageUris = async (
   return result.assets
     .map((asset) => asset.uri)
     .filter((uri): uri is string => !!uri);
+};
+
+export const pickImageUri = async (): Promise<string | null> => {
+  const [uri] = await pickImageUris({ allowMultiple: false });
+  return uri ?? null;
 };

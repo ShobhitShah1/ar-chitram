@@ -4,7 +4,7 @@ import {
   NormalizeStoryImageOptions,
   normalizeImageToStoryFrame,
 } from "@/services/story-image-service";
-import { isLocalAssetUri } from "@/utiles/story-frame";
+import { isLocalAssetUri } from "@/utils/story-frame";
 
 interface StoryCaptureOptions extends NormalizeStoryImageOptions {
   quality?: number;

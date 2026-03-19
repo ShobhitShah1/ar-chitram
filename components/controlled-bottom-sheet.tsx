@@ -9,6 +9,7 @@ interface ControlledBottomSheetProps {
   onClose: () => void;
   children: React.ReactNode;
   snapPoints?: ReadonlyArray<string | number>;
+  bottomInset?: number;
   enablePanDownToClose?: boolean;
   backgroundStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
@@ -26,6 +27,7 @@ export const ControlledBottomSheet: React.FC<ControlledBottomSheetProps> = ({
   onClose,
   children,
   snapPoints,
+  bottomInset,
   enablePanDownToClose,
   backgroundStyle,
   contentContainerStyle,
@@ -68,6 +70,7 @@ export const ControlledBottomSheet: React.FC<ControlledBottomSheetProps> = ({
       modalRef={modalRef}
       onDismiss={handleDismiss}
       snapPoints={snapPoints}
+      bottomInset={bottomInset}
       enablePanDownToClose={enablePanDownToClose}
       backgroundStyle={backgroundStyle}
       contentContainerStyle={contentContainerStyle}

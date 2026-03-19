@@ -8,24 +8,25 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 
-import { CanvasLayer } from "@/components/virtual-creativity/canvas-layer";
-import { DrawingLayerSvg } from "@/components/virtual-creativity/drawing-layer-svg";
-import { doesDrawingPathHitPoint } from "@/services/drawing-hit-test-service";
-import { getSmartFillDisplayLayout } from "@/services/smart-fill-layout";
+import { CanvasLayer } from "@/features/virtual-creativity/components/canvas-layer";
+import { DrawingLayerSvg } from "@/features/virtual-creativity/components/drawing-layer-svg";
+import { VirtualLayerVisual } from "@/features/virtual-creativity/components/layer-visual";
+import { doesDrawingPathHitPoint } from "@/features/virtual-creativity/services/drawing-hit-test-service";
+import { getSmartFillDisplayLayout } from "@/features/virtual-creativity/services/smart-fill-layout";
 import {
   getSmartFillErrorMessage,
   primeSmartFillLookup,
   resolveSmartFillRegion,
   type SmartFillSpace,
-} from "@/services/smart-fill-path-service";
+} from "@/features/virtual-creativity/services/smart-fill-path-service";
 import {
   type BrushKind,
   type DrawingPath,
   type SolidDrawMode,
   type VirtualLayer,
   useVirtualCreativityStore,
-} from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+} from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 import { DrawingCanvas } from "./drawing-canvas";
 
@@ -34,11 +35,18 @@ type CanvasPoint = {
   y: number;
 };
 
+const VIEWPORT_RESET_SPRING = {
+  damping: 24,
+  stiffness: 220,
+  mass: 0.6,
+} as const;
+
 interface CanvasViewerProps {
   layers: VirtualLayer[];
   activeLayerId?: string | null;
   selectedLayerId?: string | null;
   onSelectLayer?: (id: string) => void;
+  onLongPressLayer?: (id: string) => void;
   onClearSelection?: () => void;
   onClearSelectionToDraw?: () => void;
   onExitFocusPlacement?: () => void;
@@ -58,6 +66,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   activeLayerId,
   selectedLayerId,
   onSelectLayer,
+  onLongPressLayer,
   onClearSelection,
   onClearSelectionToDraw,
   onExitFocusPlacement,
@@ -115,10 +124,26 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     () => sortedLayers.find((layer) => layer.id === "main-image") ?? null,
     [sortedLayers],
   );
-  const subLayers = React.useMemo(
-    () => sortedLayers.filter((layer) => layer.id !== "main-image"),
-    [sortedLayers],
-  );
+  const selectedBackLayerId = React.useMemo(() => {
+    if (!mainLayer || !selectedLayerId) {
+      return null;
+    }
+
+    const selectedLayer =
+      sortedLayers.find((layer) => layer.id === selectedLayerId) ?? null;
+    if (!selectedLayer || selectedLayer.id === "main-image") {
+      return null;
+    }
+
+    return selectedLayer.zIndex < mainLayer.zIndex ? selectedLayer.id : null;
+  }, [mainLayer, selectedLayerId, sortedLayers]);
+  const isolatedEditingLayer = React.useMemo(() => {
+    if (mainLayer || sortedLayers.length !== 1) {
+      return null;
+    }
+
+    return sortedLayers[0];
+  }, [mainLayer, sortedLayers]);
   const focusLayer = React.useMemo(
     () => (focusPlacementEnabled && sortedLayers.length === 1 ? sortedLayers[0] : null),
     [focusPlacementEnabled, sortedLayers],
@@ -150,6 +175,37 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
     return canvasSize.height / focusStageScale;
   }, [canvasSize.height, focusLayer, focusStageScale]);
+  const isolatedStageScale = React.useMemo(() => {
+    if (
+      !isolatedEditingLayer ||
+      canvasSize.width <= 0 ||
+      canvasSize.height <= 0
+    ) {
+      return 1;
+    }
+
+    return Math.max(
+      Math.min(
+        canvasSize.width / Math.max(isolatedEditingLayer.width, 1),
+        canvasSize.height / Math.max(isolatedEditingLayer.height, 1),
+      ),
+      0.0001,
+    );
+  }, [canvasSize.height, canvasSize.width, isolatedEditingLayer]);
+  const isolatedReferenceWidth = React.useMemo(() => {
+    if (!isolatedEditingLayer || isolatedStageScale <= 0) {
+      return STORY_FRAME_WIDTH;
+    }
+
+    return canvasSize.width / isolatedStageScale;
+  }, [canvasSize.width, isolatedEditingLayer, isolatedStageScale]);
+  const isolatedReferenceHeight = React.useMemo(() => {
+    if (!isolatedEditingLayer || isolatedStageScale <= 0) {
+      return STORY_FRAME_HEIGHT;
+    }
+
+    return canvasSize.height / isolatedStageScale;
+  }, [canvasSize.height, isolatedEditingLayer, isolatedStageScale]);
   const usesPatternBrush =
     currentBrushKind === "pattern" && !!currentPatternUri;
   const supportsSmartFillBrush =
@@ -173,9 +229,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   );
 
   React.useEffect(() => {
-    scale.value = withSpring(1);
-    translateX.value = withSpring(0);
-    translateY.value = withSpring(0);
+    scale.value = withSpring(1, VIEWPORT_RESET_SPRING);
+    translateX.value = withSpring(0, VIEWPORT_RESET_SPRING);
+    translateY.value = withSpring(0, VIEWPORT_RESET_SPRING);
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
@@ -191,9 +247,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   ]);
 
   React.useEffect(() => {
-    scale.value = withSpring(1);
-    translateX.value = withSpring(0);
-    translateY.value = withSpring(0);
+    scale.value = withSpring(1, VIEWPORT_RESET_SPRING);
+    translateX.value = withSpring(0, VIEWPORT_RESET_SPRING);
+    translateY.value = withSpring(0, VIEWPORT_RESET_SPRING);
     savedScale.value = 1;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
@@ -271,9 +327,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     })
     .onEnd(() => {
       if (scale.value < 1) {
-        scale.value = withSpring(1);
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
+        scale.value = withSpring(1, VIEWPORT_RESET_SPRING);
+        translateX.value = withSpring(0, VIEWPORT_RESET_SPRING);
+        translateY.value = withSpring(0, VIEWPORT_RESET_SPRING);
         savedScale.value = 1;
         savedTranslateX.value = 0;
         savedTranslateY.value = 0;
@@ -552,7 +608,10 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       <>
         {sortedLayers.map((layer) => {
           const isLayerCanvasEnabled =
-            layer.id === activeLayerId && !subLayerGesturesEnabled;
+            layer.id === activeLayerId &&
+            !subLayerGesturesEnabled &&
+            layer.type !== "text";
+          const isTextLayer = layer.type === "text";
 
           return (
             <View
@@ -560,13 +619,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
               style={StyleSheet.absoluteFill}
               pointerEvents="box-none"
             >
-              <Image
-                source={{ uri: layer.uri }}
-                style={styles.image}
-                contentFit="contain"
-              />
+              <VirtualLayerVisual layer={layer} />
 
-              {!isLayerCanvasEnabled ? (
+              {!isTextLayer && !isLayerCanvasEnabled ? (
                 <DrawingLayerSvg
                   idPrefix={`legacy-${layer.id}`}
                   paths={layer.paths || []}
@@ -596,7 +651,71 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     <View style={styles.container} onLayout={handleCanvasLayout}>
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={[styles.content, animatedStyle]}>
-          {mainLayer && stageLayout ? (
+          {isolatedEditingLayer ? (
+            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+              <CanvasLayer
+                layer={{
+                  ...isolatedEditingLayer,
+                  x: 0,
+                  y: 0,
+                  scale: 1,
+                  rotation: 0,
+                }}
+                canvasWidth={isolatedReferenceWidth}
+                canvasHeight={isolatedReferenceHeight}
+                stageScale={isolatedStageScale}
+                renderReferenceWidth={isolatedReferenceWidth}
+                renderReferenceHeight={isolatedReferenceHeight}
+                isSelected={selectedLayerId === isolatedEditingLayer.id}
+                isActiveEditable={activeLayerId === isolatedEditingLayer.id}
+                onSelect={
+                  onSelectLayer
+                    ? () => onSelectLayer(isolatedEditingLayer.id)
+                    : undefined
+                }
+                onLongPress={
+                  onLongPressLayer
+                    ? () => onLongPressLayer(isolatedEditingLayer.id)
+                    : undefined
+                }
+                onTapSelected={
+                  selectedLayerId === isolatedEditingLayer.id
+                    ? onClearSelection
+                    : undefined
+                }
+                gesturesEnabled={
+                  subLayerGesturesEnabled &&
+                  selectedLayerId === isolatedEditingLayer.id
+                }
+                enablePinchResize={
+                  subLayerGesturesEnabled &&
+                  selectedLayerId === isolatedEditingLayer.id
+                }
+                hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
+                zoomScale={scale}
+                isZoomMode={isZoomMode}
+                currentColor={currentColor}
+                currentBrushKind={currentBrushKind}
+                currentPatternUri={currentPatternUri}
+                currentSolidMode={currentSolidMode}
+                smartFillSpace={
+                  activeLayerId === isolatedEditingLayer.id
+                    ? activeSmartFillSpace
+                    : null
+                }
+                onAddPath={(path) => handleAddPath(path, isolatedEditingLayer.id)}
+                onTapFill={(point) => handleTapFill(isolatedEditingLayer.id, point)}
+                onEraseSessionStart={() => beginEraseSession(isolatedEditingLayer.id)}
+                onEraseSessionEnd={endEraseSession}
+                onEraseAt={(point, radius) =>
+                  handleEraseAt(isolatedEditingLayer.id, point, radius)
+                }
+                resolveSmartFillPath={(point) =>
+                  handleResolveSmartFillPath(isolatedEditingLayer.id, point)
+                }
+              />
+            </View>
+          ) : stageLayout ? (
             <View
               style={[
                 styles.stage,
@@ -608,28 +727,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 },
               ]}
             >
-              <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-                {mainLayerImageSource ? (
-                  <Image
-                    source={mainLayerImageSource}
-                    style={styles.image}
-                    contentFit="contain"
-                    transition={0}
-                  />
-                ) : null}
-
-                {!isMainCanvasEnabled ? (
-                  <DrawingLayerSvg
-                    idPrefix={`stage-${mainLayer.id}`}
-                    paths={mainLayer.paths || []}
-                    layerWidth={mainLayer.width}
-                    layerHeight={mainLayer.height}
-                  />
-                ) : null}
-
-                {isMainCanvasEnabled ? renderDrawingSurface(mainLayer) : null}
-              </View>
-
               {subLayerGesturesEnabled &&
               selectedLayerId &&
               onClearSelectionToDraw ? (
@@ -641,45 +738,94 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
               <View
                 style={StyleSheet.absoluteFill}
-                pointerEvents={shouldCaptureSubLayerTouches ? "box-none" : "none"}
+                pointerEvents={
+                  shouldCaptureSubLayerTouches || sortedLayers.length > 0
+                    ? "box-none"
+                    : "none"
+                }
               >
-                {subLayers.map((layer) => (
-                  <CanvasLayer
-                    key={layer.id}
-                    layer={layer}
-                    canvasWidth={STORY_FRAME_WIDTH}
-                    canvasHeight={STORY_FRAME_HEIGHT}
-                    stageScale={stageLayout.scale}
-                    isSelected={selectedLayerId === layer.id}
-                    isActiveEditable={activeLayerId === layer.id}
-                    onSelect={onSelectLayer ? () => onSelectLayer(layer.id) : undefined}
-                    onTapSelected={
-                      selectedLayerId === layer.id ? onClearSelection : undefined
-                    }
-                    gesturesEnabled={subLayerGesturesEnabled && selectedLayerId === layer.id}
-                    enablePinchResize={false}
-                    hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
-                    zoomScale={scale}
-                    isZoomMode={isZoomMode}
-                    currentColor={currentColor}
-                    currentBrushKind={currentBrushKind}
-                    currentPatternUri={currentPatternUri}
-                    currentSolidMode={currentSolidMode}
-                    smartFillSpace={
-                      activeLayerId === layer.id ? activeSmartFillSpace : null
-                    }
-                    onAddPath={(path) => handleAddPath(path, layer.id)}
-                    onTapFill={(point) => handleTapFill(layer.id, point)}
-                    onEraseSessionStart={() => beginEraseSession(layer.id)}
-                    onEraseSessionEnd={endEraseSession}
-                    onEraseAt={(point, radius) =>
-                      handleEraseAt(layer.id, point, radius)
-                    }
-                    resolveSmartFillPath={(point) =>
-                      handleResolveSmartFillPath(layer.id, point)
-                    }
-                  />
-                ))}
+                {sortedLayers.map((layer) =>
+                  layer.id === "main-image" ? (
+                    <View
+                      key={layer.id}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { zIndex: layer.zIndex },
+                      ]}
+                      pointerEvents={
+                        shouldCaptureSubLayerTouches && !isMainCanvasEnabled
+                          ? "none"
+                          : "box-none"
+                      }
+                    >
+                      {mainLayerImageSource ? (
+                        <Image
+                          source={mainLayerImageSource}
+                          style={styles.image}
+                          contentFit="contain"
+                          transition={0}
+                        />
+                      ) : null}
+
+                      {!isMainCanvasEnabled ? (
+                        <DrawingLayerSvg
+                          idPrefix={`stage-${layer.id}`}
+                          paths={layer.paths || []}
+                          layerWidth={layer.width}
+                          layerHeight={layer.height}
+                        />
+                      ) : null}
+
+                      {isMainCanvasEnabled ? renderDrawingSurface(layer) : null}
+                    </View>
+                  ) : (
+                    <CanvasLayer
+                      key={layer.id}
+                      layer={layer}
+                      canvasWidth={STORY_FRAME_WIDTH}
+                      canvasHeight={STORY_FRAME_HEIGHT}
+                      stageScale={stageLayout.scale}
+                      selectionOverlayZIndex={
+                        selectedBackLayerId === layer.id
+                          ? sortedLayers.length + 10
+                          : undefined
+                      }
+                      isSelected={selectedLayerId === layer.id}
+                      isActiveEditable={activeLayerId === layer.id}
+                      onSelect={onSelectLayer ? () => onSelectLayer(layer.id) : undefined}
+                      onLongPress={
+                        onLongPressLayer ? () => onLongPressLayer(layer.id) : undefined
+                      }
+                      onTapSelected={
+                        selectedLayerId === layer.id ? onClearSelection : undefined
+                      }
+                      gesturesEnabled={subLayerGesturesEnabled && selectedLayerId === layer.id}
+                      enablePinchResize={
+                        subLayerGesturesEnabled && selectedLayerId === layer.id
+                      }
+                      hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
+                      zoomScale={scale}
+                      isZoomMode={isZoomMode}
+                      currentColor={currentColor}
+                      currentBrushKind={currentBrushKind}
+                      currentPatternUri={currentPatternUri}
+                      currentSolidMode={currentSolidMode}
+                      smartFillSpace={
+                        activeLayerId === layer.id ? activeSmartFillSpace : null
+                      }
+                      onAddPath={(path) => handleAddPath(path, layer.id)}
+                      onTapFill={(point) => handleTapFill(layer.id, point)}
+                      onEraseSessionStart={() => beginEraseSession(layer.id)}
+                      onEraseSessionEnd={endEraseSession}
+                      onEraseAt={(point, radius) =>
+                        handleEraseAt(layer.id, point, radius)
+                      }
+                      resolveSmartFillPath={(point) =>
+                        handleResolveSmartFillPath(layer.id, point)
+                      }
+                    />
+                  ),
+                )}
               </View>
             </View>
           ) : (

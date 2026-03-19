@@ -1,7 +1,7 @@
 import { getProfile, updateProfile } from "@/services/api-service";
 import { getAuthToken, getAuthUserId } from "@/store/auth-store";
-import { getProfileImageUrl } from "@/utiles/asset-url";
-import { getFromSecureStore, saveToSecureStore } from "@/utiles/secure-storage";
+import { getProfileImageUrl } from "@/utils/asset-url";
+import { getFromSecureStore, saveToSecureStore } from "@/utils/secure-storage";
 import React, {
   createContext,
   ReactNode,

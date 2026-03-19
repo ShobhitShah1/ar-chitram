@@ -108,7 +108,7 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
     >
       <SafeAreaView
         style={[styles.root, { backgroundColor: theme.background }]}
-        edges={["top"]}
+        edges={["top", "bottom"]}
       >
         <GestureHandlerRootView style={styles.container}>
           {/* Header */}

@@ -1,6 +1,6 @@
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
-import { SolidDrawMode } from "@/store/virtual-creativity-store";
+import { SolidDrawMode } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { ic_check } from "@/assets/icons";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -26,8 +26,8 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { ControlledBottomSheet } from "./controlled-bottom-sheet";
-import { Pressable, Text } from "./themed";
+import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
+import { Pressable, Text } from "@/components/themed";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PICKER_WIDTH = SCREEN_WIDTH - 48;
@@ -150,6 +150,7 @@ interface ColorPickerModalProps {
   onClose: () => void;
   onSelectColor: (color: string, solidMode: SolidDrawMode) => void;
   onSelectGradient?: (colors: [string, string]) => void;
+  bottomInset?: number;
   mode?: "color" | "gradient";
   initialColor?: string;
   initialSolidMode?: SolidDrawMode;
@@ -160,6 +161,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   onClose,
   onSelectColor,
   onSelectGradient,
+  bottomInset = 0,
   mode = "color",
   initialColor,
   initialSolidMode,
@@ -304,6 +306,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
   const currentHue = mode === "gradient" && activeColor === 2 ? hue2 : hue1;
   const hueColor = rgbToHex(...hsvToRgb(currentHue, 1, 1));
+  const sheetContentBottomPadding = Math.max(insets.bottom - bottomInset, 0) + 16;
 
   const handleApply = useCallback(() => {
     if (mode === "color") {
@@ -344,6 +347,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
       onClose={onClose}
       onWillPresent={syncPickerState}
       snapPoints={[sheetPreferredHeight]}
+      bottomInset={bottomInset}
       enableDynamicSizing
       showHandle={false}
       backgroundStyle={styles.sheetBackground}
@@ -355,7 +359,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             styles.container,
             {
               backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
-              paddingBottom: insets.bottom + 16,
+              paddingBottom: sheetContentBottomPadding,
               maxHeight: sheetMaxHeight,
             },
           ]}

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 export type BrushKind = "solid" | "pattern" | "signature" | "smart-fill";
 export type SolidDrawMode = "free-draw" | "object-draw" | "tap-fill" | "erase";
@@ -25,6 +25,9 @@ export interface VirtualLayer {
   id: string;
   type: "image" | "drawing" | "text";
   uri?: string;
+  text?: string;
+  fontFamily?: string;
+  fontSize?: number;
   x: number;
   y: number;
   width: number;
@@ -33,6 +36,7 @@ export interface VirtualLayer {
   scale: number;
   opacity: number;
   zIndex: number;
+  stripOrder?: number;
   color?: string;
   paths?: DrawingPath[]; // For drawing layers or coloring on images
 }
@@ -89,6 +93,7 @@ const normalizeZIndex = (layers: VirtualLayer[]): VirtualLayer[] =>
   layers.map((layer, index) => ({
     ...layer,
     zIndex: index + 1,
+    stripOrder: layer.stripOrder ?? index + 1,
   }));
 
 const buildHistory = (history: HistoryState, layers: VirtualLayer[]) => ({
@@ -220,50 +225,46 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
 
     bringToFront: (id, addToHistory = true) => {
       const { layers, history } = get();
+      if (id === "main-image") return;
+
       const index = layers.findIndex((layer) => layer.id === id);
       if (index === -1 || index === layers.length - 1) return;
 
-      const newLayers = [...layers];
-      const [item] = newLayers.splice(index, 1);
-      newLayers.push(item);
+      const nextLayers = [...layers];
+      const [item] = nextLayers.splice(index, 1);
+      nextLayers.push(item);
 
       if (addToHistory) {
         set({
-          layers: normalizeZIndex(newLayers),
+          layers: normalizeZIndex(nextLayers),
           history: buildHistory(history, layers),
         });
         return;
       }
 
-      set({ layers: normalizeZIndex(newLayers) });
+      set({ layers: normalizeZIndex(nextLayers) });
     },
 
     sendToBack: (id, addToHistory = true) => {
       const { layers, history } = get();
+      if (id === "main-image") return;
+
       const index = layers.findIndex((layer) => layer.id === id);
-      if (index === -1) return;
+      if (index <= 0) return;
 
-      const mainLayerIndex = layers.findIndex((layer) => layer.id === "main-image");
-      const targetIndex =
-        mainLayerIndex >= 0 && id !== "main-image" ? mainLayerIndex + 1 : 0;
-
-      if (index === targetIndex) {
-        return;
-      }
-
-      const newLayers = [...layers];
-      const [item] = newLayers.splice(index, 1);
-      newLayers.splice(targetIndex, 0, item);
+      const nextLayers = [...layers];
+      const [item] = nextLayers.splice(index, 1);
+      nextLayers.unshift(item);
 
       if (addToHistory) {
         set({
-          layers: normalizeZIndex(newLayers),
+          layers: normalizeZIndex(nextLayers),
           history: buildHistory(history, layers),
         });
         return;
       }
 
-      set({ layers: normalizeZIndex(newLayers) });
+      set({ layers: normalizeZIndex(nextLayers) });
     },
 
     undo: () => {

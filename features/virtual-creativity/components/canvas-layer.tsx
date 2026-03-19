@@ -8,30 +8,31 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { Image } from "expo-image";
 
-import { DrawingCanvas } from "@/components/virtual-creativity/drawing-canvas";
-import { DrawingLayerSvg } from "@/components/virtual-creativity/drawing-layer-svg";
+import { LayerSelectionChrome } from "@/features/virtual-creativity/components/canvas/layer-selection-chrome";
+import { DrawingCanvas } from "@/features/virtual-creativity/components/drawing-canvas";
+import { DrawingLayerSvg } from "@/features/virtual-creativity/components/drawing-layer-svg";
+import { VirtualLayerVisual } from "@/features/virtual-creativity/components/layer-visual";
 import type {
   SmartFillRegion,
   SmartFillSpace,
-} from "@/services/smart-fill-path-service";
+} from "@/features/virtual-creativity/services/smart-fill-path-service";
 import {
   clampLayerAxisPosition,
   getLayerDisplayFrame,
   getMaxFitScale,
   getResizeScaleDelta,
   MIN_LAYER_SCALE,
-} from "@/services/virtual-layer-transform";
-import { getVirtualLayerRenderMetrics } from "@/services/virtual-layer-service";
+} from "@/features/virtual-creativity/services/virtual-layer-transform";
+import { getVirtualLayerRenderMetrics } from "@/features/virtual-creativity/services/virtual-layer-service";
 import {
   type BrushKind,
   type DrawingPath,
   type SolidDrawMode,
   type VirtualLayer,
   useVirtualCreativityStore,
-} from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+} from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 type CanvasPoint = {
   x: number;
@@ -40,16 +41,23 @@ type CanvasPoint = {
 
 type ResizeHandleCorner = "topLeft" | "bottomRight";
 const TRANSFORM_COMMIT_EPSILON = 0.001;
+const LAYER_SYNC_SPRING = {
+  damping: 24,
+  stiffness: 240,
+  mass: 0.6,
+} as const;
 
 interface CanvasLayerProps {
   layer: VirtualLayer;
   canvasWidth?: number;
   canvasHeight?: number;
   stageScale: number;
+  selectionOverlayZIndex?: number;
   isSelected?: boolean;
   isActiveEditable?: boolean;
   onSelect?: () => void;
   onTapSelected?: () => void;
+  onLongPress?: () => void;
   gesturesEnabled?: boolean;
   enablePinchResize?: boolean;
   hideSelectionUI?: boolean;
@@ -72,8 +80,6 @@ interface CanvasLayerProps {
   renderReferenceHeight?: number;
 }
 
-const RESIZE_HANDLES: ResizeHandleCorner[] = ["topLeft", "bottomRight"];
-
 const deferCallback = (callback?: () => void) => {
   if (!callback) {
     return;
@@ -82,15 +88,6 @@ const deferCallback = (callback?: () => void) => {
   requestAnimationFrame(() => {
     callback();
   });
-};
-
-const getHandleStyle = (corner: ResizeHandleCorner) => {
-  switch (corner) {
-    case "topLeft":
-      return styles.handleTopLeft;
-    case "bottomRight":
-      return styles.handleBottomRight;
-  }
 };
 
 const getDiagonalDelta = (translationX: number, translationY: number) =>
@@ -216,10 +213,12 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     canvasWidth = STORY_FRAME_WIDTH,
     canvasHeight = STORY_FRAME_HEIGHT,
     stageScale,
+    selectionOverlayZIndex,
     isSelected = false,
     isActiveEditable = false,
     onSelect,
     onTapSelected,
+    onLongPress,
     gesturesEnabled = true,
     enablePinchResize = false,
     hideSelectionUI = false,
@@ -235,14 +234,11 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     onEraseSessionStart,
     onEraseSessionEnd,
     onEraseAt,
-  resolveSmartFillPath,
+    resolveSmartFillPath,
     renderReferenceWidth = STORY_FRAME_WIDTH,
     renderReferenceHeight = STORY_FRAME_HEIGHT,
   }) => {
-    const layerImageSource = React.useMemo(
-      () => (layer.uri ? { uri: layer.uri } : null),
-      [layer.uri],
-    );
+    const isTextLayer = layer.type === "text";
     const translateX = useSharedValue(layer.x);
     const translateY = useSharedValue(layer.y);
     const scale = useSharedValue(layer.scale);
@@ -281,10 +277,10 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         nextY: layer.y,
       });
 
-      translateX.value = withSpring(nextX);
-      translateY.value = withSpring(nextY);
-      scale.value = withSpring(nextScale);
-      rotation.value = withSpring(layer.rotation);
+      translateX.value = withSpring(nextX, LAYER_SYNC_SPRING);
+      translateY.value = withSpring(nextY, LAYER_SYNC_SPRING);
+      scale.value = withSpring(nextScale, LAYER_SYNC_SPRING);
+      rotation.value = withSpring(layer.rotation, LAYER_SYNC_SPRING);
       startX.value = nextX;
       startY.value = nextY;
       startScale.value = nextScale;
@@ -316,10 +312,14 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const queueSelectedTap = React.useCallback(() => {
       deferCallback(onTapSelected);
     }, [onTapSelected]);
+    const queueLongPress = React.useCallback(() => {
+      deferCallback(onLongPress);
+    }, [onLongPress]);
 
     const canTapToSelect =
       !!onSelect && !isSelected && (!isActiveEditable || gesturesEnabled);
     const canTapSelected = !!onTapSelected && isSelected && gesturesEnabled;
+    const canLongPress = !!onLongPress && !isZoomMode;
 
     const tapGesture = React.useMemo(
       () =>
@@ -343,6 +343,19 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
             }
           }),
       [canTapSelected, canTapToSelect, queueSelect, queueSelectedTap],
+    );
+
+    const longPressGesture = React.useMemo(
+      () =>
+        Gesture.LongPress()
+          .enabled(canLongPress)
+          .minDuration(320)
+          .maxDistance(12)
+          .onStart((_event) => {
+            "worklet";
+            runOnJS(queueLongPress)();
+          }),
+      [canLongPress, queueLongPress],
     );
 
     const panGesture = React.useMemo(
@@ -708,11 +721,12 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const layerGesture = React.useMemo(
       () =>
         Gesture.Race(
+          longPressGesture,
           tapGesture,
           panGesture,
           Gesture.Simultaneous(pinchGesture, rotationGesture),
         ),
-      [panGesture, pinchGesture, rotationGesture, tapGesture],
+      [longPressGesture, panGesture, pinchGesture, rotationGesture, tapGesture],
     );
 
     const metrics = React.useMemo(
@@ -740,18 +754,45 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
 
       return {
         ...frame,
-        zIndex: isSelected ? layer.zIndex + 100 : layer.zIndex,
+        zIndex: layer.zIndex,
       };
-    });
+    }, [layer.zIndex, metrics, scale, stageScale, translateX, translateY]);
+
+    const selectionFrameStyle = useAnimatedStyle(() => {
+      const frame = getLayerDisplayFrame({
+        baseHeight: metrics.height,
+        baseLeft: metrics.baseLeft,
+        baseTop: metrics.baseTop,
+        baseWidth: metrics.width,
+        scale: scale.value,
+        stageScale,
+        translateX: translateX.value,
+        translateY: translateY.value,
+      });
+
+      return {
+        ...frame,
+        zIndex: selectionOverlayZIndex ?? layer.zIndex,
+      };
+    }, [
+      layer.zIndex,
+      metrics,
+      scale,
+      selectionOverlayZIndex,
+      stageScale,
+      translateX,
+      translateY,
+    ]);
 
     const rotatedContentStyle = useAnimatedStyle(() => ({
       transform: [{ rotate: `${rotation.value}rad` }],
     }));
 
-    const shouldShowDrawingCanvas = isActiveEditable && !gesturesEnabled;
+    const shouldShowDrawingCanvas =
+      !isTextLayer && isActiveEditable && !gesturesEnabled;
     const showPlacementUI = isSelected && !hideSelectionUI;
-    const shouldUseFixedInteractionBounds =
-      gesturesEnabled && isSelected && !shouldShowDrawingCanvas;
+    const useDetachedSelectionOverlay =
+      showPlacementUI && selectionOverlayZIndex !== undefined;
     const shouldCaptureTouches =
       shouldShowDrawingCanvas ||
       canTapToSelect ||
@@ -759,69 +800,65 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       (gesturesEnabled && isSelected);
 
     const renderLayerContent = () => (
-      <>
-        <View style={styles.frame}>
-          {layerImageSource ? (
-            <Image
-              source={layerImageSource}
-              style={styles.image}
-              contentFit="contain"
-              transition={0}
-            />
-          ) : null}
+      <View style={styles.frame}>
+        <VirtualLayerVisual layer={layer} />
 
-          {!shouldShowDrawingCanvas ? (
-            <DrawingLayerSvg
-              idPrefix={`canvas-layer-${layer.id}`}
+        {!isTextLayer && !shouldShowDrawingCanvas ? (
+          <DrawingLayerSvg
+            idPrefix={`canvas-layer-${layer.id}`}
+            paths={layer.paths || []}
+            layerWidth={layer.width}
+            layerHeight={layer.height}
+          />
+        ) : null}
+
+        {shouldShowDrawingCanvas ? (
+          <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+            <DrawingCanvas
               paths={layer.paths || []}
+              isZoomMode={isZoomMode}
+              onAddPath={(path) => {
+                onAddPath?.(path);
+              }}
+              onSmartFill={onTapFill}
+              onEraseSessionStart={onEraseSessionStart}
+              onEraseSessionEnd={onEraseSessionEnd}
+              onEraseAt={onEraseAt}
+              resolveSmartFillPath={resolveSmartFillPath}
+              smartFillSpace={smartFillSpace}
+              currentColor={currentColor}
+              brushKind={currentBrushKind}
+              solidMode={currentSolidMode}
+              patternUri={currentPatternUri}
+              enabled
               layerWidth={layer.width}
               layerHeight={layer.height}
+              zoomScale={zoomScale}
             />
-          ) : null}
-
-          {shouldShowDrawingCanvas ? (
-            <View style={StyleSheet.absoluteFill} pointerEvents="auto">
-              <DrawingCanvas
-                paths={layer.paths || []}
-                isZoomMode={isZoomMode}
-                onAddPath={(path) => {
-                  onAddPath?.(path);
-                }}
-                onSmartFill={onTapFill}
-                onEraseSessionStart={onEraseSessionStart}
-                onEraseSessionEnd={onEraseSessionEnd}
-                onEraseAt={onEraseAt}
-                resolveSmartFillPath={resolveSmartFillPath}
-                smartFillSpace={smartFillSpace}
-                currentColor={currentColor}
-                brushKind={currentBrushKind}
-                solidMode={currentSolidMode}
-                patternUri={currentPatternUri}
-                enabled
-                layerWidth={layer.width}
-                layerHeight={layer.height}
-                zoomScale={zoomScale}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        {showPlacementUI ? (
-          <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-            <View style={styles.selectionRing} />
-            {RESIZE_HANDLES.map((corner) => (
-              <GestureDetector key={corner} gesture={resizeGestures[corner]}>
-                <Animated.View
-                  style={[styles.resizeHandle, getHandleStyle(corner)]}
-                >
-                  <View style={styles.resizeHandleInner} />
-                </Animated.View>
-              </GestureDetector>
-            ))}
           </View>
         ) : null}
-      </>
+
+        {showPlacementUI && !useDetachedSelectionOverlay ? (
+          <LayerSelectionChrome resizeGestures={resizeGestures} />
+        ) : null}
+      </View>
     );
+
+    const renderSelectionOverlay = () =>
+      useDetachedSelectionOverlay ? (
+        <Animated.View
+          collapsable={false}
+          pointerEvents="box-none"
+          style={[styles.assetAnchor, selectionFrameStyle]}
+        >
+          <Animated.View
+            pointerEvents="box-none"
+            style={[styles.assetTransform, rotatedContentStyle]}
+          >
+            <LayerSelectionChrome resizeGestures={resizeGestures} />
+          </Animated.View>
+        </Animated.View>
+      ) : null;
 
     const renderLayerShell = (pointerEvents: "auto" | "none" = "auto") => (
       <Animated.View
@@ -836,49 +873,26 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     );
 
     if (!shouldCaptureTouches) {
-      return renderLayerShell("none");
-    }
-
-    if (shouldUseFixedInteractionBounds) {
       return (
-        <GestureDetector gesture={layerGesture}>
-          <View
-            collapsable={false}
-            pointerEvents="auto"
-            style={[
-              styles.layer,
-              styles.interactionBounds,
-              {
-                left: 0,
-                top: 0,
-                width: canvasWidth * stageScale,
-                height: canvasHeight * stageScale,
-              },
-            ]}
-          >
-            {renderLayerShell()}
-          </View>
-        </GestureDetector>
+        <>
+          {renderLayerShell("none")}
+          {renderSelectionOverlay()}
+        </>
       );
     }
 
     return (
-      <GestureDetector gesture={layerGesture}>
-        {renderLayerShell()}
-      </GestureDetector>
+      <>
+        <GestureDetector gesture={layerGesture}>
+          {renderLayerShell()}
+        </GestureDetector>
+        {renderSelectionOverlay()}
+      </>
     );
   },
 );
 
 const styles = StyleSheet.create({
-  layer: {
-    position: "absolute",
-    overflow: "visible",
-  },
-  interactionBounds: {
-    backgroundColor: "transparent",
-    overflow: "visible",
-  },
   assetAnchor: {
     position: "absolute",
     overflow: "visible",
@@ -892,40 +906,5 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 18,
     overflow: "visible",
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  selectionRing: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: "rgba(17, 17, 17, 0.92)",
-  },
-  resizeHandle: {
-    position: "absolute",
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#111111",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  resizeHandleInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#FFFFFF",
-  },
-  handleTopLeft: {
-    left: -11,
-    top: -11,
-  },
-  handleBottomRight: {
-    right: -11,
-    bottom: -11,
   },
 });

@@ -1,5 +1,5 @@
-import { mapLayerPointToSmartFillSpace } from "@/services/smart-fill-layout";
-import { DrawingPath } from "@/store/virtual-creativity-store";
+import { mapLayerPointToSmartFillSpace } from "@/features/virtual-creativity/services/smart-fill-layout";
+import { DrawingPath } from "@/features/virtual-creativity/store/virtual-creativity-store";
 
 interface Point {
   x: number;

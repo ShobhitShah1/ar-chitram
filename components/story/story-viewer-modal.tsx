@@ -1,5 +1,5 @@
 import { Story } from "@/constants/interface";
-import { getProfileImageUrl } from "@/utiles/asset-url";
+import { getProfileImageUrl } from "@/utils/asset-url";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React, { useEffect, useRef, useState } from "react";

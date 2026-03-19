@@ -30,11 +30,13 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CommonBottomSheet } from "./common-bottom-sheet";
+import { CommonBottomSheet } from "@/components/common-bottom-sheet";
+import { UploadEntryButton } from "./upload-entry-button";
 
 const SHEET_HORIZONTAL_PADDING = 12;
 const SHEET_TOP_PADDING = 14;
 const HEADER_HEIGHT = 52;
+const UPLOAD_SECTION_HEIGHT = 72;
 const THUMB_SIZE = 72;
 const THUMB_IMAGE_INSET = 6;
 const THUMB_GAP = 10;
@@ -63,6 +65,8 @@ interface CreateAssetPickerSheetProps {
   onClose: () => void;
   onDone: (item: CreateSheetAssetItem) => void;
   onRetry?: () => void;
+  onUploadPress?: () => void;
+  isUploadActionBusy?: boolean;
 }
 
 interface ThumbnailTileProps {
@@ -133,6 +137,8 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
   onClose,
   onDone,
   onRetry,
+  onUploadPress,
+  isUploadActionBusy = false,
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -163,18 +169,20 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
     return Math.round(Math.max(minPreferred, target));
   }, [screenHeight]);
 
+  const hasUploadAction = !!onUploadPress;
   const previewHeight = useMemo(() => {
     const available =
       fixedSheetHeight -
       HEADER_HEIGHT -
+      (hasUploadAction ? UPLOAD_SECTION_HEIGHT : 0) -
       THUMB_SECTION_HEIGHT -
       ACTION_SECTION_HEIGHT -
       sheetBottomPadding -
       SHEET_TOP_PADDING -
-      CONTENT_VERTICAL_GAP * 3;
+      CONTENT_VERTICAL_GAP * (hasUploadAction ? 4 : 3);
 
     return Math.max(PREVIEW_MIN_HEIGHT, available);
-  }, [fixedSheetHeight, sheetBottomPadding]);
+  }, [fixedSheetHeight, hasUploadAction, sheetBottomPadding]);
 
   const shuffleRotation = useSharedValue(0);
   const shuffleIconStyle = useAnimatedStyle(() => ({
@@ -452,6 +460,17 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
           </AnimatedPressable>
         </View>
 
+        {hasUploadAction ? (
+          <View style={styles.uploadSection}>
+            <UploadEntryButton
+              title="Upload Your Image"
+              subtitle="Preview background removal before you continue"
+              onPress={onUploadPress ?? (() => {})}
+              disabled={isUploadActionBusy}
+            />
+          </View>
+        ) : null}
+
         <View style={[styles.previewSection, { minHeight: previewHeight }]}>
           {isLoading ? (
             <View style={styles.stateWrap}>
@@ -562,6 +581,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: CONTENT_VERTICAL_GAP,
+  },
+  uploadSection: {
+    paddingHorizontal: SHEET_HORIZONTAL_PADDING,
+    minHeight: UPLOAD_SECTION_HEIGHT,
   },
   headerRow: {
     flexDirection: "row",

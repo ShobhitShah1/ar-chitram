@@ -1,5 +1,5 @@
 import { useTheme } from "@/context/theme-context";
-import { STORY_TILE_ASPECT_RATIO } from "@/utiles/story-frame";
+import { STORY_TILE_ASPECT_RATIO } from "@/utils/story-frame";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";

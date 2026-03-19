@@ -1,11 +1,11 @@
-import { storage } from "@/utiles/storage";
+import { storage } from "@/utils/storage";
 import { useAuthStore } from "@/store/auth-store";
 import {
   getProfile,
   addSkuToProfile,
   clearApiAuthToken,
 } from "@/services/api-service";
-import { processProfileImageUrl } from "@/utiles/asset-url";
+import { processProfileImageUrl } from "@/utils/asset-url";
 import { debugLog } from "@/constants/debug";
 import React, {
   createContext,

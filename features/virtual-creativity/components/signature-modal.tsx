@@ -1,10 +1,10 @@
 import {
   ARTIST_SIGNATURE_PRESETS,
   SIGNATURE_FONT_PRESETS,
-} from "@/components/virtual-creativity/editor-presets";
-import type { SignatureSelection } from "@/components/virtual-creativity/editor-presets";
+} from "@/features/virtual-creativity/constants/editor-presets";
+import type { SignatureSelection } from "@/features/virtual-creativity/constants/editor-presets";
 import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
-import { SheetHeader } from "@/components/virtual-creativity/sheet-header";
+import { SheetHeader } from "@/features/virtual-creativity/components/sheet-header";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SignatureTab = "custom" | "artist";
 const SHEET_MIN_HEIGHT = 420;
@@ -29,6 +30,7 @@ interface SignatureModalProps {
   visible: boolean;
   selectedSignatureId?: string | null;
   defaultName?: string;
+  bottomInset?: number;
   onClose: () => void;
   onApply: (selection: SignatureSelection) => void;
 }
@@ -36,11 +38,13 @@ interface SignatureModalProps {
 const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   visible,
   selectedSignatureId,
-  defaultName = "AK jackson",
+  defaultName = "AR Chitram",
+  bottomInset = 0,
   onClose,
   onApply,
 }) => {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
 
   const [tab, setTab] = React.useState<SignatureTab>("custom");
@@ -169,6 +173,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
       visible={visible}
       onClose={onClose}
       snapPoints={[sheetPreferredHeight]}
+      bottomInset={bottomInset}
       enableDynamicSizing
       showHandle={false}
       backgroundStyle={styles.sheetBackground}
@@ -185,6 +190,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             {
               backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
               maxHeight: sheetMaxHeight,
+              paddingBottom: Math.max(insets.bottom - bottomInset, 0) + 12,
             },
           ]}
         >
@@ -252,7 +258,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   <TextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder="Type Here..."
+                    placeholder={defaultName}
                     placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
                     style={[styles.input, { color: "#000" }]}
                   />

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BrushKind,
   SolidDrawMode,
   type VirtualLayer,
-} from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+} from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { createSubImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
 
 export type BrushState = {
   kind: BrushKind;
@@ -21,49 +21,67 @@ export function useCanvasInitialization(
   clearPendingUploadUris: () => void,
   getInitialLayers: () => VirtualLayer[],
 ) {
-  const [isInitialized, setIsInitialized] = useState(false);
   const [viewMode, setViewMode] = useState<"composite" | "single">(
     "composite",
   );
+  const hasInitializedRef = useRef(false);
 
-  if (!isInitialized) {
-    const hasMainImage = layers.some((layer) => layer.id === "main-image");
-
-    if (layers.length > 0) {
-      if (!hasMainImage) {
-        const baseLayers = getInitialLayers();
-        setLayers([...baseLayers, ...layers], null);
-      }
-      setViewMode("composite");
-      setIsInitialized(true);
-    } else if (pendingUploadUris.length > 0) {
-      const uploadLayers: VirtualLayer[] = pendingUploadUris.map(
-        (uri, index) => ({
-          id: `upload-${Date.now()}-${index + 1}`,
-          type: "image",
-          uri,
-          x: 0,
-          y: 0,
-          width: STORY_FRAME_WIDTH,
-          height: STORY_FRAME_HEIGHT,
-          rotation: 0,
-          scale: 1,
-          opacity: 1,
-          zIndex: index + 1,
-        }),
-      );
-      const baseLayers = getInitialLayers();
-      const combined = [...baseLayers, ...uploadLayers];
-      setLayers(combined, combined[0]?.id ?? null);
-      clearPendingUploadUris();
-      setViewMode("composite");
-      setIsInitialized(true);
-    } else {
-      setLayers(getInitialLayers(), null);
-      setViewMode("composite");
-      setIsInitialized(true);
+  useEffect(() => {
+    if (hasInitializedRef.current) {
+      return;
     }
-  }
+
+    hasInitializedRef.current = true;
+    let cancelled = false;
+
+    const initialize = async () => {
+      const hasMainImage = layers.some((layer) => layer.id === "main-image");
+
+      if (layers.length > 0) {
+        if (!hasMainImage) {
+          const baseLayers = getInitialLayers();
+          if (!cancelled) {
+            setLayers([...baseLayers, ...layers], null);
+          }
+        }
+
+        if (!cancelled) {
+          setViewMode("composite");
+        }
+        return;
+      }
+
+      if (pendingUploadUris.length > 0) {
+        const uploadLayers = await Promise.all(
+          pendingUploadUris.map((uri, index) =>
+            createSubImageLayer(uri, index + 1),
+          ),
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const baseLayers = getInitialLayers();
+        const combined = [...baseLayers, ...uploadLayers];
+        setLayers(combined, combined[0]?.id ?? null);
+        clearPendingUploadUris();
+        setViewMode("composite");
+        return;
+      }
+
+      if (!cancelled) {
+        setLayers(getInitialLayers(), null);
+        setViewMode("composite");
+      }
+    };
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearPendingUploadUris, getInitialLayers, layers, pendingUploadUris, setLayers]);
 
   return { viewMode, setViewMode };
 }
@@ -116,4 +134,3 @@ export function useBrush(
 
   return { brush, setBrushForActiveLayer, onSelectColor };
 }
-

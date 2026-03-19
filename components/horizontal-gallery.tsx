@@ -10,7 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { Pressable } from "./themed";
-import { storage } from "@/utiles/storage";
+import { storage } from "@/utils/storage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const LIKED_IMAGES_STORAGE_KEY = "liked_gallery_images";

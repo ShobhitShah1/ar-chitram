@@ -1,12 +1,20 @@
 import { Image as RNImage } from "react-native";
 
-import { type VirtualLayer } from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+import type { SignatureSelection } from "@/features/virtual-creativity/constants/editor-presets";
+import { type VirtualLayer } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 const OVERLAY_MAX_WIDTH = STORY_FRAME_WIDTH * 0.44;
 const OVERLAY_MAX_HEIGHT = STORY_FRAME_HEIGHT * 0.34;
 const OVERLAY_MIN_WIDTH = STORY_FRAME_WIDTH * 0.18;
 const OVERLAY_MIN_HEIGHT = STORY_FRAME_WIDTH * 0.18;
+const SIGNATURE_BASE_FONT_SIZE = 56;
+const SIGNATURE_MIN_WIDTH = STORY_FRAME_WIDTH * 0.24;
+const SIGNATURE_MAX_WIDTH = STORY_FRAME_WIDTH * 0.72;
+const SIGNATURE_HEIGHT = SIGNATURE_BASE_FONT_SIZE * 1.5;
+
+const clampValue = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 
 const getImageSize = (uri: string) =>
   new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -98,6 +106,35 @@ export const createSubImageLayer = async (
       zIndex,
     };
   }
+};
+
+export const createSignatureTextLayer = (
+  selection: SignatureSelection,
+  zIndex: number,
+): VirtualLayer => {
+  const text = selection.value.trim() || "AR Chitram";
+  const width = clampValue(
+    Math.round(text.length * SIGNATURE_BASE_FONT_SIZE * 0.58),
+    SIGNATURE_MIN_WIDTH,
+    SIGNATURE_MAX_WIDTH,
+  );
+
+  return {
+    id: `signature-${Date.now()}-${zIndex}`,
+    type: "text",
+    text,
+    fontFamily: selection.fontFamily,
+    fontSize: SIGNATURE_BASE_FONT_SIZE,
+    color: "#111111",
+    x: 0,
+    y: 0,
+    width,
+    height: SIGNATURE_HEIGHT,
+    rotation: 0,
+    scale: 1,
+    opacity: 1,
+    zIndex,
+  };
 };
 
 export const getVirtualLayerRenderMetrics = (

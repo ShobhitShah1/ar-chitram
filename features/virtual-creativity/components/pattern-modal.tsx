@@ -1,6 +1,6 @@
-import { PATTERN_PRESETS } from "@/components/virtual-creativity/editor-presets";
-import type { PatternPreset } from "@/components/virtual-creativity/editor-presets";
-import { SheetHeader } from "@/components/virtual-creativity/sheet-header";
+import { PATTERN_PRESETS } from "@/features/virtual-creativity/constants/editor-presets";
+import type { PatternPreset } from "@/features/virtual-creativity/constants/editor-presets";
+import { SheetHeader } from "@/features/virtual-creativity/components/sheet-header";
 import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 interface PatternModalProps {
   visible: boolean;
   selectedPatternId?: string | null;
+  bottomInset?: number;
   onClose: () => void;
   onApply: (preset: PatternPreset) => void;
 }
@@ -24,6 +25,7 @@ interface PatternModalProps {
 const PatternModalComponent: React.FC<PatternModalProps> = ({
   visible,
   selectedPatternId,
+  bottomInset = 0,
   onClose,
   onApply,
 }) => {
@@ -71,13 +73,15 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
     [pendingId],
   );
 
-  const sheetHeight = Math.min(screenHeight - 12, 320 + insets.bottom);
+  const sheetBottomPadding = Math.max(insets.bottom - bottomInset, 12);
+  const sheetHeight = Math.min(screenHeight - 12, 320 + sheetBottomPadding);
 
   return (
     <ControlledBottomSheet
       visible={visible}
       onClose={onClose}
       snapPoints={[sheetHeight]}
+      bottomInset={bottomInset}
       showHandle={false}
       backgroundStyle={styles.sheetBackground}
       contentContainerStyle={styles.sheetContent}
@@ -87,7 +91,8 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
           styles.card,
           {
             backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
-            paddingBottom: Math.max(insets.bottom, 12),
+            minHeight: sheetHeight,
+            paddingBottom: sheetBottomPadding,
           },
         ]}
       >
@@ -132,7 +137,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingTop: 4,
     paddingHorizontal: 20,
-    maxHeight: 320,
   },
   gridContent: {
     paddingTop: 10,

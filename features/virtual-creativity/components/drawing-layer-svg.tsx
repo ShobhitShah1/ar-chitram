@@ -9,7 +9,7 @@ import Svg, {
 } from "react-native-svg";
 
 import { sanitizeSvgPathData } from "@/services/svg-path-utils";
-import { DrawingPath } from "@/store/virtual-creativity-store";
+import { DrawingPath } from "@/features/virtual-creativity/store/virtual-creativity-store";
 
 const PATTERN_TILE_SIZE = 60;
 

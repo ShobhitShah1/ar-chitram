@@ -18,6 +18,7 @@ interface CommonBottomSheetProps {
   children: React.ReactNode;
   onDismiss?: () => void;
   snapPoints?: ReadonlyArray<string | number>;
+  bottomInset?: number;
   enablePanDownToClose?: boolean;
   backgroundStyle?: StyleProp<ViewStyle>;
   handleIndicatorStyle?: StyleProp<ViewStyle>;
@@ -37,6 +38,7 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
     children,
     onDismiss,
     snapPoints,
+    bottomInset = 0,
     enablePanDownToClose = false,
     backgroundStyle,
     handleIndicatorStyle,
@@ -87,6 +89,7 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
         ref={modalRef}
         index={0}
         snapPoints={resolvedSnapPoints}
+        bottomInset={bottomInset}
         enableDynamicSizing={enableDynamicSizing}
         animationConfigs={animationConfigs}
         onDismiss={onDismiss}

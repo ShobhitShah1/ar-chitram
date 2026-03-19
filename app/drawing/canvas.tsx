@@ -28,8 +28,8 @@ import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-
 import { useTheme } from "@/context/theme-context";
 import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
-import { useVirtualCreativityStore } from "@/store/virtual-creativity-store";
-import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utiles/story-frame";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
