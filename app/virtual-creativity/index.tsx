@@ -19,12 +19,14 @@ import { LayerStrip } from "@/features/virtual-creativity/components/layer-strip
 import { PatternModal } from "@/features/virtual-creativity/components/pattern-modal";
 import { SignatureModal } from "@/features/virtual-creativity/components/signature-modal";
 import { TopBar } from "@/features/virtual-creativity/components/top-bar";
+import { fetchLocalUploadTabAssets } from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import {
   type CreateFlowPickerAssetItem,
   useCreateFlowAssetPicker,
 } from "@/hooks/api/use-tab-assets-api";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
 import {
   useBrush,
@@ -44,6 +46,7 @@ import {
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 import * as ImageManipulator from "expo-image-manipulator";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -74,6 +77,13 @@ export default function VirtualCreativityScreen() {
   const assetPickerModalRef = useRef<BottomSheetModal | null>(null);
   const lastDrawingToolRef = useRef<ToolType>("palette");
   const pendingUploadFlowLaunchRef = useRef(false);
+  const lastAutoPlacedStoredUploadsKeyRef = useRef<string | null>(null);
+  const { data: storedUploadAssetsData } = useQuery({
+    queryKey: apiQueryKeys.assets.localUploads,
+    queryFn: fetchLocalUploadTabAssets,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: Number.POSITIVE_INFINITY,
+  });
 
   const {
     assets: uploadSheetAssets,
@@ -259,6 +269,14 @@ export default function VirtualCreativityScreen() {
       ),
     [allLayersSorted],
   );
+  const hasOnlyMainAndNonImageLayers = useMemo(
+    () =>
+      layers.length > 0 &&
+      layers.every(
+        (layer) => layer.id === "main-image" || layer.type !== "image",
+      ),
+    [layers],
+  );
   const bottomBarLayers = useMemo(
     () => (viewMode === "single" ? compositeVisibleLayers : EMPTY_LAYERS),
     [compositeVisibleLayers, viewMode],
@@ -283,6 +301,74 @@ export default function VirtualCreativityScreen() {
       // Warm cache in the background without interrupting the current flow.
     });
   }, []);
+
+  React.useEffect(() => {
+    if (storedUploadAssetsData === undefined) {
+      return;
+    }
+
+    if (!mainImageUri || pendingUploadUris.length > 0) {
+      return;
+    }
+
+    if (storedUploadAssetsData.flatAssets.length === 0) {
+      return;
+    }
+
+    if (!hasOnlyMainAndNonImageLayers || stripLayers.length > 0) {
+      return;
+    }
+
+    const autoPlaceKey = `${mainImageUri}::${storedUploadAssetsData.flatAssets
+      .map((asset) => asset.id)
+      .join("|")}`;
+
+    if (lastAutoPlacedStoredUploadsKeyRef.current === autoPlaceKey) {
+      return;
+    }
+
+    lastAutoPlacedStoredUploadsKeyRef.current = autoPlaceKey;
+
+    let cancelled = false;
+
+    const hydrateStoredUploads = async () => {
+      const uploadLayers = await Promise.all(
+        storedUploadAssetsData.flatAssets.map((asset, index) =>
+          createSubImageLayer(asset.image, layers.length + index + 1),
+        ),
+      );
+
+      if (cancelled || uploadLayers.length === 0) {
+        return;
+      }
+
+      setLayers(
+        [...layers, ...uploadLayers],
+        uploadLayers[0]?.id ?? null,
+      );
+      setSelectedTool("gallery");
+      setIsFocusPlacementActive(false);
+      setViewMode("composite");
+      warmSmartFillLookup(uploadLayers[0]?.uri);
+    };
+
+    void hydrateStoredUploads();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    hasOnlyMainAndNonImageLayers,
+    layers,
+    mainImageUri,
+    layers.length,
+    stripLayers.length,
+    pendingUploadUris.length,
+    setLayers,
+    setViewMode,
+    storedUploadAssetsData,
+    warmSmartFillLookup,
+  ]);
 
   const handleUndo = useCallback(() => undo(), [undo]);
   const handleRedo = useCallback(() => redo(), [redo]);
@@ -746,7 +832,9 @@ export default function VirtualCreativityScreen() {
           text: signatureLayer.text,
           fontFamily: signatureLayer.fontFamily,
           fontSize: signatureLayer.fontSize,
-          color: signatureLayer.color,
+          color: existingSignatureLayer.color ?? signatureLayer.color,
+          width: signatureLayer.width,
+          height: signatureLayer.height,
         });
         selectLayerForPlacement(existingSignatureLayer.id);
       } else {

@@ -52,7 +52,7 @@ interface CanvasLayerProps {
   canvasWidth?: number;
   canvasHeight?: number;
   stageScale: number;
-  selectionOverlayZIndex?: number;
+  displayZIndex?: number;
   isSelected?: boolean;
   isActiveEditable?: boolean;
   onSelect?: () => void;
@@ -213,7 +213,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     canvasWidth = STORY_FRAME_WIDTH,
     canvasHeight = STORY_FRAME_HEIGHT,
     stageScale,
-    selectionOverlayZIndex,
+    displayZIndex,
     isSelected = false,
     isActiveEditable = false,
     onSelect,
@@ -718,15 +718,14 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       [createResizeGesture],
     );
 
+    const transformGesture = React.useMemo(
+      () => Gesture.Simultaneous(panGesture, pinchGesture, rotationGesture),
+      [panGesture, pinchGesture, rotationGesture],
+    );
+
     const layerGesture = React.useMemo(
-      () =>
-        Gesture.Race(
-          longPressGesture,
-          tapGesture,
-          panGesture,
-          Gesture.Simultaneous(pinchGesture, rotationGesture),
-        ),
-      [longPressGesture, panGesture, pinchGesture, rotationGesture, tapGesture],
+      () => Gesture.Race(longPressGesture, tapGesture, transformGesture),
+      [longPressGesture, tapGesture, transformGesture],
     );
 
     const metrics = React.useMemo(
@@ -754,31 +753,13 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
 
       return {
         ...frame,
-        zIndex: layer.zIndex,
-      };
-    }, [layer.zIndex, metrics, scale, stageScale, translateX, translateY]);
-
-    const selectionFrameStyle = useAnimatedStyle(() => {
-      const frame = getLayerDisplayFrame({
-        baseHeight: metrics.height,
-        baseLeft: metrics.baseLeft,
-        baseTop: metrics.baseTop,
-        baseWidth: metrics.width,
-        scale: scale.value,
-        stageScale,
-        translateX: translateX.value,
-        translateY: translateY.value,
-      });
-
-      return {
-        ...frame,
-        zIndex: selectionOverlayZIndex ?? layer.zIndex,
+        zIndex: displayZIndex ?? layer.zIndex,
       };
     }, [
+      displayZIndex,
       layer.zIndex,
       metrics,
       scale,
-      selectionOverlayZIndex,
       stageScale,
       translateX,
       translateY,
@@ -791,8 +772,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const shouldShowDrawingCanvas =
       !isTextLayer && isActiveEditable && !gesturesEnabled;
     const showPlacementUI = isSelected && !hideSelectionUI;
-    const useDetachedSelectionOverlay =
-      showPlacementUI && selectionOverlayZIndex !== undefined;
     const shouldCaptureTouches =
       shouldShowDrawingCanvas ||
       canTapToSelect ||
@@ -838,27 +817,11 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
           </View>
         ) : null}
 
-        {showPlacementUI && !useDetachedSelectionOverlay ? (
+        {showPlacementUI ? (
           <LayerSelectionChrome resizeGestures={resizeGestures} />
         ) : null}
       </View>
     );
-
-    const renderSelectionOverlay = () =>
-      useDetachedSelectionOverlay ? (
-        <Animated.View
-          collapsable={false}
-          pointerEvents="box-none"
-          style={[styles.assetAnchor, selectionFrameStyle]}
-        >
-          <Animated.View
-            pointerEvents="box-none"
-            style={[styles.assetTransform, rotatedContentStyle]}
-          >
-            <LayerSelectionChrome resizeGestures={resizeGestures} />
-          </Animated.View>
-        </Animated.View>
-      ) : null;
 
     const renderLayerShell = (pointerEvents: "auto" | "none" = "auto") => (
       <Animated.View
@@ -873,23 +836,33 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     );
 
     if (!shouldCaptureTouches) {
-      return (
-        <>
-          {renderLayerShell("none")}
-          {renderSelectionOverlay()}
-        </>
-      );
+      return renderLayerShell("none");
     }
 
     return (
-      <>
-        <GestureDetector gesture={layerGesture}>
-          {renderLayerShell()}
-        </GestureDetector>
-        {renderSelectionOverlay()}
-      </>
+      <GestureDetector gesture={layerGesture}>{renderLayerShell()}</GestureDetector>
     );
   },
+  (prevProps, nextProps) =>
+    prevProps.layer === nextProps.layer &&
+    prevProps.canvasWidth === nextProps.canvasWidth &&
+    prevProps.canvasHeight === nextProps.canvasHeight &&
+    prevProps.stageScale === nextProps.stageScale &&
+    prevProps.displayZIndex === nextProps.displayZIndex &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isActiveEditable === nextProps.isActiveEditable &&
+    prevProps.gesturesEnabled === nextProps.gesturesEnabled &&
+    prevProps.enablePinchResize === nextProps.enablePinchResize &&
+    prevProps.hideSelectionUI === nextProps.hideSelectionUI &&
+    prevProps.zoomScale === nextProps.zoomScale &&
+    prevProps.isZoomMode === nextProps.isZoomMode &&
+    prevProps.currentColor === nextProps.currentColor &&
+    prevProps.currentBrushKind === nextProps.currentBrushKind &&
+    prevProps.currentPatternUri === nextProps.currentPatternUri &&
+    prevProps.currentSolidMode === nextProps.currentSolidMode &&
+    prevProps.smartFillSpace === nextProps.smartFillSpace &&
+    prevProps.renderReferenceWidth === nextProps.renderReferenceWidth &&
+    prevProps.renderReferenceHeight === nextProps.renderReferenceHeight,
 );
 
 const styles = StyleSheet.create({

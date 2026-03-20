@@ -785,7 +785,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                       canvasWidth={STORY_FRAME_WIDTH}
                       canvasHeight={STORY_FRAME_HEIGHT}
                       stageScale={stageLayout.scale}
-                      selectionOverlayZIndex={
+                      displayZIndex={
                         selectedBackLayerId === layer.id
                           ? sortedLayers.length + 10
                           : undefined

@@ -17,11 +17,14 @@ import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/i
 import TabItem from "@/components/tab-item";
 import { ProfileProvider } from "@/context/profile-context";
 import { useTheme } from "@/context/theme-context";
+import { fetchLocalUploadTabAssets, persistLocalUploadAsset } from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { useCreateFlowTabAssetsGrid } from "@/hooks/api";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
 import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, Tabs, usePathname } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
@@ -144,6 +147,7 @@ export default function TabLayout() {
 
   const createSheetRef = useRef<BottomSheetModal | null>(null);
   const isCreateSheetVisibleRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const { gridItems, isLoading, isError, refetch } = useCreateFlowTabAssetsGrid();
   const setLayers = useVirtualCreativityStore((state) => state.setLayers);
@@ -202,8 +206,13 @@ export default function TabLayout() {
     description:
       "Pick a photo, preview the background removal, then continue into Virtual Creativity.",
     doneLabel: "Continue",
-    onComplete: ({ finalUri }) => {
-      openCanvasWithImage(finalUri);
+    onComplete: async ({ finalUri }) => {
+      const persistedUpload = await persistLocalUploadAsset(finalUri);
+      queryClient.setQueryData(
+        apiQueryKeys.assets.localUploads,
+        await fetchLocalUploadTabAssets(),
+      );
+      openCanvasWithImage(persistedUpload.uri);
     },
   });
 
@@ -328,6 +337,3 @@ const styles = StyleSheet.create({
     height: 55,
   },
 });
-
-
-

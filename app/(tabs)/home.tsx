@@ -1,13 +1,16 @@
 import { EmptyState } from "@/components/empty-state";
 import { HorizontalGallery } from "@/components/horizontal-gallery";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
+import { fetchLocalUploadTabAssets, persistLocalUploadAsset } from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { StoryRow } from "@/components/story/story-row";
 import TabsHeader from "@/components/tabs-header";
 import { View } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
 import { useHomeTabAssets } from "@/hooks/api";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import React from "react";
@@ -22,12 +25,10 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
 
 export default function Home() {
-  const resetVirtualCreativity = useVirtualCreativityStore(
-    (state) => state.reset,
+  const clearPendingUploadUris = useVirtualCreativityStore(
+    (state) => state.clearPendingUploadUris,
   );
-  const setPendingUploadUris = useVirtualCreativityStore(
-    (state) => state.setPendingUploadUris,
-  );
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useHomeTabAssets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [refreshing, setRefreshing] = React.useState(false);
@@ -37,9 +38,13 @@ export default function Home() {
     description:
       "Upload one image, preview the background removal, then save it for Virtual Creativity.",
     doneLabel: "Save",
-    onComplete: ({ finalUri }) => {
-      resetVirtualCreativity();
-      setPendingUploadUris([finalUri]);
+    onComplete: async ({ finalUri }) => {
+      await persistLocalUploadAsset(finalUri);
+      clearPendingUploadUris();
+      queryClient.setQueryData(
+        apiQueryKeys.assets.localUploads,
+        await fetchLocalUploadTabAssets(),
+      );
     },
   });
 

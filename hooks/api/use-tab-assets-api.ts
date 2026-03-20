@@ -1,4 +1,4 @@
-﻿import { apiQueryKeys } from "@/services/api/query-keys";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import {
   CategorizedTabAssets,
   TabAssetCategory,
@@ -588,4 +588,3 @@ export const useScheduleCoreTabAssetsPrefetch = () => {
     });
   }, [queryClient]);
 };
-

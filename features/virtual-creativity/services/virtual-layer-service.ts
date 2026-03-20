@@ -9,9 +9,11 @@ const OVERLAY_MAX_HEIGHT = STORY_FRAME_HEIGHT * 0.34;
 const OVERLAY_MIN_WIDTH = STORY_FRAME_WIDTH * 0.18;
 const OVERLAY_MIN_HEIGHT = STORY_FRAME_WIDTH * 0.18;
 const SIGNATURE_BASE_FONT_SIZE = 56;
-const SIGNATURE_MIN_WIDTH = STORY_FRAME_WIDTH * 0.24;
-const SIGNATURE_MAX_WIDTH = STORY_FRAME_WIDTH * 0.72;
-const SIGNATURE_HEIGHT = SIGNATURE_BASE_FONT_SIZE * 1.5;
+const SIGNATURE_MIN_WIDTH = STORY_FRAME_WIDTH * 0.28;
+const SIGNATURE_MAX_WIDTH = STORY_FRAME_WIDTH * 0.78;
+const SIGNATURE_HEIGHT = SIGNATURE_BASE_FONT_SIZE * 1.7;
+const SIGNATURE_WIDTH_MULTIPLIER = 0.62;
+const SIGNATURE_HORIZONTAL_PADDING = 20;
 
 const clampValue = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -114,7 +116,10 @@ export const createSignatureTextLayer = (
 ): VirtualLayer => {
   const text = selection.value.trim() || "AR Chitram";
   const width = clampValue(
-    Math.round(text.length * SIGNATURE_BASE_FONT_SIZE * 0.58),
+    Math.round(
+      text.length * SIGNATURE_BASE_FONT_SIZE * SIGNATURE_WIDTH_MULTIPLIER +
+        SIGNATURE_HORIZONTAL_PADDING * 2,
+    ),
     SIGNATURE_MIN_WIDTH,
     SIGNATURE_MAX_WIDTH,
   );

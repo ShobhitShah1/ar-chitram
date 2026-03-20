@@ -17,7 +17,7 @@ const VirtualLayerVisualComponent: React.FC<VirtualLayerVisualProps> = ({
     const text = layer.text?.trim() || FALLBACK_SIGNATURE_TEXT;
     const fontSize = Math.max(
       18,
-      layer.fontSize ?? Math.min(layer.height * 0.78, 64),
+      Math.max(layer.fontSize ?? 0, Math.min(layer.height * 0.76, 72)),
     );
 
     return (

@@ -5,6 +5,7 @@ export const apiQueryKeys = {
   },
   assets: {
     home: ["assets", "home"] as const,
+    localUploads: ["assets", "local-uploads"] as const,
     colors: ["assets", "colors"] as const,
     drawings: ["assets", "drawings"] as const,
     sketches: ["assets", "sketches"] as const,
