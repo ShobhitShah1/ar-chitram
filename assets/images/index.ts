@@ -15,9 +15,11 @@ export const animal_6 = require("./animal/animal_6.png");
 export const animal_7 = require("./animal/animal_7.png");
 export const test_deer = require("./animal/test_deer.png");
 
+export const assets_bg = require("./assets_bg.png");
 export const ic_contest_winner = require("./ic_contest_winner.png");
 
 export const Images = {
   JoinContest: join_contest,
   winnerBackground: winner_background,
+  assetsBg: assets_bg,
 } as const;

@@ -1,15 +1,22 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
 import Animated, {
+  FadeIn,
+  FadeOut,
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
@@ -30,11 +37,16 @@ import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
+const CAMERA_PINCH_SENSITIVITY = 0.35;
+const MIN_CAMERA_ZOOM = 0;
+const MAX_CAMERA_ZOOM = 1;
 
 const Canvas = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
   const sliderWidth = width - 210;
@@ -46,6 +58,8 @@ const Canvas = () => {
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [flash, setFlash] = useState<boolean>(false);
   const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [zoom, setZoom] = useState<number>(0);
+  const [isZoomBadgeVisible, setIsZoomBadgeVisible] = useState(false);
   const opacity = useSharedValue(0.5);
 
   // Drawing camera snapshot state
@@ -60,6 +74,10 @@ const Canvas = () => {
 
   const cameraRef = useRef<CameraView>(null);
   const snapshotButtonRef = useRef<View>(null);
+  const pinchStartZoomRef = useRef(0);
+  const zoomBadgeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const routeImageUri = Array.isArray(params.imageUri)
     ? params.imageUri[0]
@@ -92,6 +110,22 @@ const Canvas = () => {
       return Math.min(currentIndex, virtualSnapshots.length - 1);
     });
   }, [virtualSnapshots, routeImageUri]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFacing("back");
+      setZoom(0);
+      setIsZoomBadgeVisible(false);
+    }, []),
+  );
+
+  useEffect(() => {
+    return () => {
+      if (zoomBadgeTimeoutRef.current) {
+        clearTimeout(zoomBadgeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const activeVirtualSnapshot = virtualSnapshots[activeVirtualSnapshotIndex];
   const sketchImage = activeVirtualSnapshot
@@ -130,6 +164,40 @@ const Canvas = () => {
   const toggleLock = () => {
     setIsLocked((current) => !current);
   };
+
+  const showZoomBadge = useCallback(() => {
+    setIsZoomBadgeVisible(true);
+
+    if (zoomBadgeTimeoutRef.current) {
+      clearTimeout(zoomBadgeTimeoutRef.current);
+    }
+
+    zoomBadgeTimeoutRef.current = setTimeout(() => {
+      setIsZoomBadgeVisible(false);
+    }, 900);
+  }, []);
+
+  const handleZoomChange = useCallback((nextZoom: number) => {
+    const clampedZoom = Math.min(
+      Math.max(nextZoom, MIN_CAMERA_ZOOM),
+      MAX_CAMERA_ZOOM,
+    );
+
+    setZoom(clampedZoom);
+    showZoomBadge();
+  }, [showZoomBadge]);
+
+  const zoomGesture = Gesture.Pinch()
+    .runOnJS(true)
+    .onStart(() => {
+      pinchStartZoomRef.current = zoom;
+    })
+    .onUpdate((event) => {
+      handleZoomChange(
+        pinchStartZoomRef.current +
+          (event.scale - 1) * CAMERA_PINCH_SENSITIVITY,
+      );
+    });
 
   const handleSnapshot = async () => {
     let coords = { x: 0, y: 0 };
@@ -261,13 +329,18 @@ const Canvas = () => {
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={StyleSheet.absoluteFill}>
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing={facing}
-          enableTorch={flash}
-          ratio="16:9"
-        />
+        <GestureDetector gesture={zoomGesture}>
+          <View style={StyleSheet.absoluteFill}>
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              enableTorch={flash}
+              ratio="16:9"
+              zoom={zoom}
+            />
+          </View>
+        </GestureDetector>
       </View>
 
       <View style={styles.imageOverlayWrapper}>
@@ -284,6 +357,26 @@ const Canvas = () => {
           contentFit="contain"
         />
       </View>
+
+      {isZoomBadgeVisible && (
+        <Animated.View
+          pointerEvents="none"
+          entering={FadeIn.duration(140)}
+          exiting={FadeOut.duration(180)}
+          style={[
+            styles.zoomBadgeAnchor,
+            { top: Math.max(insets.top + (isLocked ? 18 : 72), 64) },
+          ]}
+        >
+          <BlurView intensity={28} tint="dark" style={styles.zoomBadgeBlur}>
+            <View style={styles.zoomBadge}>
+              <Animated.Text style={styles.zoomBadgeText}>
+                {(1 + zoom).toFixed(1)}x
+              </Animated.Text>
+            </View>
+          </BlurView>
+        </Animated.View>
+      )}
 
       <View
         style={[styles.uiOverlay, { paddingTop: 0, paddingBottom: 0 }]}
@@ -384,5 +477,35 @@ const styles = StyleSheet.create({
   overlayImage: {
     borderRadius: 18,
     overflow: "hidden",
+  },
+  zoomBadgeAnchor: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 12,
+    alignItems: "center",
+  },
+  zoomBadgeBlur: {
+    borderRadius: 999,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  zoomBadge: {
+    minWidth: 68,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(18,18,18,0.34)",
+  },
+  zoomBadgeText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 18,
+    letterSpacing: 0.2,
+    textAlign: "center",
   },
 });

@@ -1,3 +1,4 @@
+import { ic_pro_icon } from "@/assets/icons";
 import { Image } from "expo-image";
 import React from "react";
 import { Dimensions, RefreshControl, StyleSheet, View } from "react-native";
@@ -16,6 +17,7 @@ export interface GridAssetItem {
   id: string | number;
   image?: string | number | { uri: string };
   color?: string;
+  isPremium?: boolean;
 }
 
 interface ImageGridProps {
@@ -115,6 +117,17 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                       transition={200}
                     />
                   ) : item.color ? null : null}
+
+                  {item.isPremium ? (
+                    <View pointerEvents="none" style={styles.premiumBadgeWrap}>
+                      <Image
+                        source={ic_pro_icon}
+                        style={styles.premiumBadge}
+                        contentFit="contain"
+                        transition={0}
+                      />
+                    </View>
+                  ) : null}
                 </Pressable>
               </Animated.View>
             );
@@ -163,5 +176,21 @@ const styles = StyleSheet.create({
   imageSingle: {
     width: "80%",
     height: "80%",
+  },
+  premiumBadgeWrap: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  premiumBadge: {
+    width: "100%",
+    height: "100%",
   },
 });

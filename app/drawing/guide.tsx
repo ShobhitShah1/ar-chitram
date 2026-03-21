@@ -1,7 +1,13 @@
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import React from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import React, { useMemo } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -9,16 +15,14 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { preview_1, preview_2 } from "@/assets/images";
 import Header from "@/components/header";
-import { useCommonThemedStyles } from "@/components/themed";
 import Carousel, { Pagination } from "@/components/ui/carousel";
 import PrimaryButton from "@/components/ui/primary-button";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const DATA = [
   {
@@ -36,6 +40,12 @@ const DATA = [
 interface GuideItemProps {
   item: (typeof DATA)[0];
   index: number;
+  pageWidth: number;
+  cardWidth: number;
+  cardHeight: number;
+  descriptionFontSize: number;
+  descriptionLineHeight: number;
+  imageMarginBottom: number;
   scrollX: SharedValue<number>;
   theme: any;
 }
@@ -43,14 +53,20 @@ interface GuideItemProps {
 const GuideItem: React.FC<GuideItemProps> = ({
   item,
   index,
+  pageWidth,
+  cardWidth,
+  cardHeight,
+  descriptionFontSize,
+  descriptionLineHeight,
+  imageMarginBottom,
   scrollX,
   theme,
 }) => {
   const animatedStyle = useAnimatedStyle(() => {
     const inputRange = [
-      (index - 1) * SCREEN_WIDTH,
-      index * SCREEN_WIDTH,
-      (index + 1) * SCREEN_WIDTH,
+      (index - 1) * pageWidth,
+      index * pageWidth,
+      (index + 1) * pageWidth,
     ];
 
     const scale = interpolate(
@@ -74,11 +90,30 @@ const GuideItem: React.FC<GuideItemProps> = ({
   });
 
   return (
-    <View style={styles.itemContainer}>
-      <Animated.View style={[styles.imageContainer, animatedStyle]}>
+    <View style={[styles.itemContainer, { width: pageWidth }]}>
+      <Animated.View
+        style={[
+          styles.imageContainer,
+          {
+            width: cardWidth,
+            height: cardHeight,
+            marginBottom: imageMarginBottom,
+          },
+          animatedStyle,
+        ]}
+      >
         <Image source={item.image} contentFit="cover" style={styles.image} />
       </Animated.View>
-      <Text style={[styles.description, { color: theme.textPrimary }]}>
+      <Text
+        style={[
+          styles.description,
+          {
+            color: theme.textPrimary,
+            fontSize: descriptionFontSize,
+            lineHeight: descriptionLineHeight,
+          },
+        ]}
+      >
         {item.text}
       </Text>
     </View>
@@ -87,6 +122,8 @@ const GuideItem: React.FC<GuideItemProps> = ({
 
 const Guide = () => {
   const params = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { theme, isDark } = useTheme();
   const scrollX = useSharedValue(0);
   const signatureText = Array.isArray(params.signatureText)
@@ -95,6 +132,35 @@ const Guide = () => {
   const signatureFont = Array.isArray(params.signatureFont)
     ? params.signatureFont[0]
     : params.signatureFont;
+  const layout = useMemo(() => {
+    const compact = screenHeight < 760;
+    const headerHeight = 80;
+    const reservedHeight = compact ? 210 : 244;
+    const cardWidth = Math.min(screenWidth - 24, 392);
+    const preferredCardHeight = Math.round(cardWidth * 1.28);
+    const maxCardHeight = Math.max(
+      compact ? 200 : 230,
+      screenHeight - headerHeight - insets.bottom - reservedHeight,
+    );
+    const cardHeight = Math.min(preferredCardHeight, maxCardHeight);
+
+    return {
+      compact,
+      pageWidth: screenWidth,
+      cardWidth,
+      cardHeight,
+      carouselHeight: cardHeight + (compact ? 74 : 86),
+      bottomPadding: Math.max(insets.bottom + 16, 24),
+      titleMarginBottom: compact ? 18 : 28,
+      contentPaddingTop: compact ? 8 : 14,
+      paginationMarginTop: compact ? 8 : 12,
+      footerMarginTop: compact ? 12 : 18,
+      imageMarginBottom: compact ? 14 : 18,
+      descriptionFontSize: compact ? 14 : 15,
+      descriptionLineHeight: compact ? 20 : 22,
+      buttonWidth: 180,
+    };
+  }, [insets.bottom, screenHeight, screenWidth]);
 
   const handleContinue = () => {
     // If we have an imageUri (from Virtual Creativity), pass it along
@@ -122,8 +188,30 @@ const Guide = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Header title="Guide" />
 
-      <View style={styles.content}>
-        <Text style={[styles.title, { color: theme.textPrimary }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: layout.bottomPadding },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+        style={[
+          styles.content,
+          {
+            paddingTop: layout.contentPaddingTop,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.title,
+            {
+              color: theme.textPrimary,
+              marginBottom: layout.titleMarginBottom,
+            },
+          ]}
+        >
           How to Sketch
         </Text>
 
@@ -134,33 +222,43 @@ const Guide = () => {
               <GuideItem
                 item={item}
                 index={index}
+                pageWidth={layout.pageWidth}
+                cardWidth={layout.cardWidth}
+                cardHeight={layout.cardHeight}
+                descriptionFontSize={layout.descriptionFontSize}
+                descriptionLineHeight={layout.descriptionLineHeight}
+                imageMarginBottom={layout.imageMarginBottom}
                 scrollX={scrollX}
                 theme={theme}
               />
             )}
-            width={SCREEN_WIDTH}
-            itemWidth={SCREEN_WIDTH}
+            width={layout.pageWidth}
+            itemWidth={layout.pageWidth}
             scrollX={scrollX}
+            height={layout.carouselHeight}
           />
         </View>
 
-        <Pagination
-          data={DATA}
-          scrollX={scrollX}
-          itemWidth={SCREEN_WIDTH}
-          activeDotColor={theme.textPrimary}
-          dotColor={isDark ? "#555" : "#D9D9D9"}
-        />
+        <View style={{ marginTop: layout.paginationMarginTop }}>
+          <Pagination
+            data={DATA}
+            scrollX={scrollX}
+            itemWidth={layout.pageWidth}
+            activeDotColor={theme.textPrimary}
+            dotColor={isDark ? "#555" : "#D9D9D9"}
+          />
+        </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { marginTop: layout.footerMarginTop }]}>
           <PrimaryButton
             title="Continue"
             onPress={handleContinue}
-            style={styles.button}
+            style={[styles.button, { width: layout.buttonWidth }]}
             colors={theme.drawingButton as any}
           />
         </View>
       </View>
+      </ScrollView>
     </View>
   );
 };
@@ -171,31 +269,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: "center",
-    paddingTop: 10,
+    justifyContent: "center",
   },
   title: {
     fontFamily: FontFamily.semibold,
     fontSize: 22,
-    marginBottom: 30,
     textAlign: "center",
   },
   carouselContainer: {
-    height: SCREEN_WIDTH * 1.5,
+    width: "100%",
+    alignItems: "center",
   },
   itemContainer: {
-    width: SCREEN_WIDTH,
     alignItems: "center",
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
   },
   imageContainer: {
-    width: "100%",
-    height: SCREEN_WIDTH * 1.3,
     borderRadius: 32,
     overflow: "hidden",
-    marginBottom: 30,
     backgroundColor: "#f5f5f5",
     shadowColor: "#000",
     shadowOffset: {
@@ -213,19 +310,15 @@ const styles = StyleSheet.create({
   },
   description: {
     fontFamily: FontFamily.medium,
-    fontSize: 15,
     textAlign: "center",
-    paddingHorizontal: 10,
-    lineHeight: 22,
+    paddingHorizontal: 14,
+    maxWidth: 360,
   },
   footer: {
-    position: "absolute",
-    bottom: 50,
     width: "100%",
     alignItems: "center",
   },
   button: {
-    width: 180,
     height: 52,
     borderRadius: 100,
   },

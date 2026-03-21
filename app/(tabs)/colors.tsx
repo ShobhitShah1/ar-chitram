@@ -1,16 +1,16 @@
+import { PremiumAssetModal } from "@/components/premium-asset-modal";
 import { CategoryChips } from "@/components/category-chips";
 import { EmptyState } from "@/components/empty-state";
-import ImageGrid, { GridAssetItem } from "@/components/image-grid";
+import ImageGrid from "@/components/image-grid";
 import TabsHeader from "@/components/tabs-header";
 import { useCommonThemedStyles } from "@/components/themed";
 import { useColorsTabGrid } from "@/hooks/api";
-import { useRouter } from "expo-router";
+import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
 import React, { useCallback } from "react";
 import { View } from "react-native";
 
 export default function Colors() {
   const commonStyles = useCommonThemedStyles();
-  const router = useRouter();
   const {
     data,
     categories,
@@ -22,6 +22,13 @@ export default function Colors() {
     isError,
     refetch,
   } = useColorsTabGrid();
+  const {
+    selectedPremiumAsset,
+    handleAssetPress,
+    handleClosePremiumAsset,
+    handleFreePremiumAsset,
+    handlePremiumAsset,
+  } = usePremiumAssetGuideFlow();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = useCallback(() => {
@@ -38,26 +45,6 @@ export default function Colors() {
   const isInitialLoading = isLoading && !data;
   const showErrorState = isError && !data;
 
-  const handlePress = useCallback(
-    (item: GridAssetItem) => {
-      const imageUri =
-        typeof item.image === "string"
-          ? item.image
-          : item.image && typeof item.image === "object" && "uri" in item.image
-            ? item.image.uri
-            : null;
-
-      if (!imageUri) {
-        return;
-      }
-
-      router.push({
-        pathname: "/drawing/guide",
-        params: { imageUri },
-      });
-    },
-    [router],
-  );
   const emptyState = isInitialLoading ? (
     <EmptyState showLoading title="Loading color assets..." />
   ) : showErrorState ? (
@@ -84,10 +71,18 @@ export default function Colors() {
 
       <ImageGrid
         data={emptyState ? [] : gridItems}
-        onPress={handlePress}
+        onPress={handleAssetPress}
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={emptyState}
+      />
+
+      <PremiumAssetModal
+        asset={selectedPremiumAsset}
+        visible={!!selectedPremiumAsset}
+        onClose={handleClosePremiumAsset}
+        onFreePress={handleFreePremiumAsset}
+        onPremiumPress={handlePremiumAsset}
       />
     </View>
   );
