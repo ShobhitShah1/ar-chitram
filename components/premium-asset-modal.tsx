@@ -6,8 +6,8 @@ import {
 } from "@/assets/icons";
 import { assets_bg } from "@/assets/images";
 import { FontFamily } from "@/constants/fonts";
+import { PremiumChoiceButton } from "@/components/premium-choice-button";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { memo, useCallback, useMemo } from "react";
 import {
   Modal,
@@ -26,66 +26,22 @@ interface PremiumAssetModalProps {
   onClose: () => void;
   onFreePress: (asset: GridAssetItem) => void;
   onPremiumPress?: (asset: GridAssetItem) => void;
+  freeDisabled?: boolean;
+  premiumDisabled?: boolean;
+  premiumPriceLabel?: string;
 }
-
-interface PremiumActionButtonProps {
-  accentTextColor: string;
-  colors: [string, string, ...string[]];
-  detail: string;
-  iconSource: number;
-  label: string;
-  labelColor: string;
-  pillBackgroundColor: string;
-  pillLabel: string;
-  pillTextColor: string;
-  onPress: () => void;
-  style?: object;
-}
-
-const PremiumActionButton: React.FC<PremiumActionButtonProps> = ({
-  accentTextColor,
-  colors,
-  detail,
-  iconSource,
-  label,
-  labelColor,
-  pillBackgroundColor,
-  pillLabel,
-  pillTextColor,
-  onPress,
-  style,
-}) => (
-  <Pressable
-    onPress={onPress}
-    style={({ pressed }) => [
-      styles.actionTouch,
-      style,
-      pressed ? styles.actionPressed : null,
-    ]}
-  >
-    <LinearGradient
-      colors={colors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 0 }}
-      style={styles.actionButton}
-    >
-      <View style={styles.actionLabelGroup}>
-        <Image source={iconSource} style={styles.actionIcon} contentFit="contain" />
-        <Text style={[styles.actionLabel, { color: labelColor }]}>{label}</Text>
-      </View>
-
-      <View style={styles.actionMeta}>
-        <View style={[styles.actionPill, { backgroundColor: pillBackgroundColor }]}>
-          <Text style={[styles.actionPillText, { color: pillTextColor }]}>{pillLabel}</Text>
-        </View>
-        <Text style={[styles.actionDetail, { color: accentTextColor }]}>{detail}</Text>
-      </View>
-    </LinearGradient>
-  </Pressable>
-);
 
 export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
-  ({ asset, visible, onClose, onFreePress, onPremiumPress }) => {
+  ({
+    asset,
+    visible,
+    onClose,
+    onFreePress,
+    onPremiumPress,
+    freeDisabled = false,
+    premiumDisabled = false,
+    premiumPriceLabel,
+  }) => {
     const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
     const scaleX = Math.min((screenWidth - 30) / 384, 1);
@@ -194,7 +150,6 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
               />
 
               <View style={styles.cardContent}>
-
                 <Pressable
                   onPress={onClose}
                   style={[
@@ -280,8 +235,9 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
                     },
                   ]}
                 >
-                  <PremiumActionButton
+                  <PremiumChoiceButton
                     style={{ height: layout.actionHeight }}
+                    disabled={freeDisabled}
                     iconSource={ic_play}
                     label="FREE"
                     detail="One time use"
@@ -293,12 +249,13 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
                     pillTextColor="#F9F9F9"
                     onPress={handleFreePress}
                   />
-                  <PremiumActionButton
+                  <PremiumChoiceButton
                     style={{ height: layout.actionHeight }}
+                    disabled={premiumDisabled}
                     iconSource={ic_black_diamond}
                     label="PRIMIUM"
-                    detail="Lifetime use"
-                    pillLabel="$12"
+                    detail="Unlock pack"
+                    pillLabel={premiumPriceLabel ?? ""}
                     colors={["#E7B901", "#F2D501", "#EC7303"]}
                     labelColor="#361D01"
                     accentTextColor="#050505"
@@ -402,66 +359,5 @@ const styles = StyleSheet.create({
   },
   actions: {
     position: "absolute",
-  },
-  actionTouch: {
-    borderRadius: 10,
-  },
-  actionPressed: {
-    opacity: 0.92,
-  },
-  actionButton: {
-    height: 46,
-    borderRadius: 10,
-    paddingLeft: 14,
-    paddingRight: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionLabelGroup: {
-    position: "absolute",
-    left: 14,
-    right: 64,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  actionIcon: {
-    width: 16,
-    height: 16,
-  },
-  actionLabel: {
-    fontFamily: FontFamily.bold,
-    fontSize: 16,
-    lineHeight: 18,
-  },
-  actionMeta: {
-    marginLeft: "auto",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    width: 64,
-    zIndex: 1,
-  },
-  actionPill: {
-    minWidth: 36,
-    height: 20,
-    borderRadius: 5,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionPillText: {
-    fontFamily: FontFamily.bold,
-    fontSize: 10,
-    lineHeight: 12,
-  },
-  actionDetail: {
-    width: 64,
-    marginTop: 1,
-    fontFamily: FontFamily.bold,
-    fontSize: 9,
-    lineHeight: 10,
-    textAlign: "right",
   },
 });

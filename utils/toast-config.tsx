@@ -4,7 +4,7 @@ import {
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "@/constants/colors";
-import { FontFamily } from '@/constants/fonts';
+import { FontFamily } from "@/constants/fonts";
 import { BaseToast, ErrorToast, InfoToast } from "react-native-toast-message";
 
 export const toastConfig: any = {

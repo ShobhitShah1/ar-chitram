@@ -7,7 +7,7 @@ import {
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { LegalDocument } from "@/services/api-service";
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet } from "react-native";
 import RenderHtml, {
   MixedStyleDeclaration,
@@ -24,7 +24,7 @@ function LegalDocumentViewer({
   fetchDocument,
   fallbackTitle,
 }: LegalDocumentViewerProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const commonStyles = useCommonThemedStyles();
   const { bottom } = useSafeAreaInsets();
   const [document, setDocument] = useState<LegalDocument | null>(null);
@@ -63,12 +63,22 @@ function LegalDocumentViewer({
     .replace(/\s+/g, " ")
     .trim();
 
+  const documentColors = useMemo(
+    () => ({
+      heading: theme.textPrimary,
+      body: isDark ? "#1F1F1F" : "#4B5563",
+      meta: isDark ? "#3E3E3E" : "#6B7280",
+      link: theme.accent,
+    }),
+    [isDark, theme.accent, theme.textPrimary],
+  );
+
   const htmlRenderersProps: Partial<RenderersProps> | undefined = {
     baseStyle: {
       fontSize: 15,
       fontFamily: FontFamily.medium,
       lineHeight: 22,
-      color: theme.textSecondary,
+      color: documentColors.body,
     },
   };
 
@@ -78,21 +88,21 @@ function LegalDocumentViewer({
     h1: {
       fontSize: 24,
       fontFamily: FontFamily.bold,
-      color: theme.textPrimary,
+      color: documentColors.heading,
       marginBottom: 16,
       marginTop: 24,
     },
     h2: {
       fontSize: 20,
       fontFamily: FontFamily.bold,
-      color: theme.textPrimary,
+      color: documentColors.heading,
       marginBottom: 12,
       marginTop: 20,
     },
     h3: {
       fontSize: 18,
       fontFamily: FontFamily.bold,
-      color: theme.textPrimary,
+      color: documentColors.heading,
       marginBottom: 10,
       marginTop: 16,
     },
@@ -100,26 +110,40 @@ function LegalDocumentViewer({
       fontSize: 15,
       fontFamily: FontFamily.medium,
       lineHeight: 22,
-      color: theme.textSecondary,
+      color: documentColors.body,
       marginBottom: 12,
     },
     ul: {
-      color: theme.textSecondary,
+      color: documentColors.body,
       marginBottom: 12,
     },
     ol: {
-      color: theme.textSecondary,
+      color: documentColors.body,
       marginBottom: 12,
     },
     li: {
       fontSize: 15,
       fontFamily: FontFamily.medium,
       lineHeight: 22,
-      color: theme.textSecondary,
+      color: documentColors.body,
       marginBottom: 8,
     },
+    div: {
+      color: documentColors.body,
+    },
+    span: {
+      color: documentColors.body,
+    },
+    strong: {
+      color: documentColors.heading,
+      fontFamily: FontFamily.semibold,
+    },
+    b: {
+      color: documentColors.heading,
+      fontFamily: FontFamily.semibold,
+    },
     a: {
-      color: theme.accent,
+      color: documentColors.link,
       textDecorationLine: "underline" as const,
     },
     br: {
@@ -129,9 +153,15 @@ function LegalDocumentViewer({
 
   if (loading) {
     return (
-      <View style={[commonStyles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={"black"} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+      <View
+        style={[
+          commonStyles.container,
+          styles.screenContainer,
+          styles.centerContent,
+        ]}
+      >
+        <ActivityIndicator size="large" color={documentColors.body} />
+        <Text style={[styles.loadingText, { color: documentColors.body }]}>
           Loading document...
         </Text>
       </View>
@@ -140,13 +170,19 @@ function LegalDocumentViewer({
 
   if (error) {
     return (
-      <View style={[commonStyles.container, styles.centerContent]}>
-        <Text style={[styles.errorText, { color: "black" }]}>{error}</Text>
+      <View
+        style={[
+          commonStyles.container,
+          styles.screenContainer,
+          styles.centerContent,
+        ]}
+      >
+        <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
         <Pressable
-          style={[styles.retryButton, { backgroundColor: "black" }]}
+          style={[styles.retryButton, { backgroundColor: theme.accent }]}
           onPress={loadDocument}
         >
-          <Text style={[styles.retryButtonText, { color: "white" }]}>
+          <Text style={[styles.retryButtonText, { color: "#FFFFFF" }]}>
             Retry
           </Text>
         </Pressable>
@@ -155,7 +191,13 @@ function LegalDocumentViewer({
   }
 
   return (
-    <View style={[commonStyles.container, { paddingBottom: bottom }]}>
+    <View
+      style={[
+        commonStyles.container,
+        styles.screenContainer,
+        { paddingBottom: bottom },
+      ]}
+    >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
@@ -165,7 +207,7 @@ function LegalDocumentViewer({
           {/* <Text style={[styles.title, { color: theme.textPrimary }]}>
             {title}
           </Text> */}
-          <Text style={[styles.lastUpdated, { color: theme.textSecondary }]}>
+          <Text style={[styles.lastUpdated, { color: documentColors.meta }]}>
             Last updated: {lastUpdated}
           </Text>
         </View>
@@ -184,6 +226,9 @@ function LegalDocumentViewer({
 }
 
 const styles = StyleSheet.create({
+  screenContainer: {
+    paddingTop: 0,
+  },
   scrollView: {
     flex: 1,
   },
@@ -197,7 +242,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   header: {
-    marginVertical: 5,
+    marginTop: 4,
+    marginBottom: 12,
     alignItems: "center",
   },
   title: {

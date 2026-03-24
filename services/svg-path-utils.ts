@@ -1,5 +1,6 @@
 const SVG_NUMBER_REGEX = /^-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?$/i;
-const SVG_TOKEN_REGEX = /[MmLlHhVvCcSsQqTtAaZz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g;
+const SVG_TOKEN_REGEX =
+  /[MmLlHhVvCcSsQqTtAaZz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g;
 const SVG_ALLOWED_CHARS_REGEX = /^[0-9eE+\-.,\sMmLlHhVvCcSsQqTtAaZz]*$/;
 
 const SVG_COMMAND_ARG_COUNTS: Record<string, number> = {
@@ -29,10 +30,7 @@ const isSvgCommandToken = (token: string) =>
   Object.prototype.hasOwnProperty.call(SVG_COMMAND_ARG_COUNTS, token);
 
 const normalizeSvgPathData = (pathData: string) =>
-  pathData
-    .replace(/,/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  pathData.replace(/,/g, " ").replace(/\s+/g, " ").trim();
 
 const validateSvgPathTokens = (tokens: string[]) => {
   if (!tokens.length || !isSvgCommandToken(tokens[0])) {
@@ -57,7 +55,11 @@ const validateSvgPathTokens = (tokens: string[]) => {
       continue;
     }
 
-    if (!currentCommand || expectedArgs === 0 || !SVG_NUMBER_REGEX.test(token)) {
+    if (
+      !currentCommand ||
+      expectedArgs === 0 ||
+      !SVG_NUMBER_REGEX.test(token)
+    ) {
       return false;
     }
 
@@ -112,4 +114,3 @@ export const sanitizeSvgPathData = (
 
   return validateSvgPathTokens(tokens) ? normalizedPath : null;
 };
-

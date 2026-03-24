@@ -44,7 +44,9 @@ export const UploadEntryButton: React.FC<UploadEntryButtonProps> = ({
       </View>
 
       <View style={styles.textWrap}>
-        <Text style={[styles.title, { color: theme.textPrimary }]}>{title}</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>
+          {title}
+        </Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           {subtitle}
         </Text>

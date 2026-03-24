@@ -21,9 +21,7 @@ export function useCanvasInitialization(
   clearPendingUploadUris: () => void,
   getInitialLayers: () => VirtualLayer[],
 ) {
-  const [viewMode, setViewMode] = useState<"composite" | "single">(
-    "composite",
-  );
+  const [viewMode, setViewMode] = useState<"composite" | "single">("composite");
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -81,16 +79,18 @@ export function useCanvasInitialization(
     return () => {
       cancelled = true;
     };
-  }, [clearPendingUploadUris, getInitialLayers, layers, pendingUploadUris, setLayers]);
+  }, [
+    clearPendingUploadUris,
+    getInitialLayers,
+    layers,
+    pendingUploadUris,
+    setLayers,
+  ]);
 
   return { viewMode, setViewMode };
 }
 
-export function useBrush(
-  activeEditableLayerId: string | null,
-  bringToFront: (id: string, addToHistory?: boolean) => void,
-  initialColor: string,
-) {
+export function useBrush(initialColor: string) {
   const [brush, setBrush] = useState<BrushState>({
     kind: "solid",
     color: initialColor,
@@ -113,12 +113,8 @@ export function useBrush(
   const setBrushForActiveLayer = useCallback(
     (nextBrush: BrushState) => {
       setBrush(nextBrush);
-      if (!activeEditableLayerId) return;
-      if (activeEditableLayerId !== "main-image") {
-        bringToFront(activeEditableLayerId, false);
-      }
     },
-    [activeEditableLayerId, bringToFront],
+    [],
   );
 
   const onSelectColor = useCallback(

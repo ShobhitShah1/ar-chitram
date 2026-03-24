@@ -45,7 +45,7 @@ const LoadingSpinner = React.memo(() => {
             rotation.value = 0;
             scheduleOnRN(animate);
           }
-        }
+        },
       );
     };
     animate();
@@ -74,10 +74,10 @@ const StoryImage = React.memo(
     currentIndex: number;
     imageLoaded: Record<number, boolean>;
     setImageLoaded: (
-      fn: (prev: Record<number, boolean>) => Record<number, boolean>
+      fn: (prev: Record<number, boolean>) => Record<number, boolean>,
     ) => void;
     setImageError: (
-      fn: (prev: Record<number, boolean>) => Record<number, boolean>
+      fn: (prev: Record<number, boolean>) => Record<number, boolean>,
     ) => void;
     startProgressTimer: (index: number) => void;
   }) => {
@@ -121,7 +121,7 @@ const StoryImage = React.memo(
         />
       </Animated.View>
     );
-  }
+  },
 );
 
 // Create a separate component for the progress bar to avoid calling hooks in a loop
@@ -150,7 +150,7 @@ const ProgressBar = React.memo(
         <Animated.View style={[styles.progressBar, progressAnimatedStyle]} />
       </View>
     );
-  }
+  },
 );
 
 interface StoryViewerModalProps {
@@ -237,7 +237,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         if (finished && !isClosing && isMountedShared.value) {
           handleTimerComplete(index);
         }
-      }
+      },
     );
   };
 
@@ -298,7 +298,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         if (finished && !isClosing && isMountedShared.value) {
           handleTimerComplete(currentIndex);
         }
-      }
+      },
     );
   };
 
@@ -342,7 +342,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         if (finished && isMountedShared.value) {
           handleCloseComplete();
         }
-      }
+      },
     );
   };
 
@@ -364,7 +364,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
               if (finished && !isClosing && isMountedShared.value) {
                 handleTimerComplete(currentIndex);
               }
-            }
+            },
           );
         }
       }, 100);
@@ -392,7 +392,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
           (stories?.[index]?.image || stories[index]?.image)
         ) {
           Image.prefetch(
-            stories?.[index]?.image || stories[index]?.image || ""
+            stories?.[index]?.image || stories[index]?.image || "",
           );
         }
       });
@@ -405,7 +405,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
       isMountedShared.value = 1;
       const safeInitialIndex = Math.max(
         0,
-        Math.min(initialIndex, stories.length - 1)
+        Math.min(initialIndex, stories.length - 1),
       );
 
       setCurrentIndex(safeInitialIndex);
@@ -684,7 +684,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
               <Image
                 source={{
                   uri: getProfileImageUrl(
-                    stories?.[currentIndex]?.profile_image
+                    stories?.[currentIndex]?.profile_image,
                   ),
                 }}
                 style={{ width: 40, height: 40, borderRadius: 500 }}

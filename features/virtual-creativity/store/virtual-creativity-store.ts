@@ -93,7 +93,7 @@ const normalizeZIndex = (layers: VirtualLayer[]): VirtualLayer[] =>
   layers.map((layer, index) => ({
     ...layer,
     zIndex: index + 1,
-    stripOrder: layer.stripOrder ?? index + 1,
+    stripOrder: index + 1,
   }));
 
 const buildHistory = (history: HistoryState, layers: VirtualLayer[]) => ({
@@ -298,7 +298,10 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
 
       set({
         layers: normalizedNext,
-        selectedLayerId: resolveSelectedLayerId(selectedLayerId, normalizedNext),
+        selectedLayerId: resolveSelectedLayerId(
+          selectedLayerId,
+          normalizedNext,
+        ),
         history: {
           past: [...history.past, layers],
           future: newFuture,

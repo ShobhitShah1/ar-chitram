@@ -24,11 +24,16 @@ const Drawing = () => {
   } = useDrawingsTabGrid();
   const {
     selectedPremiumAsset,
+    premiumPriceLabel,
+    isFreePremiumActionBusy,
+    isPremiumActionBusy,
     handleAssetPress,
     handleClosePremiumAsset,
     handleFreePremiumAsset,
     handlePremiumAsset,
-  } = usePremiumAssetGuideFlow();
+  } = usePremiumAssetGuideFlow({
+    preloadItems: gridItems,
+  });
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = useCallback(() => {
@@ -82,6 +87,9 @@ const Drawing = () => {
         onClose={handleClosePremiumAsset}
         onFreePress={handleFreePremiumAsset}
         onPremiumPress={handlePremiumAsset}
+        freeDisabled={isFreePremiumActionBusy}
+        premiumDisabled={isPremiumActionBusy}
+        premiumPriceLabel={premiumPriceLabel}
       />
     </View>
   );

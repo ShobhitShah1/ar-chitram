@@ -327,7 +327,14 @@ export const DrawingLayerSvg: React.FC<DrawingLayerSvgProps> = ({
               );
             }
 
-            return <Path key={path.id} d={path.path} fill={path.color} clipPath={clipPathValue} />;
+            return (
+              <Path
+                key={path.id}
+                d={path.path}
+                fill={path.color}
+                clipPath={clipPathValue}
+              />
+            );
           }
 
           const scaledStrokeWidth = getScaledStrokeWidth(

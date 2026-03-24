@@ -23,7 +23,9 @@ export interface NormalizeStoryImageResult {
   sourceHeight: number;
 }
 
-const getImageSize = (uri: string): Promise<{ width: number; height: number }> =>
+const getImageSize = (
+  uri: string,
+): Promise<{ width: number; height: number }> =>
   new Promise((resolve, reject) => {
     RNImage.getSize(
       uri,
@@ -61,7 +63,11 @@ export const normalizeImageToStoryFrame = async (
   let outputWidth = sourceWidth;
   let outputHeight = sourceHeight;
 
-  if (shouldResize && fitMode === "cover" && Math.abs(sourceRatio - targetRatio) > 0.0001) {
+  if (
+    shouldResize &&
+    fitMode === "cover" &&
+    Math.abs(sourceRatio - targetRatio) > 0.0001
+  ) {
     if (sourceRatio > targetRatio) {
       // Source is wider than target ratio: crop left/right.
       cropWidth = Math.max(1, Math.round(sourceHeight * targetRatio));
@@ -75,7 +81,10 @@ export const normalizeImageToStoryFrame = async (
 
   if (shouldResize) {
     if (fitMode === "contain") {
-      const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+      const scale = Math.min(
+        targetWidth / sourceWidth,
+        targetHeight / sourceHeight,
+      );
       outputWidth = Math.max(1, Math.round(sourceWidth * scale));
       outputHeight = Math.max(1, Math.round(sourceHeight * scale));
     } else {

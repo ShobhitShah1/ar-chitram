@@ -4,20 +4,22 @@ const {
   withDangerousMod,
   withAppBuildGradle,
   withGradleProperties,
-} = require('expo/config-plugins');
-const fs = require('fs');
-const path = require('path');
+} = require("expo/config-plugins");
+const fs = require("fs");
+const path = require("path");
 
 const DEFAULT_ANDROID_SIGNING = {
-  storeFile: '../../architram-release-key.jks',
-  storePassword: 'architram123',
-  keyAlias: 'architramkey',
-  keyPassword: 'architram123',
+  storeFile: "../../architram-release-key.jks",
+  storePassword: "architram123",
+  keyAlias: "architramkey",
+  keyPassword: "architram123",
 };
 
 function upsertGradleProperty(properties, key, value) {
-  const index = properties.findIndex(item => item.type === 'property' && item.key === key);
-  const next = { type: 'property', key, value };
+  const index = properties.findIndex(
+    (item) => item.type === "property" && item.key === key,
+  );
+  const next = { type: "property", key, value };
 
   if (index >= 0) {
     properties[index] = next;
@@ -29,7 +31,9 @@ function upsertGradleProperty(properties, key, value) {
 }
 
 function removeGradleProperty(properties, key) {
-  return properties.filter(item => !(item.type === 'property' && item.key === key));
+  return properties.filter(
+    (item) => !(item.type === "property" && item.key === key),
+  );
 }
 
 function withAndroidSigning(config, signingOptions = {}) {
@@ -40,44 +44,61 @@ function withAndroidSigning(config, signingOptions = {}) {
   const releaseSigningCondition =
     "project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') && file(ARCHITRAM_UPLOAD_STORE_FILE).exists()";
 
-  config = withGradleProperties(config, config => {
+  config = withGradleProperties(config, (config) => {
     let props = config.modResults;
     const projectRoot = config.modRequest.projectRoot;
     // Resolve storeFile relative to android/app (where it's used by Gradle file())
     const storeFilePath = path.isAbsolute(signing.storeFile)
       ? signing.storeFile
-      : path.resolve(projectRoot, 'android/app', signing.storeFile);
+      : path.resolve(projectRoot, "android/app", signing.storeFile);
 
     if (fs.existsSync(storeFilePath)) {
-      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_FILE', signing.storeFile);
-      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_PASSWORD', signing.storePassword);
-      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS', signing.keyAlias);
-      upsertGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD', signing.keyPassword);
+      upsertGradleProperty(
+        props,
+        "ARCHITRAM_UPLOAD_STORE_FILE",
+        signing.storeFile,
+      );
+      upsertGradleProperty(
+        props,
+        "ARCHITRAM_UPLOAD_STORE_PASSWORD",
+        signing.storePassword,
+      );
+      upsertGradleProperty(
+        props,
+        "ARCHITRAM_UPLOAD_KEY_ALIAS",
+        signing.keyAlias,
+      );
+      upsertGradleProperty(
+        props,
+        "ARCHITRAM_UPLOAD_KEY_PASSWORD",
+        signing.keyPassword,
+      );
     } else {
-      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_FILE');
-      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_STORE_PASSWORD');
-      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_ALIAS');
-      props = removeGradleProperty(props, 'ARCHITRAM_UPLOAD_KEY_PASSWORD');
-      console.warn(`[withAndroidSigning] Keystore file not found at ${storeFilePath}. Skipping release signing config.`);
+      props = removeGradleProperty(props, "ARCHITRAM_UPLOAD_STORE_FILE");
+      props = removeGradleProperty(props, "ARCHITRAM_UPLOAD_STORE_PASSWORD");
+      props = removeGradleProperty(props, "ARCHITRAM_UPLOAD_KEY_ALIAS");
+      props = removeGradleProperty(props, "ARCHITRAM_UPLOAD_KEY_PASSWORD");
+      console.warn(
+        `[withAndroidSigning] Keystore file not found at ${storeFilePath}. Skipping release signing config.`,
+      );
     }
     config.modResults = props;
     return config;
   });
 
-  config = withAppBuildGradle(config, config => {
+  config = withAppBuildGradle(config, (config) => {
     let buildGradle = config.modResults.contents;
-    const releaseSigningLine =
-      `            signingConfig ${releaseSigningCondition} ? signingConfigs.release : signingConfigs.debug`;
+    const releaseSigningLine = `            signingConfig ${releaseSigningCondition} ? signingConfigs.release : signingConfigs.debug`;
 
     buildGradle = buildGradle.replace(
       /project\.hasProperty\('ARCHITRAM_UPLOAD_STORE_FILE'\)(?!\s*&&\s*file\(ARCHITRAM_UPLOAD_STORE_FILE\)\.exists\(\))/g,
-      releaseSigningCondition
+      releaseSigningCondition,
     );
 
-    if (!buildGradle.includes('ARCHITRAM_UPLOAD_KEY_ALIAS')) {
+    if (!buildGradle.includes("ARCHITRAM_UPLOAD_KEY_ALIAS")) {
       buildGradle = buildGradle.replace(
         /(signingConfigs\s*\{\s*debug\s*\{[\s\S]*?keyPassword\s*'android'\s*\}\s*)/m,
-        `$1        release {\n            if (${releaseSigningCondition}) {\n                storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)\n                storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD\n                keyAlias ARCHITRAM_UPLOAD_KEY_ALIAS\n                keyPassword ARCHITRAM_UPLOAD_KEY_PASSWORD\n            }\n        }\n`
+        `$1        release {\n            if (${releaseSigningCondition}) {\n                storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)\n                storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD\n                keyAlias ARCHITRAM_UPLOAD_KEY_ALIAS\n                keyPassword ARCHITRAM_UPLOAD_KEY_PASSWORD\n            }\n        }\n`,
       );
     }
 
@@ -89,12 +110,16 @@ function withAndroidSigning(config, signingOptions = {}) {
             return match;
           }
 
-          const updatedReleaseBody = /signingConfig\s+signingConfigs\.debug/.test(releaseBody)
-            ? releaseBody.replace(/signingConfig\s+signingConfigs\.debug/, releaseSigningLine.trim())
-            : `\n${releaseSigningLine}\n${releaseBody}`;
+          const updatedReleaseBody =
+            /signingConfig\s+signingConfigs\.debug/.test(releaseBody)
+              ? releaseBody.replace(
+                  /signingConfig\s+signingConfigs\.debug/,
+                  releaseSigningLine.trim(),
+                )
+              : `\n${releaseSigningLine}\n${releaseBody}`;
 
           return `${prefix}${updatedReleaseBody}${suffix}`;
-        }
+        },
       );
     }
 
@@ -115,50 +140,52 @@ function withShareFileProvider(config, props = {}) {
     }
 
     const application = manifest.application[0];
-    const applicationId = config.android?.package || 'com.gigglam';
+    const applicationId = config.android?.package || "com.gigglam";
 
     // Ensure tools namespace exists
-    if (!manifest.$['xmlns:tools']) {
-      manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    if (!manifest.$["xmlns:tools"]) {
+      manifest.$["xmlns:tools"] = "http://schemas.android.com/tools";
     }
 
     // Add MLKit Subject Segmentation meta-data for automatic model download
     const mlkitMetaData = {
       $: {
-        'android:name': 'com.google.mlkit.vision.DEPENDENCIES',
-        'android:value': 'subject_segment',
-        'tools:replace': 'android:value',
+        "android:name": "com.google.mlkit.vision.DEPENDENCIES",
+        "android:value": "subject_segment",
+        "tools:replace": "android:value",
       },
     };
 
-    if (!application['meta-data']) {
-      application['meta-data'] = [];
+    if (!application["meta-data"]) {
+      application["meta-data"] = [];
     }
 
     // Check for existing MLKit metadata and remove/update it
-    const existingMLKitIndex = application['meta-data'].findIndex(
-      m => m.$['android:name'] === 'com.google.mlkit.vision.DEPENDENCIES'
+    const existingMLKitIndex = application["meta-data"].findIndex(
+      (m) => m.$["android:name"] === "com.google.mlkit.vision.DEPENDENCIES",
     );
 
     if (existingMLKitIndex !== -1) {
-      application['meta-data'][existingMLKitIndex] = mlkitMetaData;
+      application["meta-data"][existingMLKitIndex] = mlkitMetaData;
     } else {
-      application['meta-data'].push(mlkitMetaData);
+      application["meta-data"].push(mlkitMetaData);
     }
 
     const providerElement = {
       $: {
-        'android:name': 'androidx.core.content.FileProvider',
-        'android:authorities': `${applicationId}.provider`,
-        'android:grantUriPermissions': 'true',
-        'android:exported': 'false',
+        "android:name": "androidx.core.content.FileProvider",
+        "android:authorities": `${applicationId}.provider`,
+        "android:grantUriPermissions": "true",
+        "android:exported": "false",
       },
-      'meta-data': [{
-        $: {
-          'android:name': 'android.support.FILE_PROVIDER_PATHS',
-          'android:resource': '@xml/filepaths',
+      "meta-data": [
+        {
+          $: {
+            "android:name": "android.support.FILE_PROVIDER_PATHS",
+            "android:resource": "@xml/filepaths",
+          },
         },
-      }],
+      ],
     };
 
     if (!application.provider) {
@@ -166,7 +193,7 @@ function withShareFileProvider(config, props = {}) {
     }
 
     const hasFileProvider = application.provider.some(
-      p => p.$['android:name'] === 'androidx.core.content.FileProvider'
+      (p) => p.$["android:name"] === "androidx.core.content.FileProvider",
     );
 
     if (!hasFileProvider) {
@@ -180,41 +207,45 @@ function withShareFileProvider(config, props = {}) {
     let mainApplicationFile = config.modResults.contents;
 
     // Add import for ShareApplication
-    if (!mainApplicationFile.includes('cl.json.ShareApplication')) {
-      const lines = mainApplicationFile.split('\n');
+    if (!mainApplicationFile.includes("cl.json.ShareApplication")) {
+      const lines = mainApplicationFile.split("\n");
       let lastImportIndex = -1;
       for (let i = lines.length - 1; i >= 0; i--) {
-        if (lines[i].trim().startsWith('import ')) {
+        if (lines[i].trim().startsWith("import ")) {
           lastImportIndex = i;
           break;
         }
       }
       if (lastImportIndex !== -1) {
-        lines.splice(lastImportIndex + 1, 0, 'import cl.json.ShareApplication');
-        mainApplicationFile = lines.join('\n');
+        lines.splice(lastImportIndex + 1, 0, "import cl.json.ShareApplication");
+        mainApplicationFile = lines.join("\n");
       }
     }
 
     // Update class declaration to implement ShareApplication
-    if (mainApplicationFile.includes('class MainApplication : Application(), ReactApplication')) {
+    if (
+      mainApplicationFile.includes(
+        "class MainApplication : Application(), ReactApplication",
+      )
+    ) {
       mainApplicationFile = mainApplicationFile.replace(
         /class MainApplication : Application\(\), ReactApplication \{/,
-        'class MainApplication : Application(), ReactApplication, ShareApplication {'
+        "class MainApplication : Application(), ReactApplication, ShareApplication {",
       );
     }
 
     // Add getFileProviderAuthority method before onConfigurationChanged
-    if (!mainApplicationFile.includes('getFileProviderAuthority')) {
+    if (!mainApplicationFile.includes("getFileProviderAuthority")) {
       const methodToAdd = `  override fun getFileProviderAuthority(): String {
     return BuildConfig.APPLICATION_ID + ".provider"
   }
 
   override fun `;
 
-      if (mainApplicationFile.includes('override fun onConfigurationChanged')) {
+      if (mainApplicationFile.includes("override fun onConfigurationChanged")) {
         mainApplicationFile = mainApplicationFile.replace(
           /  override fun onConfigurationChanged/,
-          methodToAdd + 'onConfigurationChanged'
+          methodToAdd + "onConfigurationChanged",
         );
       }
     }
@@ -224,18 +255,18 @@ function withShareFileProvider(config, props = {}) {
   });
 
   config = withDangerousMod(config, [
-    'android',
+    "android",
     async (config) => {
       const xmlDir = path.join(
         config.modRequest.platformProjectRoot,
-        'app/src/main/res/xml'
+        "app/src/main/res/xml",
       );
 
       if (!fs.existsSync(xmlDir)) {
         fs.mkdirSync(xmlDir, { recursive: true });
       }
 
-      const filePath = path.join(xmlDir, 'filepaths.xml');
+      const filePath = path.join(xmlDir, "filepaths.xml");
 
       const xmlContent = `<?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
@@ -256,4 +287,3 @@ function withShareFileProvider(config, props = {}) {
 }
 
 module.exports = withShareFileProvider;
-

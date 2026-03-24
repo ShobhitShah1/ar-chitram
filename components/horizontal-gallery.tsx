@@ -151,7 +151,7 @@ export const HorizontalGallery: React.FC<HorizontalGalleryProps> = ({
         scrollX.value,
         inputRange,
         [0.4, 1, 0.4],
-        "clamp"
+        "clamp",
       );
 
       return {

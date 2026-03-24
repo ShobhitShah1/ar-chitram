@@ -20,11 +20,7 @@
         "NSCameraUsageDescription": "Ar-Chitram needs camera access to let you take and share photos directly in your rooms.",
         "NSContactsUsageDescription": "Ar-Chitram needs access to your contacts so you can easily invite friends to collaborative rooms by phone number.",
         "NSUserTrackingUsageDescription": "This helps us provide you with a personalized experience and relevant content.",
-        "LSApplicationQueriesSchemes": [
-          "fb",
-          "instagram",
-          "whatsapp"
-        ]
+        "LSApplicationQueriesSchemes": ["fb", "instagram", "whatsapp"]
       },
       "bundleIdentifier": "com.architram"
     },
@@ -46,7 +42,6 @@
         "android.permission.ACCESS_MEDIA_LOCATION"
       ],
       "blockedPermissions": [
-        "com.google.android.gms.permission.AD_ID",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
@@ -76,9 +71,7 @@
           "photosPermission": "Ar-Chitram needs access to your photos so you can share them in collaborative rooms with friends.",
           "savePhotosPermission": "Ar-Chitram needs permission to save photos so you can keep the fun images you create with friends.",
           "isAccessMediaLocationEnabled": true,
-          "granularPermissions": [
-            "photo"
-          ]
+          "granularPermissions": ["photo"]
         }
       ],
       [
@@ -93,11 +86,7 @@
       [
         "react-native-share",
         {
-          "ios": [
-            "fb",
-            "instagram",
-            "whatsapp"
-          ],
+          "ios": ["fb", "instagram", "whatsapp"],
           "android": [
             "com.facebook.katana",
             "com.instagram.android",
@@ -120,6 +109,14 @@
         }
       ],
       [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-9745099446260761~8787673854",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+        }
+      ],
+      "expo-iap",
+      [
         "expo-camera",
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
@@ -136,7 +133,9 @@
       "typedRoutes": true
     },
     "extra": {
-      "googleWebClientId": "919012592510-g5j1tfvkk5qfi2b2ftrm8s07q5reuguv.apps.googleusercontent.com"
+      "googleWebClientId": "919012592510-g5j1tfvkk5qfi2b2ftrm8s07q5reuguv.apps.googleusercontent.com",
+      "rewardedAdUnitIdAndroid": "ca-app-pub-9745099446260761~8787673854",
+      "rewardedAdUnitIdIos": "ca-app-pub-9745099446260761~8787673854"
     }
   }
 }

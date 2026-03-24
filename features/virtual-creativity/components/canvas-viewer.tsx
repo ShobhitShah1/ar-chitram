@@ -81,7 +81,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   hideSelectionUI = false,
 }) => {
   const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
-  const bringToFront = useVirtualCreativityStore((state) => state.bringToFront);
   const smartFillWarningShown = React.useRef(false);
   const eraseSessionRef = React.useRef<{
     layerId: string | null;
@@ -92,7 +91,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   });
   const [activeSmartFillSpace, setActiveSmartFillSpace] =
     React.useState<SmartFillSpace | null>(null);
-  const smartFillSpaceCacheRef = React.useRef(new Map<string, SmartFillSpace>());
+  const smartFillSpaceCacheRef = React.useRef(
+    new Map<string, SmartFillSpace>(),
+  );
   const [canvasSize, setCanvasSize] = React.useState({ width: 0, height: 0 });
 
   const scale = useSharedValue(1);
@@ -124,19 +125,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     () => sortedLayers.find((layer) => layer.id === "main-image") ?? null,
     [sortedLayers],
   );
-  const selectedBackLayerId = React.useMemo(() => {
-    if (!mainLayer || !selectedLayerId) {
-      return null;
-    }
-
-    const selectedLayer =
-      sortedLayers.find((layer) => layer.id === selectedLayerId) ?? null;
-    if (!selectedLayer || selectedLayer.id === "main-image") {
-      return null;
-    }
-
-    return selectedLayer.zIndex < mainLayer.zIndex ? selectedLayer.id : null;
-  }, [mainLayer, selectedLayerId, sortedLayers]);
   const isolatedEditingLayer = React.useMemo(() => {
     if (mainLayer || sortedLayers.length !== 1) {
       return null;
@@ -145,7 +133,10 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     return sortedLayers[0];
   }, [mainLayer, sortedLayers]);
   const focusLayer = React.useMemo(
-    () => (focusPlacementEnabled && sortedLayers.length === 1 ? sortedLayers[0] : null),
+    () =>
+      focusPlacementEnabled && sortedLayers.length === 1
+        ? sortedLayers[0]
+        : null,
     [focusPlacementEnabled, sortedLayers],
   );
   const focusStageScale = React.useMemo(() => {
@@ -369,11 +360,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
 
       const nextPaths = [...(targetLayer.paths || []), path];
       updateLayer(layerId, { paths: nextPaths });
-      if (layerId !== "main-image") {
-        bringToFront(layerId, false);
-      }
     },
-    [bringToFront, getCurrentLayer, updateLayer],
+    [getCurrentLayer, updateLayer],
   );
 
   const handleResolveSmartFillPath = React.useCallback(
@@ -443,13 +431,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
           },
         ],
       });
-
-      if (layerId !== "main-image") {
-        bringToFront(layerId, false);
-      }
     },
     [
-      bringToFront,
       currentColor,
       currentPatternUri,
       getCurrentLayer,
@@ -544,7 +527,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
           resolveSmartFillPath={(point) =>
             handleResolveSmartFillPath(layer.id, point)
           }
-          smartFillSpace={layer.id === activeLayerId ? activeSmartFillSpace : null}
+          smartFillSpace={
+            layer.id === activeLayerId ? activeSmartFillSpace : null
+          }
           currentColor={currentColor}
           brushKind={currentBrushKind}
           solidMode={currentSolidMode}
@@ -703,9 +688,15 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                     ? activeSmartFillSpace
                     : null
                 }
-                onAddPath={(path) => handleAddPath(path, isolatedEditingLayer.id)}
-                onTapFill={(point) => handleTapFill(isolatedEditingLayer.id, point)}
-                onEraseSessionStart={() => beginEraseSession(isolatedEditingLayer.id)}
+                onAddPath={(path) =>
+                  handleAddPath(path, isolatedEditingLayer.id)
+                }
+                onTapFill={(point) =>
+                  handleTapFill(isolatedEditingLayer.id, point)
+                }
+                onEraseSessionStart={() =>
+                  beginEraseSession(isolatedEditingLayer.id)
+                }
                 onEraseSessionEnd={endEraseSession}
                 onEraseAt={(point, radius) =>
                   handleEraseAt(isolatedEditingLayer.id, point, radius)
@@ -785,25 +776,32 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                       canvasWidth={STORY_FRAME_WIDTH}
                       canvasHeight={STORY_FRAME_HEIGHT}
                       stageScale={stageLayout.scale}
-                      displayZIndex={
-                        selectedBackLayerId === layer.id
-                          ? sortedLayers.length + 10
-                          : undefined
-                      }
                       isSelected={selectedLayerId === layer.id}
                       isActiveEditable={activeLayerId === layer.id}
-                      onSelect={onSelectLayer ? () => onSelectLayer(layer.id) : undefined}
+                      onSelect={
+                        onSelectLayer
+                          ? () => onSelectLayer(layer.id)
+                          : undefined
+                      }
                       onLongPress={
-                        onLongPressLayer ? () => onLongPressLayer(layer.id) : undefined
+                        onLongPressLayer
+                          ? () => onLongPressLayer(layer.id)
+                          : undefined
                       }
                       onTapSelected={
-                        selectedLayerId === layer.id ? onClearSelection : undefined
+                        selectedLayerId === layer.id
+                          ? onClearSelection
+                          : undefined
                       }
-                      gesturesEnabled={subLayerGesturesEnabled && selectedLayerId === layer.id}
+                      gesturesEnabled={
+                        subLayerGesturesEnabled && selectedLayerId === layer.id
+                      }
                       enablePinchResize={
                         subLayerGesturesEnabled && selectedLayerId === layer.id
                       }
-                      hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
+                      hideSelectionUI={
+                        hideSelectionUI || !subLayerGesturesEnabled
+                      }
                       zoomScale={scale}
                       isZoomMode={isZoomMode}
                       currentColor={currentColor}

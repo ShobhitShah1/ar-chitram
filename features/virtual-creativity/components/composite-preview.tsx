@@ -42,7 +42,8 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
       style={styles.container}
       onLayout={(event) => {
         const nextWidth = Math.round(event.nativeEvent.layout.width) || width;
-        const nextHeight = Math.round(event.nativeEvent.layout.height) || height;
+        const nextHeight =
+          Math.round(event.nativeEvent.layout.height) || height;
         setContainerSize((current) => {
           if (current.width === nextWidth && current.height === nextHeight) {
             return current;
@@ -67,7 +68,10 @@ export const CompositePreview: React.FC<CompositePreviewProps> = ({
         ]}
       >
         {sortedLayers.map((layer) => {
-          const metrics = getVirtualLayerRenderMetrics(layer, stageLayout.scale);
+          const metrics = getVirtualLayerRenderMetrics(
+            layer,
+            stageLayout.scale,
+          );
           return (
             <View
               key={layer.id}

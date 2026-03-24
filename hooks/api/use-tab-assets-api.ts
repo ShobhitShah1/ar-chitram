@@ -306,7 +306,9 @@ const useMergedTabAssetsGrid = (
   );
 
   const gridController = useTabGridController(mergedData);
-  const hasResolvedData = sourceQueries.some((query) => query.data !== undefined);
+  const hasResolvedData = sourceQueries.some(
+    (query) => query.data !== undefined,
+  );
 
   const refetch = useCallback(async () => {
     await Promise.allSettled(sourceQueries.map((query) => query.refetch()));
@@ -449,7 +451,9 @@ const useCreateFlowAssetPickerController = (
     await Promise.allSettled(sourceQueries.map((query) => query.refetch()));
   }, [sourceQueries]);
 
-  const hasResolvedData = sourceQueries.some((query) => query.data !== undefined);
+  const hasResolvedData = sourceQueries.some(
+    (query) => query.data !== undefined,
+  );
   const isLoading =
     sourceQueries.some((query) => query.isLoading) && !hasResolvedData;
   const isFetching = sourceQueries.some((query) => query.isFetching);

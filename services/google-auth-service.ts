@@ -112,23 +112,27 @@ export const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
   }
 };
 
-export const trySilentGoogleSignIn = async (): Promise<GoogleAuthUser | null> => {
-  try {
-    configureGoogleSignIn();
-    const response = await GoogleSignin.signInSilently();
+export const trySilentGoogleSignIn =
+  async (): Promise<GoogleAuthUser | null> => {
+    try {
+      configureGoogleSignIn();
+      const response = await GoogleSignin.signInSilently();
 
-    if (response.type !== "success") {
+      if (response.type !== "success") {
+        return null;
+      }
+
+      const tokens = await GoogleSignin.getTokens().catch(() => null);
+      return toGoogleAuthUser(response.data, tokens?.accessToken || null);
+    } catch (error) {
+      if (
+        isErrorWithCode(error) &&
+        error.code === statusCodes.SIGN_IN_REQUIRED
+      ) {
+        return null;
+      }
+
+      debugLog.warn("Silent Google sign-in failed", error);
       return null;
     }
-
-    const tokens = await GoogleSignin.getTokens().catch(() => null);
-    return toGoogleAuthUser(response.data, tokens?.accessToken || null);
-  } catch (error) {
-    if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_REQUIRED) {
-      return null;
-    }
-
-    debugLog.warn("Silent Google sign-in failed", error);
-    return null;
-  }
-};
+  };

@@ -1,12 +1,15 @@
 import { FONT_ASSETS } from "@/constants/fonts";
 import { ProfileProvider } from "@/context/profile-context";
 import QueryProvider from "@/context/query-provider";
+import { IAPProvider } from "@/context/iap-context";
 import {
   ThemeProvider as CustomThemeProvider,
   useTheme,
 } from "@/context/theme-context";
 import { UserProvider } from "@/context/user-context";
 import { initializeApiAuth } from "@/hooks/api/use-auth-api";
+import { ensureMobileAdsInitialized } from "@/services/mobile-ads-service";
+import { preloadRewardedAds } from "@/services/rewarded-ad-service";
 import { handleVersionTracking } from "@/services/version-tracking-service";
 import { useCommonHeaderOptions } from "@/utils/header-config";
 import { toastConfig } from "@/utils/toast-config";
@@ -133,6 +136,15 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    ensureMobileAdsInitialized().catch((error) => {
+      console.error("[Ads] Failed to initialize Mobile Ads SDK", error);
+    });
+    preloadRewardedAds("app-start").catch((error) => {
+      console.error("[Ads] Failed to preload rewarded ads", error);
+    });
+  }, []);
+
   if (!loaded) {
     return null;
   }
@@ -146,14 +158,16 @@ function RootLayoutNav() {
       <QueryProvider>
         <CustomThemeProvider>
           <UserProvider>
-            <ProfileProvider>
-              <KeyboardProvider>
-                <BottomSheetModalProvider>
-                  <ThemedNavigator />
-                  <Toast config={toastConfig} position="bottom" />
-                </BottomSheetModalProvider>
-              </KeyboardProvider>
-            </ProfileProvider>
+            <IAPProvider>
+              <ProfileProvider>
+                <KeyboardProvider>
+                  <BottomSheetModalProvider>
+                    <ThemedNavigator />
+                    <Toast config={toastConfig} position="bottom" />
+                  </BottomSheetModalProvider>
+                </KeyboardProvider>
+              </ProfileProvider>
+            </IAPProvider>
           </UserProvider>
         </CustomThemeProvider>
       </QueryProvider>

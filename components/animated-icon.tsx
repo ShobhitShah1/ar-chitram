@@ -12,11 +12,11 @@ export const AnimatedIcon = ({ name, color }: { name: any; color: string }) => {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    scale.value = withSpring(1, { 
-      damping: 15, 
+    scale.value = withSpring(1, {
+      damping: 15,
       stiffness: 200,
       mass: 1,
-      energyThreshold: 0.001
+      energyThreshold: 0.001,
     });
     opacity.value = withTiming(1, { duration: 400 });
   }, [name]);

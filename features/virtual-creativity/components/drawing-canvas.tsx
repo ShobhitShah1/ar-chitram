@@ -117,8 +117,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   const lastErasePointRef = useRef<CanvasPoint | null>(null);
 
   const activeBrushKind = brushKind ?? "solid";
-  const supportsPatternBrush =
-    activeBrushKind === "pattern" && !!patternUri;
+  const supportsPatternBrush = activeBrushKind === "pattern" && !!patternUri;
   const supportsSmartFillBrush =
     activeBrushKind === "solid" || supportsPatternBrush;
   const isTapFillMode = supportsSmartFillBrush && solidMode === "tap-fill";
@@ -753,7 +752,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             <AnimatedPath
               animatedProps={activeImagePathProps}
               stroke={
-                showPatternPreview ? "url(#active-object-pattern)" : currentColor
+                showPatternPreview
+                  ? "url(#active-object-pattern)"
+                  : currentColor
               }
               strokeWidth={liveObjectStrokeWidth}
               fill="none"

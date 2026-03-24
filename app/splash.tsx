@@ -4,7 +4,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from "expo-router";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Image, StatusBar, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -111,11 +111,6 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="transparent"
-        translucent
-      />
       <Animated.View style={[styles.logoWrap, logoAnimatedStyle]}>
         <Image
           source={require("../assets/images/splash-icon.png")}

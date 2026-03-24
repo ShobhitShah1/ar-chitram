@@ -18,6 +18,7 @@ export interface GridAssetItem {
   image?: string | number | { uri: string };
   color?: string;
   isPremium?: boolean;
+  sku?: string | null;
 }
 
 interface ImageGridProps {
@@ -69,7 +70,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       {ListHeaderComponent}
 
       {isEmpty ? (
-        ListEmptyComponent ?? null
+        (ListEmptyComponent ?? null)
       ) : (
         <View style={styles.grid}>
           {data.map((item, index) => {
@@ -99,7 +100,8 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                     cardStyle,
                     {
                       width: "100%", // Fill wrapper
-                      backgroundColor: item.color || theme.drawingCardBackground,
+                      backgroundColor:
+                        item.color || theme.drawingCardBackground,
                       boxShadow: theme.drawingCardShadow,
                     } as any,
                   ]}

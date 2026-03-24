@@ -101,7 +101,9 @@ dataApi.interceptors.request.use((config) => {
 
   if (shouldRequireAuth(config.data)) {
     const eventName =
-      config.data && typeof config.data === "object" && "eventName" in config.data
+      config.data &&
+      typeof config.data === "object" &&
+      "eventName" in config.data
         ? String((config.data as AnyApiRequest).eventName || "")
         : "unknown";
     return Promise.reject(new AuthSkippedError(eventName));
@@ -158,16 +160,57 @@ const parseBrokenJson = (rawPayload: string): unknown => {
   }
 };
 
+const isStandardApiResponse = <TData>(
+  payload: unknown,
+): payload is ApiResponse<TData> =>
+  Boolean(
+    payload &&
+    typeof payload === "object" &&
+    "code" in payload &&
+    "message" in payload,
+  );
+
+const normalizeStatusApiResponse = <TData>(
+  payload: unknown,
+): ApiResponse<TData> | null => {
+  if (!payload || typeof payload !== "object" || !("status" in payload)) {
+    return null;
+  }
+
+  const statusValue = (payload as { status?: unknown }).status;
+
+  if (typeof statusValue !== "boolean") {
+    return null;
+  }
+
+  const messageValue =
+    "message" in payload &&
+    typeof (payload as { message?: unknown }).message === "string"
+      ? (payload as { message: string }).message
+      : statusValue
+        ? "success."
+        : "Request failed.";
+
+  return {
+    code: statusValue ? 200 : 400,
+    data: ((payload as { data?: TData }).data ?? ({} as TData)) as TData,
+    message: messageValue,
+  };
+};
+
 const normalizeApiResponse = <TData>(payload: unknown): ApiResponse<TData> => {
-  if (payload && typeof payload === "object" && "code" in payload && "message" in payload) {
-    return payload as ApiResponse<TData>;
+  if (isStandardApiResponse<TData>(payload)) {
+    return payload;
+  }
+
+  const normalizedStatusResponse = normalizeStatusApiResponse<TData>(payload);
+  if (normalizedStatusResponse) {
+    return normalizedStatusResponse;
   }
 
   if (typeof payload === "string") {
     const parsed = parseBrokenJson(payload);
-    if (parsed && typeof parsed === "object" && "code" in parsed && "message" in parsed) {
-      return parsed as ApiResponse<TData>;
-    }
+    return normalizeApiResponse<TData>(parsed);
   }
 
   throw new Error("Invalid API response format.");
@@ -337,10 +380,7 @@ export async function makeApiRequest(
   request: AnyApiRequest,
 ): Promise<UnknownApiResponse> {
   try {
-    const response = await dataApi.post<unknown>(
-      "",
-      request,
-    );
+    const response = await dataApi.post<unknown>("", request);
     return normalizeApiResponse(response.data);
   } catch (error) {
     if (isAuthSkipped(error)) {
@@ -556,7 +596,9 @@ export const getTermsOfUse = async (): Promise<ApiResponse<LegalDocument>> =>
     eventName: "get_terms_of_use",
   });
 
-export const getLibraryLicense = async (): Promise<ApiResponse<LegalDocument>> =>
+export const getLibraryLicense = async (): Promise<
+  ApiResponse<LegalDocument>
+> =>
   makeApiRequest<"get_library_license">({
     eventName: "get_library_license",
   });

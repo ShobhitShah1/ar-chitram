@@ -35,7 +35,11 @@ const SocialButton = ({
     <Pressable
       onPress={onPress}
       disabled={isLoading}
-      style={[styles.container, style, isLoading ? styles.loadingContainer : null]}
+      style={[
+        styles.container,
+        style,
+        isLoading ? styles.loadingContainer : null,
+      ]}
     >
       {isLoading ? (
         <>
@@ -44,7 +48,11 @@ const SocialButton = ({
         </>
       ) : (
         <>
-          <Image source={imageSource} style={styles.icon} resizeMode="contain" />
+          <Image
+            source={imageSource}
+            style={styles.icon}
+            resizeMode="contain"
+          />
           <Text style={styles.text}>{title}</Text>
         </>
       )}

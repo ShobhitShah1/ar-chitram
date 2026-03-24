@@ -43,7 +43,7 @@ export const EtherealLoader: React.FC<EtherealLoaderProps> = ({
           translateX: interpolate(
             shimmerProgress.value,
             [0, 1],
-            [-SCREEN_WIDTH, SCREEN_WIDTH * 2]
+            [-SCREEN_WIDTH, SCREEN_WIDTH * 2],
           ),
         },
       ],
@@ -66,7 +66,7 @@ export const EtherealLoader: React.FC<EtherealLoaderProps> = ({
       backgroundColor: `rgba(0,0,0,${interpolate(
         backdropPulse.value,
         [0, 1],
-        [0.5, 0.55]
+        [0.5, 0.55],
       )})`,
     };
   });
@@ -80,7 +80,7 @@ export const EtherealLoader: React.FC<EtherealLoaderProps> = ({
           easing: Easing.linear,
         }),
         -1,
-        false
+        false,
       );
 
       // Breathing animation
@@ -90,7 +90,7 @@ export const EtherealLoader: React.FC<EtherealLoaderProps> = ({
           easing: Easing.inOut(Easing.ease),
         }),
         -1,
-        true
+        true,
       );
 
       // Backdrop pulse
@@ -100,7 +100,7 @@ export const EtherealLoader: React.FC<EtherealLoaderProps> = ({
           easing: Easing.inOut(Easing.ease),
         }),
         -1,
-        true
+        true,
       );
     } else {
       // Cancel all animations

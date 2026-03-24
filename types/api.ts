@@ -37,6 +37,8 @@ export interface LegalDocumentResponse {
 export interface RemoteAsset {
   image: string;
   is_premium: boolean;
+  sku?: string | null;
+  base_path?: string | null;
 }
 
 export interface RemoteAssetCategory {
@@ -135,6 +137,7 @@ export type ApiRequestFor<TEvent extends ApiEventName> = {
   eventName: TEvent;
 } & ApiEventRequestMap[TEvent];
 
-export type ApiDataFor<TEvent extends ApiEventName> = ApiEventResponseMap[TEvent];
+export type ApiDataFor<TEvent extends ApiEventName> =
+  ApiEventResponseMap[TEvent];
 
 export type ApiRequest = ApiRequestFor<ApiEventName>;

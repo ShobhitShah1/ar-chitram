@@ -219,14 +219,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
     }
 
     setActiveColor(1);
-  }, [
-    hueThumbX,
-    initialColor,
-    initialSolidMode,
-    mode,
-    satBrightX,
-    satBrightY,
-  ]);
+  }, [hueThumbX, initialColor, initialSolidMode, mode, satBrightX, satBrightY]);
 
   useEffect(() => {
     if (!visible) {
@@ -306,7 +299,8 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
   const currentHue = mode === "gradient" && activeColor === 2 ? hue2 : hue1;
   const hueColor = rgbToHex(...hsvToRgb(currentHue, 1, 1));
-  const sheetContentBottomPadding = Math.max(insets.bottom - bottomInset, 0) + 16;
+  const sheetContentBottomPadding =
+    Math.max(insets.bottom - bottomInset, 0) + 16;
 
   const handleApply = useCallback(() => {
     if (mode === "color") {
@@ -315,7 +309,15 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
       onSelectGradient([color1, color2]);
     }
     onClose();
-  }, [color1, color2, mode, onClose, onSelectColor, onSelectGradient, solidMode]);
+  }, [
+    color1,
+    color2,
+    mode,
+    onClose,
+    onSelectColor,
+    onSelectGradient,
+    solidMode,
+  ]);
 
   const switchActiveColor = useCallback(
     (colorNum: 1 | 2) => {
@@ -327,7 +329,17 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
       satBrightX.value = withSpring(s * PICKER_WIDTH);
       satBrightY.value = withSpring((1 - b) * PICKER_HEIGHT);
     },
-    [brightness1, brightness2, hue1, hue2, hueThumbX, saturation1, saturation2, satBrightX, satBrightY],
+    [
+      brightness1,
+      brightness2,
+      hue1,
+      hue2,
+      hueThumbX,
+      saturation1,
+      saturation2,
+      satBrightX,
+      satBrightY,
+    ],
   );
 
   const sheetMaxHeight = Math.min(screenHeight - 12, screenHeight * 0.86);

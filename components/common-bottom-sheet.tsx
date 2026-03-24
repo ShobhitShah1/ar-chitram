@@ -1,4 +1,5 @@
-﻿import { useTheme } from "@/context/theme-context";
+import { useTheme } from "@/context/theme-context";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -7,8 +8,14 @@ import {
   type BottomSheetHandleProps,
   useBottomSheetSpringConfigs,
 } from "@gorhom/bottom-sheet";
-import React, { memo, useCallback, useMemo } from "react";
-import { StyleSheet, type StyleProp, type ViewStyle } from "react-native";
+import React, { memo, useCallback, useMemo, useRef } from "react";
+import {
+  BackHandler,
+  Platform,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 
 export const COMMON_SHEET_BACKDROP_COLOR = "#000000";
 export const COMMON_SHEET_BACKDROP_OPACITY = 0.5;
@@ -52,6 +59,7 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
     showHandle = true,
   }) => {
     const { theme } = useTheme();
+    const isSheetOpenRef = useRef(false);
 
     const resolvedSnapPoints = useMemo<Array<string | number>>(
       () => (snapPoints ? [...snapPoints] : ["84%"]),
@@ -84,6 +92,39 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
       [],
     );
 
+    const handleSheetChange = useCallback((index: number) => {
+      isSheetOpenRef.current = index >= 0;
+    }, []);
+
+    const handleSheetDismiss = useCallback(() => {
+      isSheetOpenRef.current = false;
+      onDismiss?.();
+    }, [onDismiss]);
+
+    useFocusEffect(
+      useCallback(() => {
+        if (Platform.OS !== "android") {
+          return undefined;
+        }
+
+        const onBackPress = () => {
+          if (!isSheetOpenRef.current) {
+            return false;
+          }
+
+          modalRef.current?.dismiss();
+          return true;
+        };
+
+        const subscription = BackHandler.addEventListener(
+          "hardwareBackPress",
+          onBackPress,
+        );
+
+        return () => subscription.remove();
+      }, [modalRef]),
+    );
+
     return (
       <BottomSheetModal
         ref={modalRef}
@@ -92,7 +133,8 @@ export const CommonBottomSheet: React.FC<CommonBottomSheetProps> = memo(
         bottomInset={bottomInset}
         enableDynamicSizing={enableDynamicSizing}
         animationConfigs={animationConfigs}
-        onDismiss={onDismiss}
+        onChange={handleSheetChange}
+        onDismiss={handleSheetDismiss}
         backdropComponent={showBackdrop ? renderBackdrop : undefined}
         enablePanDownToClose={enablePanDownToClose}
         enableContentPanningGesture={enableContentPanningGesture}

@@ -177,15 +177,18 @@ const Canvas = () => {
     }, 900);
   }, []);
 
-  const handleZoomChange = useCallback((nextZoom: number) => {
-    const clampedZoom = Math.min(
-      Math.max(nextZoom, MIN_CAMERA_ZOOM),
-      MAX_CAMERA_ZOOM,
-    );
+  const handleZoomChange = useCallback(
+    (nextZoom: number) => {
+      const clampedZoom = Math.min(
+        Math.max(nextZoom, MIN_CAMERA_ZOOM),
+        MAX_CAMERA_ZOOM,
+      );
 
-    setZoom(clampedZoom);
-    showZoomBadge();
-  }, [showZoomBadge]);
+      setZoom(clampedZoom);
+      showZoomBadge();
+    },
+    [showZoomBadge],
+  );
 
   const zoomGesture = Gesture.Pinch()
     .runOnJS(true)

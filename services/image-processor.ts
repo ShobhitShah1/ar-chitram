@@ -16,7 +16,7 @@ export class ImageProcessor {
    */
   static async processImageForQuality(
     sourceUri: string,
-    quality: QualityOption
+    quality: QualityOption,
   ): Promise<ProcessedImage> {
     try {
       // Process the image by applying only a compression level.
@@ -27,7 +27,7 @@ export class ImageProcessor {
         {
           compress: this.getCompressionQuality(quality.id),
           format: ImageManipulator.SaveFormat.JPEG,
-        }
+        },
       );
 
       // Get processed image info to determine its final size.
@@ -79,7 +79,7 @@ export class ImageProcessor {
       const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(fileUri, base64Data, {
-        encoding: 'base64' as const,
+        encoding: "base64" as const,
       });
 
       return fileUri;

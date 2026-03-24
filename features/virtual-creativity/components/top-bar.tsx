@@ -203,7 +203,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 6,
+    paddingTop: 4,
   },
   toolsContainer: {
     flexDirection: "row",

@@ -98,7 +98,9 @@ export const CategoryChips = ({
 
 const styles = StyleSheet.create({
   root: {
-    height: 60,
+    marginTop: 5,
+    marginBottom: 15,
+    // height: 60,
   },
   container: {
     paddingHorizontal: 16,

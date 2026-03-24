@@ -1,5 +1,7 @@
 import { ColorPickerModal } from "@/features/virtual-creativity/components/color-picker-modal";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
+import type { GridAssetItem } from "@/components/image-grid";
+import { PremiumAssetModal } from "@/components/premium-asset-modal";
 import { UploadAssetSheet } from "@/features/virtual-creativity/components/upload-asset-sheet";
 import {
   CapturePreviewModal,
@@ -21,6 +23,7 @@ import { SignatureModal } from "@/features/virtual-creativity/components/signatu
 import { TopBar } from "@/features/virtual-creativity/components/top-bar";
 import { fetchLocalUploadTabAssets } from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { FontFamily } from "@/constants/fonts";
+import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
 import { useTheme } from "@/context/theme-context";
 import {
   type CreateFlowPickerAssetItem,
@@ -28,6 +31,7 @@ import {
 } from "@/hooks/api/use-tab-assets-api";
 import { apiQueryKeys } from "@/services/api/query-keys";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
 import {
   useBrush,
   useCanvasInitialization,
@@ -54,28 +58,34 @@ import {
   ActivityIndicator,
   Dimensions,
   Image as RNImage,
+  StatusBar,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { captureRef } from "react-native-view-shot";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const EMPTY_LAYERS: VirtualLayer[] = [];
 const HORIZONTAL_GUTTER = 16;
-const WORKSPACE_GAP = 10;
+const WORKSPACE_GAP = 6;
 const WORKSPACE_BOTTOM_PADDING = 8;
 
 const getInitialLayers = (): VirtualLayer[] => [];
 
 export default function VirtualCreativityScreen() {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const router = useRouter();
+  const isPremiumPickerModalFlow = PREMIUM_PICKER_ENTRY_MODE === "modal";
   const assetPickerModalRef = useRef<BottomSheetModal | null>(null);
   const lastDrawingToolRef = useRef<ToolType>("palette");
+  const selectionRestoreToolRef = useRef<ToolType | null>(null);
   const pendingUploadFlowLaunchRef = useRef(false);
   const lastAutoPlacedStoredUploadsKeyRef = useRef<string | null>(null);
   const { data: storedUploadAssetsData } = useQuery({
@@ -242,17 +252,16 @@ export default function VirtualCreativityScreen() {
   }, [brushTargetLayerId, isFocusPlacementActive, selectedTool]);
   const activeOrderLayerId = selectedSubLayerId;
   const canDeleteLayer = !!selectedSubLayerId;
+  const isLayerSelectionMode =
+    viewMode === "composite" && selectedTool === "gallery" && !isZoomMode;
 
   const defaultBrushColor =
     typeof theme.accent === "string" && theme.accent.startsWith("#")
       ? theme.accent
       : "#3259F4";
 
-  const { brush, setBrushForActiveLayer, onSelectColor } = useBrush(
-    brushTargetLayerId,
-    bringToFront,
-    defaultBrushColor,
-  );
+  const { brush, setBrushForActiveLayer, onSelectColor } =
+    useBrush(defaultBrushColor);
 
   const displayedLayers = useMemo(() => {
     if (viewMode === "single" && selectedSubLayerId) {
@@ -291,6 +300,18 @@ export default function VirtualCreativityScreen() {
   const restoreDrawingTool = useCallback(() => {
     setSelectedTool(lastDrawingToolRef.current);
   }, []);
+
+  const restoreToolAfterSelection = useCallback(() => {
+    const nextTool = selectionRestoreToolRef.current;
+    selectionRestoreToolRef.current = null;
+
+    if (nextTool) {
+      setSelectedTool(nextTool);
+      return;
+    }
+
+    restoreDrawingTool();
+  }, [restoreDrawingTool]);
 
   const warmSmartFillLookup = useCallback((imageUri?: string | null) => {
     if (!imageUri) {
@@ -342,10 +363,7 @@ export default function VirtualCreativityScreen() {
         return;
       }
 
-      setLayers(
-        [...layers, ...uploadLayers],
-        uploadLayers[0]?.id ?? null,
-      );
+      setLayers([...layers, ...uploadLayers], uploadLayers[0]?.id ?? null);
       setSelectedTool("gallery");
       setIsFocusPlacementActive(false);
       setViewMode("composite");
@@ -489,8 +507,8 @@ export default function VirtualCreativityScreen() {
   }, [captureCanvasSnapshot, router, viewMode]);
 
   const handleGallery = useCallback(() => {
-    const shouldOpenAssetPicker =
-      !hasMainLayer || (viewMode === "composite" && selectedTool === "gallery");
+    selectionRestoreToolRef.current = null;
+    const shouldOpenAssetPicker = viewMode === "composite";
 
     setSelectedTool("gallery");
     setIsFocusPlacementActive(false);
@@ -501,7 +519,7 @@ export default function VirtualCreativityScreen() {
     if (shouldOpenAssetPicker) {
       assetPickerModalRef.current?.present();
     }
-  }, [hasMainLayer, selectedTool, viewMode]);
+  }, [viewMode]);
 
   const selectLayerForPlacement = useCallback(
     (layerId: string) => {
@@ -556,12 +574,31 @@ export default function VirtualCreativityScreen() {
       try {
         await applyImageToCanvas(item.image);
         assetPickerModalRef.current?.dismiss();
+        return true;
       } catch (error) {
         console.error("Failed to apply upload asset:", error);
+        return false;
       }
     },
     [applyImageToCanvas],
   );
+
+  const {
+    selectedPremiumAsset,
+    premiumPriceLabel,
+    isPremiumAssetUnlocked,
+    getPremiumPriceLabelForAsset,
+    preloadAssetProduct,
+    isFreePremiumActionBusy,
+    isPremiumActionBusy,
+    handleAssetPress: handleUploadPremiumAssetPress,
+    handleClosePremiumAsset,
+    handleFreePremiumAsset,
+    handlePremiumAsset,
+  } = usePremiumAssetActionFlow<CreateFlowPickerAssetItem>({
+    onUnlockedAction: handleApplyUploadAsset,
+    preloadItems: uploadSheetAssets,
+  });
 
   const { startUploadFlow, isPickingImage, modalProps } = useImageUploadFlow({
     title: "Upload To Canvas",
@@ -599,6 +636,7 @@ export default function VirtualCreativityScreen() {
   }, [startUploadFlow]);
 
   const handlePalette = useCallback(() => {
+    selectionRestoreToolRef.current = null;
     lastDrawingToolRef.current = "palette";
     if (viewMode === "composite") {
       selectLayer(null);
@@ -613,6 +651,7 @@ export default function VirtualCreativityScreen() {
   }, [selectLayer, viewMode]);
 
   const handlePattern = useCallback(() => {
+    selectionRestoreToolRef.current = null;
     lastDrawingToolRef.current = "pattern";
     if (viewMode === "composite") {
       selectLayer(null);
@@ -625,6 +664,7 @@ export default function VirtualCreativityScreen() {
   }, [selectLayer, viewMode]);
 
   const handleStroke = useCallback(() => {
+    selectionRestoreToolRef.current = null;
     lastDrawingToolRef.current = "stroke";
     if (viewMode === "composite") {
       selectLayer(null);
@@ -662,12 +702,30 @@ export default function VirtualCreativityScreen() {
 
   const handleSelectCanvasLayer = useCallback(
     (id: string) => {
+      const targetLayer = allLayersSorted.find((layer) => layer.id === id);
+      if (!targetLayer) {
+        return;
+      }
+
+      if (
+        selectedTool !== "gallery" &&
+        selectedTool !== "preview" &&
+        selectionRestoreToolRef.current === null
+      ) {
+        selectionRestoreToolRef.current = selectedTool;
+      }
+
       selectLayer(id);
-      setSelectedTool("gallery");
       setIsFocusPlacementActive(false);
+      setSelectedTool("gallery");
       setViewMode("composite");
     },
-    [selectLayer, setViewMode],
+    [
+      allLayersSorted,
+      selectLayer,
+      selectedTool,
+      setViewMode,
+    ],
   );
 
   const handleLayerLongPress = useCallback(
@@ -722,6 +780,7 @@ export default function VirtualCreativityScreen() {
 
   const handleOpenLayerEditor = useCallback(
     (id: string) => {
+      selectionRestoreToolRef.current = null;
       const targetLayer = allLayersSorted.find((layer) => layer.id === id);
       if (!targetLayer) {
         return;
@@ -770,8 +829,8 @@ export default function VirtualCreativityScreen() {
 
     selectLayer(null);
     setIsFocusPlacementActive(false);
-    setSelectedTool("gallery");
-  }, [selectLayer, viewMode]);
+    restoreToolAfterSelection();
+  }, [restoreToolAfterSelection, selectLayer, viewMode]);
 
   const handleClearSelectionToDraw = useCallback(() => {
     if (viewMode !== "composite") {
@@ -780,8 +839,8 @@ export default function VirtualCreativityScreen() {
 
     selectLayer(null);
     setIsFocusPlacementActive(false);
-    restoreDrawingTool();
-  }, [restoreDrawingTool, selectLayer, viewMode]);
+    restoreToolAfterSelection();
+  }, [restoreToolAfterSelection, selectLayer, viewMode]);
 
   const handleZoomReset = useCallback(() => {
     setZoomResetKey((prev) => prev + 1);
@@ -864,6 +923,11 @@ export default function VirtualCreativityScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent
+      />
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.background }]}
       >
@@ -908,9 +972,13 @@ export default function VirtualCreativityScreen() {
                 activeLayerId={activeCanvasLayerId}
                 selectedLayerId={selectedSubLayerId}
                 onSelectLayer={
-                  viewMode === "composite" ? handleSelectCanvasLayer : undefined
+                  viewMode === "composite"
+                    ? handleSelectCanvasLayer
+                    : undefined
                 }
-                onLongPressLayer={handleLayerLongPress}
+                onLongPressLayer={
+                  isLayerSelectionMode ? handleLayerLongPress : undefined
+                }
                 onClearSelection={handleClearSelection}
                 onClearSelectionToDraw={handleClearSelectionToDraw}
                 onExitFocusPlacement={handleExitFocusPlacement}
@@ -921,10 +989,7 @@ export default function VirtualCreativityScreen() {
                 currentPatternUri={brush.patternUri}
                 currentSolidMode={brush.solidMode}
                 subLayerGesturesEnabled={
-                  viewMode === "composite" &&
-                  selectedTool === "gallery" &&
-                  !!selectedSubLayerId &&
-                  !isZoomMode
+                  isLayerSelectionMode && !!selectedSubLayerId
                 }
                 focusPlacementEnabled={false}
                 hideSelectionUI={isZoomMode || isCanvasCaptureInProgress}
@@ -964,7 +1029,11 @@ export default function VirtualCreativityScreen() {
           isError={isUploadSheetError}
           bottomInset={bottomInset}
           onClose={handleCloseAssetPicker}
-          onDone={handleApplyUploadAsset}
+          onDone={
+            isPremiumPickerModalFlow
+              ? handleUploadPremiumAssetPress
+              : handleApplyUploadAsset
+          }
           onRetry={refetchUploadSheetAssets}
           sourceOptions={uploadSourceOptions}
           selectedSourceId={uploadSelectedSourceId}
@@ -974,8 +1043,35 @@ export default function VirtualCreativityScreen() {
           onSelectCategory={setUploadSelectedCategoryId}
           onUploadPress={handleStartUploadFlow}
           isUploadActionBusy={isPickingImage}
+          premiumActionMode={PREMIUM_PICKER_ENTRY_MODE}
+          isPremiumAssetUnlocked={isPremiumAssetUnlocked}
+          getPremiumPriceLabelForAsset={getPremiumPriceLabelForAsset}
+          onSelectedAssetChange={(asset) => {
+            void preloadAssetProduct(asset);
+          }}
+          onFreePremiumAsset={handleFreePremiumAsset}
+          onBuyPremiumAsset={handlePremiumAsset}
+          isFreePremiumActionBusy={isFreePremiumActionBusy}
+          isPremiumActionBusy={isPremiumActionBusy}
+          premiumPriceLabel={premiumPriceLabel}
         />
         <ImageUploadFlowModal {...modalProps} />
+        {isPremiumPickerModalFlow ? (
+          <PremiumAssetModal
+            asset={selectedPremiumAsset}
+            visible={!!selectedPremiumAsset}
+            onClose={handleClosePremiumAsset}
+            onFreePress={(asset: GridAssetItem) => {
+              void handleFreePremiumAsset(asset as CreateFlowPickerAssetItem);
+            }}
+            onPremiumPress={(asset: GridAssetItem) => {
+              void handlePremiumAsset(asset as CreateFlowPickerAssetItem);
+            }}
+            freeDisabled={isFreePremiumActionBusy}
+            premiumDisabled={isPremiumActionBusy}
+            premiumPriceLabel={premiumPriceLabel}
+          />
+        ) : null}
         <ColorPickerModal
           visible={colorPickerVisible}
           onClose={handleCloseColorPicker}
@@ -1033,8 +1129,8 @@ const styles = StyleSheet.create({
     gap: WORKSPACE_GAP,
   },
   header: {
-    paddingTop: 8,
-    paddingBottom: 2,
+    paddingTop: 2,
+    paddingBottom: 0,
   },
   canvasRegion: {
     flex: 1,
@@ -1049,7 +1145,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: FontFamily.bold,
   },
 });

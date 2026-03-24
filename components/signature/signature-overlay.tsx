@@ -25,7 +25,9 @@ export const SignatureOverlay: React.FC<SignatureOverlayProps> = ({
 }) => {
   const { isDark } = useTheme();
 
-  const text = (coerceParam(signatureText)?.trim() || DEFAULT_SIGNATURE_TEXT).trim();
+  const text = (
+    coerceParam(signatureText)?.trim() || DEFAULT_SIGNATURE_TEXT
+  ).trim();
   const fontFamily = coerceParam(signatureFontFamily) || DEFAULT_SIGNATURE_FONT;
 
   return (
@@ -64,4 +66,3 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
 });
-

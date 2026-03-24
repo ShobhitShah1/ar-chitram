@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, ViewStyle } from "react-native";
 import { Image } from "expo-image";
-import { FontFamily } from '@/constants/fonts';
+import { FontFamily } from "@/constants/fonts";
 
 interface AvatarProps {
   name?: string;

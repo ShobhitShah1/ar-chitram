@@ -31,7 +31,9 @@ interface PrepareBackgroundRemovalSourceOptions {
   compress?: number;
 }
 
-const getImageSize = (uri: string): Promise<{ width: number; height: number }> =>
+const getImageSize = (
+  uri: string,
+): Promise<{ width: number; height: number }> =>
   new Promise((resolve, reject) => {
     RNImage.getSize(
       uri,
@@ -40,7 +42,8 @@ const getImageSize = (uri: string): Promise<{ width: number; height: number }> =
     );
   });
 
-const getUriScheme = (uri: string) => uri.split(":")[0]?.toLowerCase() ?? "unknown";
+const getUriScheme = (uri: string) =>
+  uri.split(":")[0]?.toLowerCase() ?? "unknown";
 
 const getLoggableUri = (uri: string) => {
   const cleanedUri = uri.trim();
@@ -202,7 +205,10 @@ const ensureReadableLocalImageUri = async (
     return copiedUri;
   }
 
-  const renderedUri = await renderUriToCache(mediaLibraryUri ?? trimmedUri, compress);
+  const renderedUri = await renderUriToCache(
+    mediaLibraryUri ?? trimmedUri,
+    compress,
+  );
   if (renderedUri) {
     return renderedUri;
   }
@@ -309,29 +315,33 @@ export const getBackgroundRemovalErrorInfo = (
 };
 
 export const shouldRetryBackgroundRemovalWithFallback = (error: unknown) =>
-  getBackgroundRemovalErrorInfo(error).rawMessage
-    .toLowerCase()
+  getBackgroundRemovalErrorInfo(error)
+    .rawMessage.toLowerCase()
     .includes("thin subject segmenter");
 
-export const checkBackgroundRemovalNativeSupport = async (): Promise<boolean> => {
-  debugLog.info("[BG REMOVE] Checking native support");
+export const checkBackgroundRemovalNativeSupport =
+  async (): Promise<boolean> => {
+    debugLog.info("[BG REMOVE] Checking native support");
 
-  try {
-    const supported = await isNativeBackgroundRemovalSupported();
-    debugLog.info("[BG REMOVE] Native support result", {
-      supported,
-      runtime: getBackgroundRemovalRuntimeContext(),
-      note: "This check is optimistic on Android and does not verify ML Kit runtime health.",
-    });
-    return supported;
-  } catch (error) {
-    debugLog.warn("[BG REMOVE] Native support check failed, assuming supported", {
-      error: getErrorText(error),
-      runtime: getBackgroundRemovalRuntimeContext(),
-    });
-    return true;
-  }
-};
+    try {
+      const supported = await isNativeBackgroundRemovalSupported();
+      debugLog.info("[BG REMOVE] Native support result", {
+        supported,
+        runtime: getBackgroundRemovalRuntimeContext(),
+        note: "This check is optimistic on Android and does not verify ML Kit runtime health.",
+      });
+      return supported;
+    } catch (error) {
+      debugLog.warn(
+        "[BG REMOVE] Native support check failed, assuming supported",
+        {
+          error: getErrorText(error),
+          runtime: getBackgroundRemovalRuntimeContext(),
+        },
+      );
+      return true;
+    }
+  };
 
 export const prepareBackgroundRemovalSource = async (
   imageUri: string,

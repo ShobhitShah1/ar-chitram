@@ -196,68 +196,68 @@ const Guide = () => {
         showsVerticalScrollIndicator={false}
       >
         <View
-        style={[
-          styles.content,
-          {
-            paddingTop: layout.contentPaddingTop,
-          },
-        ]}
-      >
-        <Text
           style={[
-            styles.title,
+            styles.content,
             {
-              color: theme.textPrimary,
-              marginBottom: layout.titleMarginBottom,
+              paddingTop: layout.contentPaddingTop,
             },
           ]}
         >
-          How to Sketch
-        </Text>
+          <Text
+            style={[
+              styles.title,
+              {
+                color: theme.textPrimary,
+                marginBottom: layout.titleMarginBottom,
+              },
+            ]}
+          >
+            How to Sketch
+          </Text>
 
-        <View style={styles.carouselContainer}>
-          <Carousel
-            data={DATA}
-            renderItem={({ item, index, scrollX }) => (
-              <GuideItem
-                item={item}
-                index={index}
-                pageWidth={layout.pageWidth}
-                cardWidth={layout.cardWidth}
-                cardHeight={layout.cardHeight}
-                descriptionFontSize={layout.descriptionFontSize}
-                descriptionLineHeight={layout.descriptionLineHeight}
-                imageMarginBottom={layout.imageMarginBottom}
-                scrollX={scrollX}
-                theme={theme}
-              />
-            )}
-            width={layout.pageWidth}
-            itemWidth={layout.pageWidth}
-            scrollX={scrollX}
-            height={layout.carouselHeight}
-          />
-        </View>
+          <View style={styles.carouselContainer}>
+            <Carousel
+              data={DATA}
+              renderItem={({ item, index, scrollX }) => (
+                <GuideItem
+                  item={item}
+                  index={index}
+                  pageWidth={layout.pageWidth}
+                  cardWidth={layout.cardWidth}
+                  cardHeight={layout.cardHeight}
+                  descriptionFontSize={layout.descriptionFontSize}
+                  descriptionLineHeight={layout.descriptionLineHeight}
+                  imageMarginBottom={layout.imageMarginBottom}
+                  scrollX={scrollX}
+                  theme={theme}
+                />
+              )}
+              width={layout.pageWidth}
+              itemWidth={layout.pageWidth}
+              scrollX={scrollX}
+              height={layout.carouselHeight}
+            />
+          </View>
 
-        <View style={{ marginTop: layout.paginationMarginTop }}>
-          <Pagination
-            data={DATA}
-            scrollX={scrollX}
-            itemWidth={layout.pageWidth}
-            activeDotColor={theme.textPrimary}
-            dotColor={isDark ? "#555" : "#D9D9D9"}
-          />
-        </View>
+          <View style={{ marginTop: layout.paginationMarginTop }}>
+            <Pagination
+              data={DATA}
+              scrollX={scrollX}
+              itemWidth={layout.pageWidth}
+              activeDotColor={theme.textPrimary}
+              dotColor={isDark ? "#555" : "#D9D9D9"}
+            />
+          </View>
 
-        <View style={[styles.footer, { marginTop: layout.footerMarginTop }]}>
-          <PrimaryButton
-            title="Continue"
-            onPress={handleContinue}
-            style={[styles.button, { width: layout.buttonWidth }]}
-            colors={theme.drawingButton as any}
-          />
+          <View style={[styles.footer, { marginTop: layout.footerMarginTop }]}>
+            <PrimaryButton
+              title="Continue"
+              onPress={handleContinue}
+              style={[styles.button, { width: layout.buttonWidth }]}
+              colors={theme.drawingButton as any}
+            />
+          </View>
         </View>
-      </View>
       </ScrollView>
     </View>
   );

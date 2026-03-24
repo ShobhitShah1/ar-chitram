@@ -13,13 +13,20 @@ import {
   CreateAssetPickerSheet,
   type CreateSheetAssetItem,
 } from "@/features/virtual-creativity/components/create-asset-picker-sheet";
+import type { GridAssetItem } from "@/components/image-grid";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
+import { PremiumAssetModal } from "@/components/premium-asset-modal";
 import TabItem from "@/components/tab-item";
+import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
 import { ProfileProvider } from "@/context/profile-context";
 import { useTheme } from "@/context/theme-context";
-import { fetchLocalUploadTabAssets, persistLocalUploadAsset } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import {
+  fetchLocalUploadTabAssets,
+  persistLocalUploadAsset,
+} from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { useCreateFlowTabAssetsGrid } from "@/hooks/api";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
 import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
 import { apiQueryKeys } from "@/services/api/query-keys";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
@@ -148,8 +155,10 @@ export default function TabLayout() {
   const createSheetRef = useRef<BottomSheetModal | null>(null);
   const isCreateSheetVisibleRef = useRef(false);
   const queryClient = useQueryClient();
+  const isPremiumPickerModalFlow = PREMIUM_PICKER_ENTRY_MODE === "modal";
 
-  const { gridItems, isLoading, isError, refetch } = useCreateFlowTabAssetsGrid();
+  const { gridItems, isLoading, isError, refetch } =
+    useCreateFlowTabAssetsGrid();
   const setLayers = useVirtualCreativityStore((state) => state.setLayers);
 
   const createAssets = useMemo<CreateSheetAssetItem[]>(
@@ -160,6 +169,7 @@ export default function TabLayout() {
           id: String(item.id),
           image: item.image,
           isPremium: item.isPremium,
+          sku: item.sku,
         })),
     [gridItems],
   );
@@ -194,12 +204,30 @@ export default function TabLayout() {
     [closeCreateSheet, setLayers],
   );
 
-  const handleCreateDone = useCallback(
+  const handleUnlockedCreateAsset = useCallback(
     (item: CreateSheetAssetItem) => {
       openCanvasWithImage(item.image);
+      return true;
     },
     [openCanvasWithImage],
   );
+
+  const {
+    selectedPremiumAsset,
+    premiumPriceLabel,
+    isPremiumAssetUnlocked,
+    getPremiumPriceLabelForAsset,
+    preloadAssetProduct,
+    isFreePremiumActionBusy,
+    isPremiumActionBusy,
+    handleAssetPress: handleCreatePremiumAsset,
+    handleClosePremiumAsset,
+    handleFreePremiumAsset,
+    handlePremiumAsset,
+  } = usePremiumAssetActionFlow<CreateSheetAssetItem>({
+    onUnlockedAction: handleUnlockedCreateAsset,
+    preloadItems: createAssets,
+  });
 
   const { startUploadFlow, isPickingImage, modalProps } = useImageUploadFlow({
     title: "Upload Your Own Image",
@@ -297,15 +325,46 @@ export default function TabLayout() {
           isLoading={isLoading}
           isError={isError}
           onClose={closeCreateSheet}
-          onDone={handleCreateDone}
+          onDone={
+            isPremiumPickerModalFlow
+              ? handleCreatePremiumAsset
+              : handleUnlockedCreateAsset
+          }
           onRetry={handleRetryCreateAssets}
           onUploadPress={() => {
             void startUploadFlow();
           }}
           isUploadActionBusy={isPickingImage}
+          premiumActionMode={PREMIUM_PICKER_ENTRY_MODE}
+          isPremiumAssetUnlocked={isPremiumAssetUnlocked}
+          getPremiumPriceLabelForAsset={getPremiumPriceLabelForAsset}
+          onSelectedAssetChange={(asset) => {
+            void preloadAssetProduct(asset);
+          }}
+          onFreePremiumAsset={handleFreePremiumAsset}
+          onBuyPremiumAsset={handlePremiumAsset}
+          isFreePremiumActionBusy={isFreePremiumActionBusy}
+          isPremiumActionBusy={isPremiumActionBusy}
+          premiumPriceLabel={premiumPriceLabel}
         />
 
         <ImageUploadFlowModal {...modalProps} />
+        {isPremiumPickerModalFlow ? (
+          <PremiumAssetModal
+            asset={selectedPremiumAsset}
+            visible={!!selectedPremiumAsset}
+            onClose={handleClosePremiumAsset}
+            onFreePress={(asset: GridAssetItem) => {
+              void handleFreePremiumAsset(asset as CreateSheetAssetItem);
+            }}
+            onPremiumPress={(asset: GridAssetItem) => {
+              void handlePremiumAsset(asset as CreateSheetAssetItem);
+            }}
+            freeDisabled={isFreePremiumActionBusy}
+            premiumDisabled={isPremiumActionBusy}
+            premiumPriceLabel={premiumPriceLabel}
+          />
+        ) : null}
       </>
     </ProfileProvider>
   );

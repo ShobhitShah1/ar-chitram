@@ -121,11 +121,11 @@ export default function Login() {
             isLoading={isGoogleLoading}
             loadingText="Signing in..."
           />
-          <SocialButton
+          {/* <SocialButton
             title="Login with Facebook"
             imageSource={ic_welcome_facebook}
             onPress={() => router.replace("/(tabs)/home")}
-          />
+          /> */}
         </View>
 
         <View style={styles.footer}>

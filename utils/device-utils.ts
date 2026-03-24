@@ -46,7 +46,7 @@ const generateFallbackId = async (): Promise<string> => {
         DeviceInfo.getSystemVersion(),
         DeviceInfo.getBuildId().catch(() => "unknown"),
         DeviceInfo.getAndroidId().catch(() => "unknown"),
-      ]
+      ],
     );
 
     // Create a hash-like string from device properties

@@ -142,7 +142,9 @@ const deleteLocalUploadFile = async (uri: string) => {
   }
 };
 
-export const getLocalUploadAssets = async (): Promise<LocalUploadAssetRecord[]> => {
+export const getLocalUploadAssets = async (): Promise<
+  LocalUploadAssetRecord[]
+> => {
   const storedUploads = readStoredLocalUploads();
   if (storedUploads.length === 0) {
     return [];
@@ -181,7 +183,10 @@ export const persistLocalUploadAsset = async (
     createdAt: Date.now(),
   };
 
-  const nextUploads = [nextUpload, ...existingUploads].slice(0, MAX_LOCAL_UPLOADS);
+  const nextUploads = [nextUpload, ...existingUploads].slice(
+    0,
+    MAX_LOCAL_UPLOADS,
+  );
   const keptUploadIds = new Set(nextUploads.map((upload) => upload.id));
   const removedUploads = existingUploads.filter(
     (upload) => !keptUploadIds.has(upload.id),

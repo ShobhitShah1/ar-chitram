@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { Theme } from '@/constants/colors';
-import { useTheme } from '@/context/theme-context';
+import { StyleSheet } from "react-native";
+import { Theme } from "@/constants/colors";
+import { useTheme } from "@/context/theme-context";
 
 /**
  * Migration utility for converting static StyleSheet to themed StyleSheet
@@ -10,24 +10,24 @@ import { useTheme } from '@/context/theme-context';
 // Common color mappings for migration
 export const COLOR_MAPPINGS = {
   // Background colors
-  '#fff': 'background',
-  '#ffffff': 'background',
-  '#FFFFFF': 'background',
-  '#F8F9FA': 'cardBackground',
-  '#F2F2F7': 'textInputBackground',
+  "#fff": "background",
+  "#ffffff": "background",
+  "#FFFFFF": "background",
+  "#F8F9FA": "cardBackground",
+  "#F2F2F7": "textInputBackground",
 
   // Text colors
-  '#000': 'textPrimary',
-  '#000000': 'textPrimary',
-  '#1C1C1E': 'textPrimary',
-  '#666': 'textSecondary',
-  '#8E8E93': 'textSecondary',
-  '#999': 'textSecondary',
+  "#000": "textPrimary",
+  "#000000": "textPrimary",
+  "#1C1C1E": "textPrimary",
+  "#666": "textSecondary",
+  "#8E8E93": "textSecondary",
+  "#999": "textSecondary",
 
   // Border colors
-  '#E5E5EA': 'borderPrimary',
-  '#ccc': 'borderPrimary',
-  '#ddd': 'borderPrimary',
+  "#E5E5EA": "borderPrimary",
+  "#ccc": "borderPrimary",
+  "#ddd": "borderPrimary",
 } as const;
 
 type ColorMapping = keyof typeof COLOR_MAPPINGS;
@@ -48,7 +48,7 @@ export function migrateColorToTheme(color: string, theme: Theme): string {
  * Usage: const styles = createMigratedStyles((theme) => ({ ... }));
  */
 export function createMigratedStyles<T extends Record<string, any>>(
-  styleCreator: (theme: Theme) => T
+  styleCreator: (theme: Theme) => T,
 ) {
   return function useMigratedStyles() {
     const { theme } = useTheme();
@@ -62,13 +62,13 @@ export function createMigratedStyles<T extends Record<string, any>>(
  */
 export function quickMigrateStyles<T extends Record<string, any>>(
   staticStyles: T,
-  theme: Theme
+  theme: Theme,
 ): T {
   const migratedStyles = { ...staticStyles };
 
   // Recursively process styles
   function processStyle(obj: any): any {
-    if (typeof obj === 'string') {
+    if (typeof obj === "string") {
       return migrateColorToTheme(obj, theme);
     }
 
@@ -76,7 +76,7 @@ export function quickMigrateStyles<T extends Record<string, any>>(
       return obj.map(processStyle);
     }
 
-    if (obj && typeof obj === 'object') {
+    if (obj && typeof obj === "object") {
       const newObj: any = {};
       for (const [key, value] of Object.entries(obj)) {
         newObj[key] = processStyle(value);
@@ -94,7 +94,9 @@ export function quickMigrateStyles<T extends Record<string, any>>(
  * Hook for quickly migrating existing styles
  * Usage: const styles = useQuickMigration(staticStyleSheet);
  */
-export function useQuickMigration<T extends Record<string, any>>(staticStyles: T): T {
+export function useQuickMigration<T extends Record<string, any>>(
+  staticStyles: T,
+): T {
   const { theme } = useTheme();
   return quickMigrateStyles(staticStyles, theme);
 }
@@ -140,7 +142,7 @@ export const themeStyles = {
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    alignItems: 'center' as const,
+    alignItems: "center" as const,
   }),
 
   secondaryButton: (theme: Theme) => ({
@@ -150,7 +152,7 @@ export const themeStyles = {
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 24,
-    alignItems: 'center' as const,
+    alignItems: "center" as const,
   }),
 
   primaryText: (theme: Theme) => ({

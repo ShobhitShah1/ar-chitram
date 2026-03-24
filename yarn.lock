@@ -1062,6 +1062,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.12.5":
+  version: 7.29.2
+  resolution: "@babel/runtime@npm:7.29.2"
+  checksum: 10c0/30b80a0140d16467792e1bbeb06f655b0dab70407da38dfac7fedae9c859f9ae9d846ef14ad77bd3814c064295fe9b1bc551f1541ea14646ae9f22b71a8bc17a
+  languageName: node
+  linkType: hard
+
 "@babel/runtime@npm:^7.20.0, @babel/runtime@npm:^7.25.0":
   version: 7.28.4
   resolution: "@babel/runtime@npm:7.28.4"
@@ -1585,6 +1592,13 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/86f33afc2ac2656a86a6f3fd1e41565419839576ede2c38333434a93a0a2fe4fb6fc18ab3360579427f2a1fc3b4564b933cc5ae1793a7e2825c93860a00b215f
+  languageName: node
+  linkType: hard
+
+"@iabtcf/core@npm:^1.5.6":
+  version: 1.5.6
+  resolution: "@iabtcf/core@npm:1.5.6"
+  checksum: 10c0/e7bb104fab82c5c2a051986b51bf31577f6cc9ca84b5561612d649d4503aa7db21113e667c241cb9ec93c8fe9ce65e1266396174e2f64dd1105f91a097ffa85c
   languageName: node
   linkType: hard
 
@@ -3137,6 +3151,7 @@ __metadata:
     expo-device: "npm:~8.0.10"
     expo-file-system: "npm:~19.0.21"
     expo-font: "npm:~14.0.11"
+    expo-iap: "npm:^3.4.10"
     expo-image: "npm:~3.0.11"
     expo-image-manipulator: "npm:~14.0.8"
     expo-image-picker: "npm:~17.0.10"
@@ -3151,12 +3166,14 @@ __metadata:
     jest: "npm:^29.2.1"
     jest-expo: "npm:~54.0.17"
     lottie-react-native: "npm:^7.3.4"
+    prettier: "npm:3.8.1"
     react: "npm:19.1.0"
     react-native: "npm:0.81.5"
     react-native-blob-util: "npm:^0.24.5"
     react-native-device-info: "npm:^14.0.4"
     react-native-edge-to-edge: "npm:1.6.0"
     react-native-gesture-handler: "npm:~2.28.0"
+    react-native-google-mobile-ads: "npm:^16.3.0"
     react-native-keyboard-controller: "npm:1.18.5"
     react-native-mmkv-storage: "npm:^12.0.1"
     react-native-modal: "npm:^14.0.0-rc.1"
@@ -4216,6 +4233,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dequal@npm:^2.0.2":
+  version: 2.0.3
+  resolution: "dequal@npm:2.0.3"
+  checksum: 10c0/f98860cdf58b64991ae10205137c0e97d384c3a4edc7f807603887b7c4b850af1224a33d88012009f150861cbee4fa2d322c4cc04b9313bee312e47f6ecaa888
+  languageName: node
+  linkType: hard
+
 "destroy@npm:1.2.0":
   version: 1.2.0
   resolution: "destroy@npm:1.2.0"
@@ -4762,6 +4786,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/ba74ff17b01dedc4a8145170b7098a95e037a7bd8ac0b8d0bf80bf28589383c22ba1a3f8ab68d901eafa75e311eb2fcd9edc414c18957a8827063623e2af9e0f
+  languageName: node
+  linkType: hard
+
+"expo-iap@npm:^3.4.10":
+  version: 3.4.10
+  resolution: "expo-iap@npm:3.4.10"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/ba24b72e533786d6027ffef6d3e9c9a42d5d96f2f89249da5bf85017daf0c88f396a9a0bbf77520e2ad6a877a35e38d67db02abb2ca7ac748a7565f7a66e0c74
   languageName: node
   linkType: hard
 
@@ -7645,6 +7680,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"prettier@npm:3.8.1":
+  version: 3.8.1
+  resolution: "prettier@npm:3.8.1"
+  bin:
+    prettier: bin/prettier.cjs
+  checksum: 10c0/33169b594009e48f570471271be7eac7cdcf88a209eed39ac3b8d6d78984039bfa9132f82b7e6ba3b06711f3bfe0222a62a1bfb87c43f50c25a83df1b78a2c42
+  languageName: node
+  linkType: hard
+
 "pretty-bytes@npm:^5.6.0":
   version: 5.6.0
   resolution: "pretty-bytes@npm:5.6.0"
@@ -7918,6 +7962,21 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/4240c8eedca69eb36b5d3e375b71867251cf8b87a755ba7066b3f73cfdbc80574042dbd4ff821041fd1539c4cd90dbf7ee34586f5a0ea6cc38052375b3169f2e
+  languageName: node
+  linkType: hard
+
+"react-native-google-mobile-ads@npm:^16.3.0":
+  version: 16.3.0
+  resolution: "react-native-google-mobile-ads@npm:16.3.0"
+  dependencies:
+    "@iabtcf/core": "npm:^1.5.6"
+    use-deep-compare-effect: "npm:^1.8.1"
+  peerDependencies:
+    expo: ">=47.0.0"
+  peerDependenciesMeta:
+    expo:
+      optional: true
+  checksum: 10c0/09ff6b587b27b0cf74f66341cbda6cf0a124760f38be8b507f92fbd4e9330cc9ceedbddd105e32d0784c9e3e9099bb44412fce95a6b115a6d48177fc75753b95
   languageName: node
   linkType: hard
 
@@ -9397,6 +9456,18 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/f887488c6e6075cdad4962979da1714b217bcb1ee009a9e57ce9a844bcfc4c3a99e93983dfc2e5af9e0913824d24e730090ff255e902c516dcb58d2d3837e01c
+  languageName: node
+  linkType: hard
+
+"use-deep-compare-effect@npm:^1.8.1":
+  version: 1.8.1
+  resolution: "use-deep-compare-effect@npm:1.8.1"
+  dependencies:
+    "@babel/runtime": "npm:^7.12.5"
+    dequal: "npm:^2.0.2"
+  peerDependencies:
+    react: ">=16.13"
+  checksum: 10c0/f21f4239d774182e5389172321f00db487b415a97f5835abbe99d228eec45e3fd97803a52a25db6216ae6e1e1203b3f523336d94695dc683c661bad36a318891
   languageName: node
   linkType: hard
 

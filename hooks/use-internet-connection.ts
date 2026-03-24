@@ -30,7 +30,7 @@ interface UseInternetConnectionOptions {
  * Properly handles connection state changes without triggering on every mount
  */
 export function useInternetConnection(
-  options: UseInternetConnectionOptions = {}
+  options: UseInternetConnectionOptions = {},
 ): InternetConnectionState {
   const {
     showModalOnOffline = true,
@@ -69,7 +69,10 @@ export function useInternetConnection(
         hasInitializedRef.current = true;
         previousConnectionRef.current = isConnected;
         callbackFiredRef.current = false;
-        console.log("Internet hook initialized:", isConnected ? "ONLINE" : "OFFLINE");
+        console.log(
+          "Internet hook initialized:",
+          isConnected ? "ONLINE" : "OFFLINE",
+        );
       }
       return;
     }
@@ -81,17 +84,18 @@ export function useInternetConnection(
 
     // State changed - only call callback once per transition
     if (!callbackFiredRef.current) {
-      console.log("Connection state changed:", 
-        wasConnected ? "ONLINE→OFFLINE" : "OFFLINE→ONLINE"
+      console.log(
+        "Connection state changed:",
+        wasConnected ? "ONLINE→OFFLINE" : "OFFLINE→ONLINE",
       );
-      
+
       onConnectionChange?.(isConnected);
-      
+
       // Track disconnection
       if (!isConnected) {
         wasDisconnectedRef.current = true;
       }
-      
+
       // Call restoration callback ONLY when:
       // 1. We were previously offline (wasDisconnectedRef is true)
       // 2. We're now online (isConnected is true)
@@ -104,13 +108,13 @@ export function useInternetConnection(
       ) {
         console.log("Calling onConnectionRestored");
         wasDisconnectedRef.current = false; // Reset flag
-        
+
         // Small delay to ensure state is stable
         setTimeout(() => {
           onConnectionRestored();
         }, 500);
       }
-      
+
       callbackFiredRef.current = true;
 
       // Reset the flag after a short delay to allow for next transition

@@ -63,24 +63,23 @@ export const signInWithGoogleSession = async (): Promise<SessionResult> => {
   }
 };
 
-export const trySilentGoogleSession = async (): Promise<
-  AuthSessionPayload | null
-> => {
-  try {
-    const googleUser = await trySilentGoogleSignIn();
+export const trySilentGoogleSession =
+  async (): Promise<AuthSessionPayload | null> => {
+    try {
+      const googleUser = await trySilentGoogleSignIn();
 
-    if (!googleUser) {
+      if (!googleUser) {
+        return null;
+      }
+
+      const session = await buildSessionFromGoogleUser(googleUser);
+      applySession(session);
+      return session;
+    } catch (error) {
+      debugLog.warn("Silent Google session restore failed", error);
       return null;
     }
-
-    const session = await buildSessionFromGoogleUser(googleUser);
-    applySession(session);
-    return session;
-  } catch (error) {
-    debugLog.warn("Silent Google session restore failed", error);
-    return null;
-  }
-};
+  };
 
 export const clearAuthSession = () => {
   useAuthStore.getState().clearAuthSession();

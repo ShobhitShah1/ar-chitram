@@ -24,12 +24,18 @@ export default function Sketch() {
   } = useSketchesTabGrid();
   const {
     selectedPremiumAsset,
+    premiumPriceLabel,
+    isFreePremiumActionBusy,
+    isPremiumActionBusy,
     handleAssetPress,
     handleClosePremiumAsset,
     handleFreePremiumAsset,
     handlePremiumAsset,
-  } = usePremiumAssetGuideFlow();
+  } = usePremiumAssetGuideFlow({
+    preloadItems: gridItems,
+  });
 
+  console.log("data", JSON.stringify(data, null, 2));
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = useCallback(() => {
@@ -84,6 +90,9 @@ export default function Sketch() {
         onClose={handleClosePremiumAsset}
         onFreePress={handleFreePremiumAsset}
         onPremiumPress={handlePremiumAsset}
+        freeDisabled={isFreePremiumActionBusy}
+        premiumDisabled={isPremiumActionBusy}
+        premiumPriceLabel={premiumPriceLabel}
       />
     </View>
   );

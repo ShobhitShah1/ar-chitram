@@ -1,5 +1,7 @@
-﻿import { ic_close, ic_suffel } from "@/assets/icons";
+import { ic_close, ic_suffel } from "@/assets/icons";
 import { FontFamily } from "@/constants/fonts";
+import { PremiumPickerEntryMode } from "@/constants/premium-config";
+import { ic_pro_icon } from "@/assets/icons";
 import { useTheme } from "@/context/theme-context";
 import {
   type CreateFlowPickerAssetItem,
@@ -7,7 +9,6 @@ import {
 } from "@/hooks/api/use-tab-assets-api";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import React, {
   memo,
   useCallback,
@@ -35,6 +36,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CommonBottomSheet } from "@/components/common-bottom-sheet";
+import { PremiumSheetActionBar } from "./premium-sheet-action-bar";
 import { UploadEntryButton } from "./upload-entry-button";
 
 const SHEET_HORIZONTAL_PADDING = 12;
@@ -76,6 +78,17 @@ interface UploadAssetSheetProps {
   onSelectCategory: (id: string) => void;
   onUploadPress?: () => void;
   isUploadActionBusy?: boolean;
+  premiumActionMode?: PremiumPickerEntryMode;
+  isPremiumAssetUnlocked?: (item: CreateFlowPickerAssetItem) => boolean;
+  getPremiumPriceLabelForAsset?: (
+    item: CreateFlowPickerAssetItem,
+  ) => string | undefined;
+  onSelectedAssetChange?: (item: CreateFlowPickerAssetItem | null) => void;
+  onFreePremiumAsset?: (item: CreateFlowPickerAssetItem) => void;
+  onBuyPremiumAsset?: (item: CreateFlowPickerAssetItem) => void;
+  isFreePremiumActionBusy?: boolean;
+  isPremiumActionBusy?: boolean;
+  premiumPriceLabel?: string;
 }
 
 interface ThumbnailTileProps {
@@ -154,6 +167,16 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
             transition={120}
           />
         </View>
+        {item.isPremium ? (
+          <View pointerEvents="none" style={styles.thumbBadgeWrap}>
+            <Image
+              source={ic_pro_icon}
+              style={styles.thumbBadge}
+              contentFit="contain"
+              transition={0}
+            />
+          </View>
+        ) : null}
       </AnimatedPressable>
     );
   },
@@ -263,6 +286,15 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   onSelectCategory,
   onUploadPress,
   isUploadActionBusy = false,
+  premiumActionMode = "modal",
+  isPremiumAssetUnlocked,
+  getPremiumPriceLabelForAsset,
+  onSelectedAssetChange,
+  onFreePremiumAsset,
+  onBuyPremiumAsset,
+  isFreePremiumActionBusy = false,
+  isPremiumActionBusy = false,
+  premiumPriceLabel,
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -518,6 +550,16 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
             cachePolicy="memory-disk"
             transition={140}
           />
+          {item.isPremium ? (
+            <View pointerEvents="none" style={styles.previewBadgeWrap}>
+              <Image
+                source={ic_pro_icon}
+                style={styles.previewBadge}
+                contentFit="contain"
+                transition={0}
+              />
+            </View>
+          ) : null}
         </View>
       </View>
     ),
@@ -560,13 +602,38 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   );
 
   const selectedAsset = assets[selectedIndex] ?? null;
-  const doneGradientColors = useMemo(
-    () =>
-      (theme.drawingButton?.length
-        ? theme.drawingButton
-        : ["#3E3E3E", "#232323"]) as [string, string, ...string[]],
-    [theme.drawingButton],
-  );
+  const selectedAssetHasAccess = selectedAsset
+    ? (isPremiumAssetUnlocked?.(selectedAsset) ?? false)
+    : false;
+  const selectedAssetPriceLabel = selectedAsset
+    ? (getPremiumPriceLabelForAsset?.(selectedAsset) ?? premiumPriceLabel)
+    : premiumPriceLabel;
+  const showPremiumSplitActions =
+    premiumActionMode === "split" &&
+    !!selectedAsset?.isPremium &&
+    !selectedAssetHasAccess &&
+    !!onFreePremiumAsset &&
+    !!onBuyPremiumAsset;
+
+  const handleWatchAd = useCallback(() => {
+    if (!selectedAsset || !onFreePremiumAsset) {
+      return;
+    }
+
+    onFreePremiumAsset(selectedAsset);
+  }, [onFreePremiumAsset, selectedAsset]);
+
+  const handleBuy = useCallback(() => {
+    if (!selectedAsset || !onBuyPremiumAsset) {
+      return;
+    }
+
+    onBuyPremiumAsset(selectedAsset);
+  }, [onBuyPremiumAsset, selectedAsset]);
+
+  useEffect(() => {
+    onSelectedAssetChange?.(selectedAsset);
+  }, [onSelectedAssetChange, selectedAsset]);
 
   return (
     <CommonBottomSheet
@@ -813,24 +880,19 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
         </View>
 
         <View style={styles.actionSection}>
-          <Pressable
-            onPress={handleDone}
-            disabled={!selectedAsset || isLoading}
-            style={({ pressed }) => [
-              styles.donePressable,
-              pressed && selectedAsset ? styles.donePressed : null,
-              !selectedAsset || isLoading ? styles.doneDisabled : null,
-            ]}
-          >
-            <LinearGradient
-              colors={doneGradientColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.doneButton}
-            >
-              <Text style={styles.doneText}>Add to Canvas</Text>
-            </LinearGradient>
-          </Pressable>
+          <PremiumSheetActionBar
+            doneLabel="Add to Canvas"
+            onDone={handleDone}
+            doneDisabled={!selectedAsset || isLoading}
+            showPremiumActions={showPremiumSplitActions}
+            onWatchAdPress={handleWatchAd}
+            onBuyPress={handleBuy}
+            watchAdDisabled={
+              !selectedAsset || isLoading || isFreePremiumActionBusy
+            }
+            buyDisabled={!selectedAsset || isLoading || isPremiumActionBusy}
+            premiumPriceLabel={selectedAssetPriceLabel}
+          />
         </View>
       </View>
     </CommonBottomSheet>
@@ -959,6 +1021,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  previewBadgeWrap: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  previewBadge: {
+    width: "100%",
+    height: "100%",
+  },
   previewImage: {
     width: "100%",
     height: "100%",
@@ -1000,6 +1078,7 @@ const styles = StyleSheet.create({
     height: THUMB_SIZE,
     borderRadius: 16,
     overflow: "hidden",
+    position: "relative",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1010,6 +1089,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   thumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  thumbBadgeWrap: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  thumbBadge: {
     width: "100%",
     height: "100%",
   },
@@ -1040,27 +1135,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: ACTION_BOTTOM_PADDING,
     paddingHorizontal: SHEET_HORIZONTAL_PADDING,
-  },
-  donePressable: {
-    height: ACTION_HEIGHT,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  doneButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 16,
-  },
-  doneText: {
-    color: "#FFFFFF",
-    fontFamily: FontFamily.semibold,
-    fontSize: 15,
-  },
-  donePressed: {
-    opacity: 0.92,
-  },
-  doneDisabled: {
-    opacity: 0.45,
   },
 });

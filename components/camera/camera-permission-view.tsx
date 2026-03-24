@@ -29,7 +29,9 @@ export const CameraPermissionView: React.FC<CameraPermissionViewProps> = ({
   };
 
   return (
-    <View style={[styles.permissionScreen, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.permissionScreen, { backgroundColor: theme.background }]}
+    >
       <View
         style={[
           styles.permissionCard,
@@ -51,15 +53,15 @@ export const CameraPermissionView: React.FC<CameraPermissionViewProps> = ({
           {title}
         </Text>
         <Text
-          style={[
-            styles.permissionSubtitle,
-            { color: theme.textSecondary },
-          ]}
+          style={[styles.permissionSubtitle, { color: theme.textSecondary }]}
         >
           {subtitle}
         </Text>
 
-        <Pressable onPress={handlePrimaryAction} style={styles.permissionPrimaryButton}>
+        <Pressable
+          onPress={handlePrimaryAction}
+          style={styles.permissionPrimaryButton}
+        >
           <LinearGradient
             colors={theme.drawingButton as [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
@@ -73,7 +75,10 @@ export const CameraPermissionView: React.FC<CameraPermissionViewProps> = ({
         </Pressable>
 
         {!canAskAgain && (
-          <Pressable onPress={onRequestPermission} style={styles.permissionSecondaryButton}>
+          <Pressable
+            onPress={onRequestPermission}
+            style={styles.permissionSecondaryButton}
+          >
             <Text
               style={[
                 styles.permissionSecondaryButtonText,

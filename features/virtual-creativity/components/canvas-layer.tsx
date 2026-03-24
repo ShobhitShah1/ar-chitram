@@ -90,11 +90,10 @@ const deferCallback = (callback?: () => void) => {
   });
 };
 
-const getDiagonalDelta = (translationX: number, translationY: number) =>
-  {
-    "worklet";
-    return (translationX + translationY) / 2;
-  };
+const getDiagonalDelta = (translationX: number, translationY: number) => {
+  "worklet";
+  return (translationX + translationY) / 2;
+};
 
 const clampLayerXPosition = ({
   canvasWidth,
@@ -190,10 +189,8 @@ const commitLayerTransform = ({
       currentLayer &&
       Math.abs(currentLayer.x - clampedX) < TRANSFORM_COMMIT_EPSILON &&
       Math.abs(currentLayer.y - clampedY) < TRANSFORM_COMMIT_EPSILON &&
-      Math.abs(currentLayer.scale - fittedScale) <
-        TRANSFORM_COMMIT_EPSILON &&
-      Math.abs(currentLayer.rotation - nextRotation) <
-        TRANSFORM_COMMIT_EPSILON
+      Math.abs(currentLayer.scale - fittedScale) < TRANSFORM_COMMIT_EPSILON &&
+      Math.abs(currentLayer.rotation - nextRotation) < TRANSFORM_COMMIT_EPSILON
     ) {
       return;
     }
@@ -317,7 +314,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     }, [onLongPress]);
 
     const canTapToSelect =
-      !!onSelect && !isSelected && (!isActiveEditable || gesturesEnabled);
+      !!onSelect && (!isActiveEditable || gesturesEnabled);
     const canTapSelected = !!onTapSelected && isSelected && gesturesEnabled;
     const canLongPress = !!onLongPress && !isZoomMode;
 
@@ -840,7 +837,9 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     }
 
     return (
-      <GestureDetector gesture={layerGesture}>{renderLayerShell()}</GestureDetector>
+      <GestureDetector gesture={layerGesture}>
+        {renderLayerShell()}
+      </GestureDetector>
     );
   },
   (prevProps, nextProps) =>

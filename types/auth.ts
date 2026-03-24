@@ -23,4 +23,3 @@ export interface RegisterRequest {
   phoneNumber: string;
   name?: string;
 }
-

@@ -47,7 +47,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
           stiffness: 150,
           mass: 1,
           energyThreshold: 0.001,
-        })
+        }),
       );
       glowOpacity.value = withTiming(1, {
         duration: 1000,
@@ -60,21 +60,21 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
       emojiBounce.value = withRepeat(
         withSequence(
           withTiming(10, { duration: 500, easing: Easing.out(Easing.quad) }),
-          withTiming(-10, { duration: 500, easing: Easing.in(Easing.quad) })
+          withTiming(-10, { duration: 500, easing: Easing.in(Easing.quad) }),
         ),
         -1,
-        true
+        true,
       );
       emojiRotate.value = withRepeat(
         withTiming(360, { duration: 2000, easing: Easing.linear }),
-        -1
+        -1,
       );
     } else {
       iconScale.value = withTiming(0, { duration: 200 });
       glowOpacity.value = withTiming(0, { duration: 200 });
       ringProgress.value = withTiming(0, { duration: 200 });
       particleValues.forEach(
-        (particle) => (particle.value = withTiming(0, { duration: 200 }))
+        (particle) => (particle.value = withTiming(0, { duration: 200 })),
       );
       emojiBounce.value = withTiming(0, { duration: 200 });
       emojiRotate.value = withTiming(0, { duration: 200 });
@@ -101,24 +101,24 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
               stiffness: 200,
               mass: 1,
               energyThreshold: 0.001,
-            })
+            }),
           ),
           withSpring(1, {
             damping: 12,
             stiffness: 150,
             mass: 1,
             energyThreshold: 0.001,
-          })
+          }),
         );
         particleValues.forEach((particle, index) => {
           particle.value = withDelay(
             index * 100,
-            withTiming(1, { duration: 800, easing: Easing.out(Easing.cubic) })
+            withTiming(1, { duration: 800, easing: Easing.out(Easing.cubic) }),
           );
         });
       } else {
         particleValues.forEach(
-          (particle) => (particle.value = withTiming(0, { duration: 200 }))
+          (particle) => (particle.value = withTiming(0, { duration: 200 })),
         );
       }
     }
@@ -159,7 +159,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
         },
         { scale: particle.value * 0.8 },
       ],
-    }))
+    })),
   );
 
   const emojiAnimatedStyle = useAnimatedStyle(() => ({

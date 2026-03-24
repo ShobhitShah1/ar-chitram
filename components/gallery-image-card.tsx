@@ -59,11 +59,11 @@ export const GalleryImageCard: React.FC<GalleryImageCardProps> = ({
 
   const likeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { 
-        scale: liked ? 
-          interpolate(likeScale.value, [0, 1.3, 1], [1, 1.3, 1]) : 
-          1 
-      }
+      {
+        scale: liked
+          ? interpolate(likeScale.value, [0, 1.3, 1], [1, 1.3, 1])
+          : 1,
+      },
     ],
   }));
 
@@ -75,17 +75,19 @@ export const GalleryImageCard: React.FC<GalleryImageCardProps> = ({
       onPress={onPress}
     >
       <Image source={{ uri: imageUrl }} style={styles.image} />
-      
+
       <View style={styles.overlay}>
         <AnimatedPressable
           style={[styles.likeButton, likeAnimatedStyle]}
           onPress={handleLikePress}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <View style={[
-            styles.likeButtonBackground,
-            { backgroundColor: liked ? '#FF3040' : 'rgba(0,0,0,0.6)' }
-          ]}>
+          <View
+            style={[
+              styles.likeButtonBackground,
+              { backgroundColor: liked ? "#FF3040" : "rgba(0,0,0,0.6)" },
+            ]}
+          >
             <Ionicons
               name={liked ? "heart" : "heart-outline"}
               size={20}

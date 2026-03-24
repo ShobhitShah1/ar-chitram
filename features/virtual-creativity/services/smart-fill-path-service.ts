@@ -345,4 +345,3 @@ export const getSmartFillErrorMessage = (error: unknown) => {
 
   return "Smart fill failed.";
 };
-

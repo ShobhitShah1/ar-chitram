@@ -77,7 +77,8 @@ export const createSubImageLayer = async (
   zIndex: number,
 ): Promise<VirtualLayer> => {
   try {
-    const { width: sourceWidth, height: sourceHeight } = await getImageSize(uri);
+    const { width: sourceWidth, height: sourceHeight } =
+      await getImageSize(uri);
     const { width, height } = fitOverlaySize(sourceWidth, sourceHeight);
 
     return {

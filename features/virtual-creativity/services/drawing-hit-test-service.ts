@@ -437,7 +437,11 @@ const isPointInsidePolygon = (point: Point, points: Point[]) => {
 
   let isInside = false;
 
-  for (let index = 0, previous = points.length - 1; index < points.length; previous = index, index += 1) {
+  for (
+    let index = 0, previous = points.length - 1;
+    index < points.length;
+    previous = index, index += 1
+  ) {
     const currentPoint = points[index];
     const previousPoint = points[previous];
 
@@ -445,7 +449,7 @@ const isPointInsidePolygon = (point: Point, points: Point[]) => {
       currentPoint.y > point.y !== previousPoint.y > point.y &&
       point.x <
         ((previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)) /
-          ((previousPoint.y - currentPoint.y) || 1e-9) +
+          (previousPoint.y - currentPoint.y || 1e-9) +
           currentPoint.x;
 
     if (intersects) {
@@ -551,15 +555,24 @@ export const doesDrawingPathHitPoint = (
       return true;
     }
 
-    return getMinDistanceSquaredToPolyline(point, filledPath.points) <= radius * radius;
+    return (
+      getMinDistanceSquaredToPolyline(point, filledPath.points) <=
+      radius * radius
+    );
   }
 
   const strokePath = flattenSvgPath(drawingPath.path);
-  const threshold = Math.max(radius, drawingPath.strokeWidth * 0.5 + radius * 0.4);
+  const threshold = Math.max(
+    radius,
+    drawingPath.strokeWidth * 0.5 + radius * 0.4,
+  );
 
   if (!isPointWithinBounds(point, strokePath.bounds, threshold)) {
     return false;
   }
 
-  return getMinDistanceSquaredToPolyline(point, strokePath.points) <= threshold * threshold;
+  return (
+    getMinDistanceSquaredToPolyline(point, strokePath.points) <=
+    threshold * threshold
+  );
 };
