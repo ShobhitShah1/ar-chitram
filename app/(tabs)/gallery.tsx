@@ -1,13 +1,20 @@
 import { EmptyState } from "@/components/empty-state";
 import RenderGalleryImage from "@/components/render-gallery-image";
-import { withTheme } from "@/context/theme-wrapper";
-import { SafeAreaView, useCommonThemedStyles } from "@/components/themed";
+import TabsHeader from "@/components/tabs-header";
+import { useCommonThemedStyles } from "@/components/themed";
 import { FontFamily } from "@/constants/fonts";
 import { GalleryItem } from "@/constants/interface";
 import { useTheme } from "@/context/theme-context";
 import * as MediaLibrary from "expo-media-library";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Dimensions, FlatList, RefreshControl, StyleSheet } from "react-native";
+import {
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  View,
+} from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -66,15 +73,21 @@ function GalleryScreen() {
     setRefreshing(false);
   }, [loadDownloadedImages]);
 
-  useEffect(() => {
-    initializeGallery();
-  }, []);
-
   const initializeGallery = useCallback(async () => {
-    setLoading(images.length === 0);
+    setLoading(true);
     await loadDownloadedImages();
     setLoading(false);
   }, [loadDownloadedImages]);
+
+  useEffect(() => {
+    void initializeGallery();
+  }, [initializeGallery]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadDownloadedImages();
+    }, [loadDownloadedImages]),
+  );
 
   const renderItem = useCallback(
     ({ item, index }: { item: GalleryItem; index: number }) => (
@@ -101,13 +114,15 @@ function GalleryScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={commonStyles.container}>
+    <View style={commonStyles.container}>
+      <TabsHeader isShuffle />
+
       {loading ? (
         <EmptyState showLoading={true} title="Loading images..." />
       ) : images.length === 0 ? (
         <EmptyState
-          title="No Downloaded Images"
-          description="Download images from rooms to see them here"
+          title="No Saved Media"
+          description="Photos and videos saved by ArChitram appear here automatically."
         />
       ) : (
         <FlatList
@@ -127,14 +142,13 @@ function GalleryScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[theme.accent]}
-              progressBackgroundColor={theme.background}
-              tintColor={theme.textPrimary}
+              colors={["#000000"]}
+              tintColor="#000000"
             />
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -180,6 +194,7 @@ const styles = StyleSheet.create({
   gridContainer: {
     paddingHorizontal: 20,
     paddingBottom: 100,
+    paddingTop: 10,
   },
 
   imageOverlay: {
@@ -208,4 +223,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default withTheme(GalleryScreen);
+export default GalleryScreen;

@@ -53,14 +53,10 @@ interface CanvasLayerProps {
   canvasHeight?: number;
   stageScale: number;
   displayZIndex?: number;
-  isSelected?: boolean;
   isActiveEditable?: boolean;
-  onSelect?: () => void;
-  onTapSelected?: () => void;
   onLongPress?: () => void;
   gesturesEnabled?: boolean;
   enablePinchResize?: boolean;
-  hideSelectionUI?: boolean;
   zoomScale?: SharedValue<number>;
   isZoomMode?: boolean;
   currentColor?: string;
@@ -69,6 +65,8 @@ interface CanvasLayerProps {
   currentSolidMode?: SolidDrawMode;
   smartFillSpace?: SmartFillSpace | null;
   onAddPath?: (path: DrawingPath) => void;
+  onSelectLayer?: (id: string | null) => void;
+  isSelected?: boolean;
   onTapFill?: (point: CanvasPoint) => void | Promise<void>;
   onEraseSessionStart?: () => void;
   onEraseSessionEnd?: () => void;
@@ -211,14 +209,10 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     canvasHeight = STORY_FRAME_HEIGHT,
     stageScale,
     displayZIndex,
-    isSelected = false,
     isActiveEditable = false,
-    onSelect,
-    onTapSelected,
     onLongPress,
     gesturesEnabled = true,
     enablePinchResize = false,
-    hideSelectionUI = false,
     zoomScale,
     isZoomMode = false,
     currentColor = "#000000",
@@ -227,6 +221,8 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     currentSolidMode = "free-draw",
     smartFillSpace = null,
     onAddPath,
+    onSelectLayer,
+    isSelected = false,
     onTapFill,
     onEraseSessionStart,
     onEraseSessionEnd,
@@ -245,6 +241,20 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const startY = useSharedValue(layer.y);
     const startScale = useSharedValue(layer.scale);
     const startRotation = useSharedValue(layer.rotation);
+
+    const layerTapGesture = React.useMemo(
+      () =>
+        Gesture.Tap()
+          .maxDistance(10)
+          .onEnd((_event, success) => {
+            if (!success || !onSelectLayer) {
+              return;
+            }
+
+            runOnJS(onSelectLayer)(isSelected ? null : layer.id);
+          }),
+      [layer.id, onSelectLayer, isSelected],
+    );
 
     const maxFitScale = React.useMemo(
       () =>
@@ -302,45 +312,11 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       translateY,
     ]);
 
-    const queueSelect = React.useCallback(() => {
-      deferCallback(onSelect);
-    }, [onSelect]);
-
-    const queueSelectedTap = React.useCallback(() => {
-      deferCallback(onTapSelected);
-    }, [onTapSelected]);
     const queueLongPress = React.useCallback(() => {
       deferCallback(onLongPress);
     }, [onLongPress]);
 
-    const canTapToSelect =
-      !!onSelect && (!isActiveEditable || gesturesEnabled);
-    const canTapSelected = !!onTapSelected && isSelected && gesturesEnabled;
     const canLongPress = !!onLongPress && !isZoomMode;
-
-    const tapGesture = React.useMemo(
-      () =>
-        Gesture.Tap()
-          .enabled(canTapToSelect || canTapSelected)
-          .maxDistance(18)
-          .maxDuration(280)
-          .onEnd((_event, success) => {
-            "worklet";
-            if (!success) {
-              return;
-            }
-
-            if (canTapSelected) {
-              runOnJS(queueSelectedTap)();
-              return;
-            }
-
-            if (canTapToSelect) {
-              runOnJS(queueSelect)();
-            }
-          }),
-      [canTapSelected, canTapToSelect, queueSelect, queueSelectedTap],
-    );
 
     const longPressGesture = React.useMemo(
       () =>
@@ -358,7 +334,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const panGesture = React.useMemo(
       () =>
         Gesture.Pan()
-          .enabled(gesturesEnabled && isSelected)
+          .enabled(gesturesEnabled)
           .minDistance(4)
           .maxPointers(1)
           .shouldCancelWhenOutside(false)
@@ -428,7 +404,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         canvasHeight,
         canvasWidth,
         gesturesEnabled,
-        isSelected,
         layer.height,
         layer.id,
         layer.width,
@@ -447,7 +422,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const pinchGesture = React.useMemo(
       () =>
         Gesture.Pinch()
-          .enabled(gesturesEnabled && isSelected && enablePinchResize)
+          .enabled(gesturesEnabled && enablePinchResize)
           .onStart(() => {
             startScale.value = scale.value;
           })
@@ -515,7 +490,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         canvasWidth,
         enablePinchResize,
         gesturesEnabled,
-        isSelected,
         layer.height,
         layer.id,
         layer.width,
@@ -533,7 +507,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const rotationGesture = React.useMemo(
       () =>
         Gesture.Rotation()
-          .enabled(gesturesEnabled && isSelected)
+          .enabled(gesturesEnabled)
           .onStart(() => {
             startRotation.value = rotation.value;
           })
@@ -581,7 +555,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         canvasHeight,
         canvasWidth,
         gesturesEnabled,
-        isSelected,
         layer.height,
         layer.id,
         layer.width,
@@ -599,10 +572,9 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     const createResizeGesture = React.useCallback(
       (corner: ResizeHandleCorner) =>
         Gesture.Pan()
-          .enabled(gesturesEnabled && isSelected)
+          .enabled(gesturesEnabled)
           .minDistance(0)
           .blocksExternalGesture(panGesture)
-          .blocksExternalGesture(tapGesture)
           .blocksExternalGesture(pinchGesture)
           .blocksExternalGesture(rotationGesture)
           .shouldCancelWhenOutside(false)
@@ -686,7 +658,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         canvasHeight,
         canvasWidth,
         gesturesEnabled,
-        isSelected,
         layer.height,
         layer.id,
         layer.width,
@@ -700,7 +671,6 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
         startScale,
         startX,
         startY,
-        tapGesture,
         translateX,
         translateY,
         zoomScale,
@@ -721,8 +691,12 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     );
 
     const layerGesture = React.useMemo(
-      () => Gesture.Race(longPressGesture, tapGesture, transformGesture),
-      [longPressGesture, tapGesture, transformGesture],
+      () =>
+        Gesture.Race(
+          longPressGesture,
+          Gesture.Simultaneous(layerTapGesture, transformGesture),
+        ),
+      [longPressGesture, layerTapGesture, transformGesture],
     );
 
     const metrics = React.useMemo(
@@ -768,12 +742,11 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
 
     const shouldShowDrawingCanvas =
       !isTextLayer && isActiveEditable && !gesturesEnabled;
-    const showPlacementUI = isSelected && !hideSelectionUI;
+    const showPlacementUI = gesturesEnabled && isSelected;
     const shouldCaptureTouches =
       shouldShowDrawingCanvas ||
-      canTapToSelect ||
-      canTapSelected ||
-      (gesturesEnabled && isSelected);
+      gesturesEnabled ||
+      !!onLongPress;
 
     const renderLayerContent = () => (
       <View style={styles.frame}>
@@ -848,13 +821,14 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     prevProps.canvasHeight === nextProps.canvasHeight &&
     prevProps.stageScale === nextProps.stageScale &&
     prevProps.displayZIndex === nextProps.displayZIndex &&
-    prevProps.isSelected === nextProps.isSelected &&
     prevProps.isActiveEditable === nextProps.isActiveEditable &&
     prevProps.gesturesEnabled === nextProps.gesturesEnabled &&
     prevProps.enablePinchResize === nextProps.enablePinchResize &&
-    prevProps.hideSelectionUI === nextProps.hideSelectionUI &&
     prevProps.zoomScale === nextProps.zoomScale &&
     prevProps.isZoomMode === nextProps.isZoomMode &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.onLongPress === nextProps.onLongPress &&
+    prevProps.onSelectLayer === nextProps.onSelectLayer &&
     prevProps.currentColor === nextProps.currentColor &&
     prevProps.currentBrushKind === nextProps.currentBrushKind &&
     prevProps.currentPatternUri === nextProps.currentPatternUri &&

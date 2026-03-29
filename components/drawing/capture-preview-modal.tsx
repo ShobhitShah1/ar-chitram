@@ -1,15 +1,14 @@
+import { FontFamily } from "@/constants/fonts";
+import { useTheme } from "@/context/theme-context";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/context/theme-context";
-import { FontFamily } from "@/constants/fonts";
-import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
 
 import {
   COLUMNS,
@@ -46,18 +45,14 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Shared Values for Drag and Drop
   const offsets = useSharedValue<OffsetData>({});
   const activeId = useSharedValue<string | null>(null);
   const containerHeight = useSharedValue(0);
 
-  // Initialize offsets when visible
   useEffect(() => {
     if (visible && snapshots.length > 0) {
       const newOffsets: any = {};
       snapshots.forEach((snap, index) => {
-        // Only re-calc if not already dragging or if length changed drastically?
-        // Actually, always syncing to props is good for initial load.
         const pos = getPosition(index);
         newOffsets[snap.id] = { order: index, x: pos.x, y: pos.y };
       });
@@ -69,7 +64,6 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
   }, [snapshots, visible]);
 
   const handleDragEnd = () => {
-    // Sort snapshots based on current offset order
     const sorted = [...snapshots].sort((a, b) => {
       const orderA = offsets.value[a.id]?.order ?? 0;
       const orderB = offsets.value[b.id]?.order ?? 0;
@@ -79,36 +73,24 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
   };
 
   const containerStyle = useAnimatedStyle(() => ({
-    height: containerHeight.value + 100, // Extra padding
+    height: containerHeight.value + 100,
     width: "100%",
   }));
 
-  /* 
-    VIDEO GENERATION LOGIC - COMMENTED OUT FOR LATER USE
-    
-    // const [generating, setGenerating] = useState(false);
-    // const [videoPath, setVideoPath] = useState<string | null>(null);
-    // ... filtering states, socket logic, etc.
-  */
-
   return (
-    <ControlledBottomSheet
+    <Modal
       visible={visible}
-      onClose={onClose}
-      snapPoints={["100%"]}
-      showHandle={false}
-      showBackdrop={false}
-      backgroundStyle={styles.sheetBackground}
-      contentContainerStyle={styles.sheetContent}
+      animationType="slide"
+      statusBarTranslucent
+      onRequestClose={onClose}
     >
       <SafeAreaView
         style={[styles.root, { backgroundColor: theme.background }]}
         edges={["top", "bottom"]}
       >
         <GestureHandlerRootView style={styles.container}>
-          {/* Header */}
           <View style={[styles.header, { backgroundColor: theme.background }]}>
-            <Pressable onPress={onClose} style={[styles.iconBtn]}>
+            <Pressable onPress={onClose} style={styles.iconBtn}>
               <Ionicons name="close" size={24} color={theme.textPrimary} />
             </Pressable>
 
@@ -123,17 +105,9 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
               </Text>
             </View>
 
-            <View style={styles.headerActions}>
-              {/* Save / Export buttons placeholder */}
-              {/* 
-                  <TouchableOpacity style={styles.primaryBtn} onPress={handleGenerate}>
-                    <Ionicons name="videocam" size={20} color="#fff" />
-                  </TouchableOpacity>
-                */}
-            </View>
+            <View style={styles.headerActions} />
           </View>
 
-          {/* Grid Content */}
           <View style={styles.content}>
             <Animated.ScrollView
               contentContainerStyle={styles.scrollContainer}
@@ -157,29 +131,13 @@ export const CapturePreviewModal: React.FC<CapturePreviewModalProps> = ({
               </View>
             </Animated.ScrollView>
           </View>
-
-          {/* 
-            BOTTOM ANIMATIONS / STUDIO PANEL - COMMENTED OUT
-            
-            // <Animated.View style={styles.studioPanel}>
-            //    ... Tabs, Options, Sliders ...
-            // </Animated.View> 
-          */}
         </GestureHandlerRootView>
       </SafeAreaView>
-    </ControlledBottomSheet>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  sheetBackground: {
-    borderWidth: 0,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
-  },
-  sheetContent: {
-    flex: 1,
-  },
   root: {
     flex: 1,
   },
@@ -215,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerActions: {
-    width: 40, // Balance the left button
+    width: 40,
   },
   content: {
     flex: 1,

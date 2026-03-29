@@ -1,6 +1,6 @@
 // Centralized asset URL utility for different image types
 const ASSETS_BASE_URL =
-  "https://nirvanatechlabs.in/ar_chitram_backend/ar_chitram_image";
+  "https://nirvanatechlabs.in/ARChitramBackend/ar_chitram_image";
 
 // New admin base URL for banners and assets
 const ADMIN_BASE_URL = "https://nirvanatechlabs.in/ar_chitram_admin/uploads";

@@ -193,7 +193,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (response && response.data && Array.isArray(response.data.SKU)) {
         const validSkus = response.data.SKU.filter(
           (sku): sku is string => typeof sku === "string" && sku !== null,
-        );
+        ).map((sku) => sku.trim());
         debugLog.info("[PAYMENT] Valid SKUs found:", validSkus);
         setPurchasedSkus(validSkus);
         storage.setString("@purchasedSkus", JSON.stringify(validSkus));

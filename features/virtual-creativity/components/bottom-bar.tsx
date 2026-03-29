@@ -66,7 +66,7 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
   const getIconContainerStyle = (tool: ToolType) => {
     if (tool === "gallery") {
       return {
-        backgroundColor: "#1E1E1E", // Dark
+        backgroundColor: "#1E1E1E",
       };
     }
     return {
@@ -86,7 +86,6 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
       ]}
       layout={SOFT_LAYOUT}
     >
-      {/* Slot 1: Gallery OR Composite Preview */}
       {mode === "single" ? (
         <Animated.View
           key="slot1-preview"
@@ -145,7 +144,6 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
         </Animated.View>
       )}
 
-      {/* Slot 2: Palette */}
       <Pressable onPress={onPalette} style={styles.btn}>
         <View style={[styles.iconContainer, getIconContainerStyle("palette")]}>
           <Image
@@ -156,14 +154,12 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
         </View>
       </Pressable>
 
-      {/* Slot 3: Pattern */}
       <Pressable onPress={onPattern} style={styles.btn}>
         <View style={[styles.iconContainer, getIconContainerStyle("pattern")]}>
           <Image source={ic_patent} style={styles.icon} contentFit="contain" />
         </View>
       </Pressable>
 
-      {/* Slot 4: Stroke (Only in Default Mode, else placeholder) */}
       {mode === "default" ? (
         <Animated.View
           key="slot4-stroke"
@@ -194,7 +190,6 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
         </Animated.View>
       )}
 
-      {/* Slot 5: Preview (Only in Default Mode, else placeholder) */}
       {mode === "default" ? (
         <Animated.View
           key="slot5-preview"
@@ -215,11 +210,11 @@ const BottomBarComponent: React.FC<BottomBarProps> = ({
                 style={styles.icon}
                 contentFit="contain"
               />
-              {previewBadge > 0 && (
+              {previewBadge > 0 ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{previewBadge}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </Pressable>
         </Animated.View>
@@ -243,7 +238,6 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "space-between",
-    // paddingBottom: 16,
     paddingTop: 5,
   },
   btn: {
@@ -296,7 +290,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -13,
     right: -5,
-    backgroundColor: "#007AFF", // Blue badge
+    backgroundColor: "#007AFF",
     borderRadius: 500,
     width: 23,
     height: 23,

@@ -106,7 +106,7 @@ export const HorizontalGallery: React.FC<HorizontalGalleryProps> = ({
       <Image
         source={{ uri: item.image }}
         style={styles.image}
-        contentFit="contain"
+        contentFit="cover"
       />
 
       <LinearGradient

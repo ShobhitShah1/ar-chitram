@@ -66,55 +66,26 @@ export const WinnerModal: React.FC<WinnerModalProps> = ({
             />
 
             <View
+              pointerEvents="none"
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignSelf: "center",
-                alignItems: "center",
                 position: "absolute",
-                bottom: 48,
+                bottom: 40,
+                width: "100%",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <View style={{ width: "30%", height: 150, left: 10 }}>
-                <Image
-                  source={ic_confetti_left}
-                  contentFit="cover"
-                  style={{ width: "120%", height: "120%" }}
-                />
-              </View>
-
-              <View
-                style={{
-                  width: "40%",
-                  height: 150,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                {userImage && (
-                  <Image
-                    source={{ uri: userImage }}
-                    style={styles.winnerImage}
-                    contentFit="cover"
-                  />
-                )}
-                <Image
-                  source={ic_gold}
-                  style={{ width: "120%", height: "130%" }}
-                />
-              </View>
-              <View style={{ width: "30%", height: 150, right: 30 }}>
-                <Image
-                  source={ic_confetti_right}
-                  contentFit="cover"
-                  style={{ width: "120%", height: "120%" }}
-                />
-              </View>
+              <Image
+                source={Images.contestWinnerCrown}
+                contentFit="contain"
+                style={{ width: "95%", height: 300 }}
+              />
             </View>
+
             <View
               style={{
                 position: "absolute",
-                bottom: 6.5,
+                bottom: 12,
                 width: "100%",
                 alignItems: "center",
               }}

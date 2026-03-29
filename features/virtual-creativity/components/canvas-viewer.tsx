@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -45,7 +46,7 @@ interface CanvasViewerProps {
   layers: VirtualLayer[];
   activeLayerId?: string | null;
   selectedLayerId?: string | null;
-  onSelectLayer?: (id: string) => void;
+  onSelectLayer?: (id: string | null) => void;
   onLongPressLayer?: (id: string) => void;
   onClearSelection?: () => void;
   onClearSelectionToDraw?: () => void;
@@ -56,9 +57,11 @@ interface CanvasViewerProps {
   currentBrushKind?: BrushKind;
   currentPatternUri?: string;
   currentSolidMode?: SolidDrawMode;
-  subLayerGesturesEnabled?: boolean;
+  handModeLayerIds?: ReadonlySet<string>;
+  layerSelectionMode?: boolean;
   focusPlacementEnabled?: boolean;
   hideSelectionUI?: boolean;
+  smartFillSpaces?: Record<string, SmartFillSpace>;
 }
 
 export const CanvasViewer: React.FC<CanvasViewerProps> = ({
@@ -76,9 +79,11 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
   currentBrushKind,
   currentPatternUri,
   currentSolidMode = "free-draw",
-  subLayerGesturesEnabled = false,
+  handModeLayerIds,
+  layerSelectionMode = false,
   focusPlacementEnabled = false,
   hideSelectionUI = false,
+  smartFillSpaces = {},
 }) => {
   const updateLayer = useVirtualCreativityStore((state) => state.updateLayer);
   const smartFillWarningShown = React.useRef(false);
@@ -89,11 +94,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     layerId: null,
     historyCaptured: false,
   });
-  const [activeSmartFillSpace, setActiveSmartFillSpace] =
-    React.useState<SmartFillSpace | null>(null);
-  const smartFillSpaceCacheRef = React.useRef(
-    new Map<string, SmartFillSpace>(),
-  );
   const [canvasSize, setCanvasSize] = React.useState({ width: 0, height: 0 });
 
   const scale = useSharedValue(1);
@@ -219,6 +219,19 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     [mainLayer?.uri],
   );
 
+  const isMainImageBlocking = React.useMemo(() => {
+    if (activeLayerId === "main-image" || selectedLayerId === "main-image") {
+      return true;
+    }
+    if (handModeLayerIds?.has("main-image")) {
+      return true;
+    }
+    if (!handModeLayerIds || handModeLayerIds.size === 0) {
+      return true;
+    }
+    return false;
+  }, [activeLayerId, selectedLayerId, handModeLayerIds]);
+
   React.useEffect(() => {
     scale.value = withSpring(1, VIEWPORT_RESET_SPRING);
     translateX.value = withSpring(0, VIEWPORT_RESET_SPRING);
@@ -254,48 +267,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     translateY,
   ]);
 
-  React.useEffect(() => {
-    if (
-      !activeLayer?.uri ||
-      !supportsSmartFillBrush ||
-      currentSolidMode === "free-draw" ||
-      currentSolidMode === "erase"
-    ) {
-      setActiveSmartFillSpace(null);
-      return;
-    }
-
-    const cachedSpace = smartFillSpaceCacheRef.current.get(activeLayer.uri);
-    if (cachedSpace) {
-      setActiveSmartFillSpace(cachedSpace);
-      return;
-    }
-
-    let cancelled = false;
-
-    void primeSmartFillLookup({ imageUri: activeLayer.uri })
-      .then((space) => {
-        if (!cancelled) {
-          smartFillSpaceCacheRef.current.set(activeLayer.uri as string, space);
-          setActiveSmartFillSpace(space);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setActiveSmartFillSpace(null);
-          reportSmartFillError(error);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeLayer?.uri,
-    currentSolidMode,
-    reportSmartFillError,
-    supportsSmartFillBrush,
-  ]);
 
   const panGesture = Gesture.Pan()
     .enabled(isZoomMode)
@@ -329,7 +300,16 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       }
     });
 
-  const composedGesture = Gesture.Simultaneous(panGesture, pinchGesture);
+  const stageTapGesture = Gesture.Tap().onStart(() => {
+    if (onSelectLayer) {
+      runOnJS(onSelectLayer)(null);
+    }
+  });
+  const composedGesture = Gesture.Simultaneous(
+    panGesture,
+    pinchGesture,
+    stageTapGesture,
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -395,7 +375,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       }
 
       const region = await handleResolveSmartFillPath(layerId, point);
-      if (!region?.path) {
+      if (!region?.path || region.touchesEdge) {
         return;
       }
 
@@ -527,9 +507,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
           resolveSmartFillPath={(point) =>
             handleResolveSmartFillPath(layer.id, point)
           }
-          smartFillSpace={
-            layer.id === activeLayerId ? activeSmartFillSpace : null
-          }
+          smartFillSpace={smartFillSpaces[layer.id] || null}
+          onSelectLayer={onSelectLayer}
           currentColor={currentColor}
           brushKind={currentBrushKind}
           solidMode={currentSolidMode}
@@ -543,7 +522,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     ),
     [
       activeLayerId,
-      activeSmartFillSpace,
       beginEraseSession,
       currentBrushKind,
       currentColor,
@@ -556,6 +534,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       handleTapFill,
       isZoomMode,
       scale,
+      smartFillSpaces,
     ],
   );
 
@@ -576,12 +555,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
             stageScale={focusStageScale}
             renderReferenceWidth={focusReferenceWidth}
             renderReferenceHeight={focusReferenceHeight}
-            isSelected
             isActiveEditable={false}
-            onTapSelected={onExitFocusPlacement}
             gesturesEnabled={!isZoomMode}
             enablePinchResize={false}
-            hideSelectionUI={hideSelectionUI}
             zoomScale={scale}
             isZoomMode={isZoomMode}
           />
@@ -593,9 +569,10 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       <>
         {sortedLayers.map((layer) => {
           const isLayerCanvasEnabled =
-            layer.id === activeLayerId &&
-            !subLayerGesturesEnabled &&
-            layer.type !== "text";
+            activeLayerId != null &&
+            (layer.id === "main-image"
+              ? true
+              : !handModeLayerIds?.has(layer.id) && layer.type !== "text");
           const isTextLayer = layer.type === "text";
 
           return (
@@ -627,11 +604,8 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     return <View style={styles.container} />;
   }
 
-  const isMainCanvasEnabled =
-    !!mainLayer && mainLayer.id === activeLayerId && !subLayerGesturesEnabled;
-  const shouldCaptureSubLayerTouches =
-    !!onSelectLayer || subLayerGesturesEnabled;
-
+  const isDrawEnabledGlobally = activeLayerId !== null;
+  const isMainCanvasEnabled = !!mainLayer && isDrawEnabledGlobally;
   return (
     <View style={styles.container} onLayout={handleCanvasLayout}>
       <GestureDetector gesture={composedGesture}>
@@ -651,32 +625,14 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 stageScale={isolatedStageScale}
                 renderReferenceWidth={isolatedReferenceWidth}
                 renderReferenceHeight={isolatedReferenceHeight}
-                isSelected={selectedLayerId === isolatedEditingLayer.id}
                 isActiveEditable={activeLayerId === isolatedEditingLayer.id}
-                onSelect={
-                  onSelectLayer
-                    ? () => onSelectLayer(isolatedEditingLayer.id)
-                    : undefined
-                }
                 onLongPress={
                   onLongPressLayer
                     ? () => onLongPressLayer(isolatedEditingLayer.id)
                     : undefined
                 }
-                onTapSelected={
-                  selectedLayerId === isolatedEditingLayer.id
-                    ? onClearSelection
-                    : undefined
-                }
-                gesturesEnabled={
-                  subLayerGesturesEnabled &&
-                  selectedLayerId === isolatedEditingLayer.id
-                }
-                enablePinchResize={
-                  subLayerGesturesEnabled &&
-                  selectedLayerId === isolatedEditingLayer.id
-                }
-                hideSelectionUI={hideSelectionUI || !subLayerGesturesEnabled}
+                gesturesEnabled={false}
+                enablePinchResize={false}
                 zoomScale={scale}
                 isZoomMode={isZoomMode}
                 currentColor={currentColor}
@@ -684,9 +640,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 currentPatternUri={currentPatternUri}
                 currentSolidMode={currentSolidMode}
                 smartFillSpace={
-                  activeLayerId === isolatedEditingLayer.id
-                    ? activeSmartFillSpace
-                    : null
+                  smartFillSpaces[isolatedEditingLayer.id] || null
                 }
                 onAddPath={(path) =>
                   handleAddPath(path, isolatedEditingLayer.id)
@@ -718,22 +672,9 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 },
               ]}
             >
-              {subLayerGesturesEnabled &&
-              selectedLayerId &&
-              onClearSelectionToDraw ? (
-                <Pressable
-                  style={StyleSheet.absoluteFill}
-                  onPress={onClearSelectionToDraw}
-                />
-              ) : null}
-
               <View
                 style={StyleSheet.absoluteFill}
-                pointerEvents={
-                  shouldCaptureSubLayerTouches || sortedLayers.length > 0
-                    ? "box-none"
-                    : "none"
-                }
+                pointerEvents={sortedLayers.length > 0 ? "box-none" : "none"}
               >
                 {sortedLayers.map((layer) =>
                   layer.id === "main-image" ? (
@@ -743,11 +684,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                         StyleSheet.absoluteFill,
                         { zIndex: layer.zIndex },
                       ]}
-                      pointerEvents={
-                        shouldCaptureSubLayerTouches && !isMainCanvasEnabled
-                          ? "none"
-                          : "box-none"
-                      }
+                      pointerEvents={isMainImageBlocking ? "box-none" : "none"}
                     >
                       {mainLayerImageSource ? (
                         <Image
@@ -776,42 +713,36 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                       canvasWidth={STORY_FRAME_WIDTH}
                       canvasHeight={STORY_FRAME_HEIGHT}
                       stageScale={stageLayout.scale}
-                      isSelected={selectedLayerId === layer.id}
-                      isActiveEditable={activeLayerId === layer.id}
-                      onSelect={
-                        onSelectLayer
-                          ? () => onSelectLayer(layer.id)
-                          : undefined
+                      isActiveEditable={
+                        isDrawEnabledGlobally &&
+                        layer.type !== "text" &&
+                        !handModeLayerIds?.has(layer.id)
                       }
                       onLongPress={
                         onLongPressLayer
                           ? () => onLongPressLayer(layer.id)
                           : undefined
                       }
-                      onTapSelected={
-                        selectedLayerId === layer.id
-                          ? onClearSelection
-                          : undefined
-                      }
                       gesturesEnabled={
-                        subLayerGesturesEnabled && selectedLayerId === layer.id
+                        layer.type === "text"
+                          ? selectedLayerId === layer.id
+                          : !!handModeLayerIds?.has(layer.id)
                       }
                       enablePinchResize={
-                        subLayerGesturesEnabled && selectedLayerId === layer.id
+                        layer.type === "text"
+                          ? selectedLayerId === layer.id
+                          : !!handModeLayerIds?.has(layer.id)
                       }
-                      hideSelectionUI={
-                        hideSelectionUI || !subLayerGesturesEnabled
-                      }
+                      isSelected={selectedLayerId === layer.id}
                       zoomScale={scale}
                       isZoomMode={isZoomMode}
                       currentColor={currentColor}
                       currentBrushKind={currentBrushKind}
                       currentPatternUri={currentPatternUri}
                       currentSolidMode={currentSolidMode}
-                      smartFillSpace={
-                        activeLayerId === layer.id ? activeSmartFillSpace : null
-                      }
+                      smartFillSpace={smartFillSpaces[layer.id] || null}
                       onAddPath={(path) => handleAddPath(path, layer.id)}
+                      onSelectLayer={onSelectLayer}
                       onTapFill={(point) => handleTapFill(layer.id, point)}
                       onEraseSessionStart={() => beginEraseSession(layer.id)}
                       onEraseSessionEnd={endEraseSession}

@@ -7,6 +7,7 @@ import { FontFamily } from "@/constants/fonts";
 import { CameraPermissionView } from "@/components/camera/camera-permission-view";
 import { Ionicons } from "@expo/vector-icons";
 import PrimaryButton from "@/components/ui/primary-button";
+import { saveToArChitramAlbum } from "@/services/media-save-service";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 
@@ -36,10 +37,16 @@ const ContestCamera = () => {
           },
         );
 
-        // Mock API call delay
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
         if (normalizedUri) {
+          try {
+            await saveToArChitramAlbum(normalizedUri);
+          } catch (error) {
+            console.warn(
+              "Contest image was captured but could not be saved to gallery",
+              error,
+            );
+          }
+
           router.push({
             pathname: "/drawing/share",
             params: { imageUri: normalizedUri },

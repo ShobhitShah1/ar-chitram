@@ -52,14 +52,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: "hidden",
     position: "relative",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    boxShadow: "0px 0px 20px 0px rgba(0,0,0,0.02)",
+    // shadowColor: "#000",
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 4,
+    // },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 12,
+    // elevation: 8,
   },
   image: {
     width: "100%",

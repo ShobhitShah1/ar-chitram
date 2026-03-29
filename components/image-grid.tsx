@@ -45,7 +45,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   refreshing = false,
   onRefresh,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const isEmpty = data.length === 0;
 
   return (
@@ -102,7 +102,9 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                       width: "100%", // Fill wrapper
                       backgroundColor:
                         item.color || theme.drawingCardBackground,
-                      boxShadow: theme.drawingCardShadow,
+                      ...(!isDark
+                        ? { boxShadow: theme.drawingCardShadow }
+                        : {}),
                     } as any,
                   ]}
                   onPress={() => onPress(item)}

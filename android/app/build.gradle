@@ -21,7 +21,7 @@ react {
     bundleCommand = "export:embed"
 
     /* Folders */
-     //   The root of your project, i.e. where "package.json" lives. Default is '../..'
+    //   The root of your project, i.e. where "package.json" lives. Default is '../..'
     // root = file("../../")
     //   The folder where the react-native NPM package is. Default is ../../node_modules/react-native
     // reactNativeDir = file("../../node_modules/react-native")
@@ -104,7 +104,7 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-            release {
+        release {
             if (project.hasProperty('ARCHITRAM_UPLOAD_STORE_FILE') && file(ARCHITRAM_UPLOAD_STORE_FILE).exists()) {
                 storeFile file(ARCHITRAM_UPLOAD_STORE_FILE)
                 storePassword ARCHITRAM_UPLOAD_STORE_PASSWORD
@@ -112,7 +112,7 @@ android {
                 keyPassword ARCHITRAM_UPLOAD_KEY_PASSWORD
             }
         }
-}
+    }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug

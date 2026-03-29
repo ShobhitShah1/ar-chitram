@@ -48,7 +48,7 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
     const scaleY = Math.min((screenHeight - 136) / 683, 0.92);
     const scale = Math.min(scaleX, scaleY);
     const cardWidth = Math.round(384 * scaleX);
-    const cardHeight = Math.round(683 * scaleY);
+    const cardHeight = Math.round(675 * scaleY);
     const previewWidth = Math.round(320 * scaleX);
     const previewHeight = Math.round(320 * scaleY);
     const buttonWidth = Math.round(320 * scaleX);
@@ -56,9 +56,9 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
     const layout = useMemo(
       () => ({
         borderRadius: Math.round(30 * scale),
-        heroSize: Math.round(72 * scale),
-        heroTop: Math.round(-22 * scaleY),
-        heroLeft: Math.round(-12 * scaleX),
+        heroSize: Math.round(90 * scale),
+        heroTop: Math.round(-35 * scaleY),
+        heroLeft: Math.round(-15 * scaleX),
         closeSize: Math.round(30 * scale),
         closeTop: Math.round(16 * scaleY),
         closeRight: Math.round(14 * scaleX),
@@ -66,9 +66,9 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
         titleTop: Math.round(26 * scaleY),
         titlePaddingLeft: Math.round(22 * scaleX),
         titlePaddingRight: Math.round(56 * scaleX),
-        titleFontSize: Math.max(30, Math.round(40 * scale)),
+        titleFontSize: Math.max(35, Math.round(45 * scale)),
         titleLineHeight: Math.max(36, Math.round(46 * scale)),
-        previewTop: Math.round(169 * scaleY),
+        previewTop: Math.round(140 * scaleY),
         previewLeft: Math.round((cardWidth - previewWidth) / 2),
         actionsBottom: Math.round(30 * scaleY),
         actionsLeft: Math.round((cardWidth - buttonWidth) / 2),
@@ -254,7 +254,7 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
                     disabled={premiumDisabled}
                     iconSource={ic_black_diamond}
                     label="PRIMIUM"
-                    detail="Unlock pack"
+                    detail="Lifetime use"
                     pillLabel={premiumPriceLabel ?? ""}
                     colors={["#E7B901", "#F2D501", "#EC7303"]}
                     labelColor="#361D01"
@@ -341,8 +341,8 @@ const styles = StyleSheet.create({
   title: {
     color: "#050505",
     fontFamily: FontFamily.pattaya,
-    fontSize: 31,
     lineHeight: 44,
+    left: 18,
     textAlign: "center",
     includeFontPadding: false,
     width: "100%",
@@ -353,8 +353,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   previewImage: {
-    width: "108%",
-    height: "108%",
+    width: "115%",
+    height: "115%",
     alignSelf: "center",
   },
   actions: {

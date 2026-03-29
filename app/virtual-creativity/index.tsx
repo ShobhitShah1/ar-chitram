@@ -36,7 +36,10 @@ import {
   useBrush,
   useCanvasInitialization,
 } from "@/features/virtual-creativity/hooks/use-virtual-creativity-canvas";
-import { primeSmartFillLookup } from "@/features/virtual-creativity/services/smart-fill-path-service";
+import {
+  primeSmartFillLookup,
+  type SmartFillSpace,
+} from "@/features/virtual-creativity/services/smart-fill-path-service";
 import { normalizeStoryImageUri } from "@/services/story-media-service";
 import {
   createMainImageLayer,
@@ -51,13 +54,15 @@ import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 import * as ImageManipulator from "expo-image-manipulator";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
+  BackHandler,
   Dimensions,
   Image as RNImage,
+  Platform,
   StatusBar,
   StyleSheet,
   Text,
@@ -84,8 +89,8 @@ export default function VirtualCreativityScreen() {
   const router = useRouter();
   const isPremiumPickerModalFlow = PREMIUM_PICKER_ENTRY_MODE === "modal";
   const assetPickerModalRef = useRef<BottomSheetModal | null>(null);
+  const isAssetPickerVisibleRef = useRef(false);
   const lastDrawingToolRef = useRef<ToolType>("palette");
-  const selectionRestoreToolRef = useRef<ToolType | null>(null);
   const pendingUploadFlowLaunchRef = useRef(false);
   const lastAutoPlacedStoredUploadsKeyRef = useRef<string | null>(null);
   const { data: storedUploadAssetsData } = useQuery({
@@ -127,6 +132,7 @@ export default function VirtualCreativityScreen() {
     selectLayer,
     pendingUploadUris,
     clearPendingUploadUris,
+    reset,
   } = useVirtualCreativityStore();
 
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
@@ -145,6 +151,9 @@ export default function VirtualCreativityScreen() {
   const [isFocusPlacementActive, setIsFocusPlacementActive] = useState(false);
 
   const [isZoomMode, setIsZoomMode] = useState(false);
+  const [handModeLayerIds, setHandModeLayerIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [zoomResetKey, setZoomResetKey] = useState(0);
   const [isCanvasCaptureInProgress, setIsCanvasCaptureInProgress] =
     useState(false);
@@ -156,7 +165,11 @@ export default function VirtualCreativityScreen() {
 
   const [isSmartFillPreloading, setIsSmartFillPreloading] = useState(true);
   const preloadedSmartFillUrisRef = useRef<Set<string>>(new Set());
+  const failedPreloadUrisRef = useRef<Set<string>>(new Set());
   const preloadJobRef = useRef(0);
+  const [smartFillSpacesByUri, setSmartFillSpacesByUri] = useState<
+    Record<string, SmartFillSpace>
+  >({});
 
   const { viewMode, setViewMode } = useCanvasInitialization(
     layers,
@@ -183,39 +196,75 @@ export default function VirtualCreativityScreen() {
     [allLayersSorted],
   );
 
+  const activeSubLayerUri = useMemo(() => {
+    if (!selectedLayerId || selectedLayerId === "main-image") {
+      return null;
+    }
+    return layers.find((l) => l.id === selectedLayerId)?.uri ?? null;
+  }, [layers, selectedLayerId]);
+
+  const preloadTargetUrisJson = useMemo(() => {
+    const targets = [];
+    if (mainImageUri) {
+      targets.push(mainImageUri);
+    }
+    if (activeSubLayerUri) {
+      targets.push(activeSubLayerUri);
+    }
+    return JSON.stringify(targets);
+  }, [mainImageUri, activeSubLayerUri]);
+
+  const smartFillSpacesByLayerId = useMemo(() => {
+    const result: Record<string, SmartFillSpace> = {};
+    for (const layer of layers) {
+      if (layer.uri && smartFillSpacesByUri[layer.uri]) {
+        result[layer.id] = smartFillSpacesByUri[layer.uri];
+      }
+    }
+    return result;
+  }, [layers, smartFillSpacesByUri]);
+
   React.useEffect(() => {
-    if (!mainImageUri) {
-      setIsSmartFillPreloading(false);
+    const targetUris = JSON.parse(preloadTargetUrisJson) as string[];
+    if (targetUris.length === 0) {
       return;
     }
 
-    if (preloadedSmartFillUrisRef.current.has(mainImageUri)) {
-      setIsSmartFillPreloading(false);
+    const urisToProcess = targetUris.filter(
+      (uri) =>
+        !preloadedSmartFillUrisRef.current.has(uri) &&
+        !failedPreloadUrisRef.current.has(uri),
+    );
+
+    if (urisToProcess.length === 0) {
       return;
     }
 
     let cancelled = false;
     const jobId = ++preloadJobRef.current;
-    setIsSmartFillPreloading(true);
 
-    void primeSmartFillLookup({ imageUri: mainImageUri })
-      .then(() => {
-        if (cancelled || preloadJobRef.current !== jobId) {
-          return;
-        }
-
-        preloadedSmartFillUrisRef.current.add(mainImageUri);
-      })
-      .finally(() => {
-        if (!cancelled && preloadJobRef.current === jobId) {
-          setIsSmartFillPreloading(false);
-        }
-      });
+    void Promise.all(
+      urisToProcess.map((uri) =>
+        primeSmartFillLookup({ imageUri: uri })
+          .then((space) => {
+            if (!cancelled && preloadJobRef.current === jobId) {
+              preloadedSmartFillUrisRef.current.add(uri);
+              setSmartFillSpacesByUri((prev) => ({ ...prev, [uri]: space }));
+            }
+          })
+          .catch((error) => {
+            console.warn(`Smart fill preload failed for ${uri}:`, error);
+            if (!cancelled && preloadJobRef.current === jobId) {
+              failedPreloadUrisRef.current.add(uri);
+            }
+          }),
+      ),
+    );
 
     return () => {
       cancelled = true;
     };
-  }, [mainImageUri]);
+  }, [preloadTargetUrisJson]);
 
   const compositeVisibleLayers = useMemo(
     () => allLayersSorted,
@@ -234,26 +283,27 @@ export default function VirtualCreativityScreen() {
     [selectedLayerId],
   );
   const isSingleSubLayerView = viewMode === "single" && !!selectedSubLayerId;
-  const brushTargetLayerId = useMemo(
-    () =>
-      isSingleSubLayerView
-        ? selectedSubLayerId
-        : hasMainLayer
-          ? "main-image"
-          : null,
-    [hasMainLayer, isSingleSubLayerView, selectedSubLayerId],
-  );
+  const brushTargetLayerId = useMemo(() => {
+    if (isSingleSubLayerView) {
+      return selectedSubLayerId;
+    }
+
+    return hasMainLayer ? "main-image" : null;
+  }, [hasMainLayer, isSingleSubLayerView, selectedSubLayerId]);
   const activeCanvasLayerId = useMemo(() => {
-    if (selectedTool === "gallery" || isFocusPlacementActive) {
+    if (
+      selectedTool === "preview" ||
+      isFocusPlacementActive ||
+      handModeLayerIds.size > 0
+    ) {
       return null;
     }
 
     return brushTargetLayerId;
-  }, [brushTargetLayerId, isFocusPlacementActive, selectedTool]);
+  }, [brushTargetLayerId, isFocusPlacementActive, selectedTool, handModeLayerIds]);
   const activeOrderLayerId = selectedSubLayerId;
   const canDeleteLayer = !!selectedSubLayerId;
-  const isLayerSelectionMode =
-    viewMode === "composite" && selectedTool === "gallery" && !isZoomMode;
+  const isLayerSelectionMode = viewMode === "composite" && !isZoomMode;
 
   const defaultBrushColor =
     typeof theme.accent === "string" && theme.accent.startsWith("#")
@@ -300,18 +350,6 @@ export default function VirtualCreativityScreen() {
   const restoreDrawingTool = useCallback(() => {
     setSelectedTool(lastDrawingToolRef.current);
   }, []);
-
-  const restoreToolAfterSelection = useCallback(() => {
-    const nextTool = selectionRestoreToolRef.current;
-    selectionRestoreToolRef.current = null;
-
-    if (nextTool) {
-      setSelectedTool(nextTool);
-      return;
-    }
-
-    restoreDrawingTool();
-  }, [restoreDrawingTool]);
 
   const warmSmartFillLookup = useCallback((imageUri?: string | null) => {
     if (!imageUri) {
@@ -364,6 +402,15 @@ export default function VirtualCreativityScreen() {
       }
 
       setLayers([...layers, ...uploadLayers], uploadLayers[0]?.id ?? null);
+
+      setHandModeLayerIds((prev) => {
+        const next = new Set(prev);
+        for (const layer of uploadLayers) {
+          next.add(layer.id);
+        }
+        return next;
+      });
+
       setSelectedTool("gallery");
       setIsFocusPlacementActive(false);
       setViewMode("composite");
@@ -413,6 +460,18 @@ export default function VirtualCreativityScreen() {
 
   const handleZoomToggle = useCallback(() => {
     setIsZoomMode((prev) => !prev);
+  }, []);
+
+  const handleToggleHandMode = useCallback((layerId: string) => {
+    setHandModeLayerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(layerId)) {
+        next.delete(layerId);
+      } else {
+        next.add(layerId);
+      }
+      return next;
+    });
   }, []);
 
   const confirmRemoveLayer = useCallback(
@@ -493,6 +552,12 @@ export default function VirtualCreativityScreen() {
       return;
     }
 
+    // Deselect everything to ensure a clean capture
+    selectLayer(null);
+    setHandModeLayerIds(new Set());
+    setIsZoomMode(false);
+    setIsFocusPlacementActive(false);
+
     try {
       const uri = await captureCanvasSnapshot(1);
       if (uri) {
@@ -504,31 +569,56 @@ export default function VirtualCreativityScreen() {
     } catch (error) {
       console.error("Failed to capture snapshot for next step:", error);
     }
-  }, [captureCanvasSnapshot, router, viewMode]);
+  }, [
+    captureCanvasSnapshot,
+    router,
+    viewMode,
+    selectLayer,
+    setHandModeLayerIds,
+    setIsZoomMode,
+    setIsFocusPlacementActive,
+  ]);
+
+  const presentAssetPicker = useCallback(() => {
+    isAssetPickerVisibleRef.current = true;
+    assetPickerModalRef.current?.present();
+  }, []);
+
+  const dismissAssetPicker = useCallback(() => {
+    isAssetPickerVisibleRef.current = false;
+    assetPickerModalRef.current?.dismiss();
+  }, []);
 
   const handleGallery = useCallback(() => {
-    selectionRestoreToolRef.current = null;
-    const shouldOpenAssetPicker = viewMode === "composite";
-
-    setSelectedTool("gallery");
     setIsFocusPlacementActive(false);
     setColorPickerVisible(false);
     setPatternModalVisible(false);
     setSignatureModalVisible(false);
+    setSelectedTool("gallery");
 
-    if (shouldOpenAssetPicker) {
-      assetPickerModalRef.current?.present();
+    if (viewMode === "composite") {
+      presentAssetPicker();
     }
-  }, [viewMode]);
+  }, [presentAssetPicker, viewMode]);
 
   const selectLayerForPlacement = useCallback(
     (layerId: string) => {
       selectLayer(layerId);
+      setHandModeLayerIds((prev) => {
+        const layer = layers.find((l) => l.id === layerId);
+        const next = new Set<string>();
+        if (layer?.type === "text") {
+          return next;
+        }
+
+        next.add(layerId);
+        return next;
+      });
       setSelectedTool("gallery");
       setIsFocusPlacementActive(false);
       setViewMode("composite");
     },
-    [selectLayer, setViewMode],
+    [selectLayer, setViewMode, setHandModeLayerIds],
   );
 
   const applyImageToCanvas = useCallback(
@@ -573,14 +663,14 @@ export default function VirtualCreativityScreen() {
     async (item: CreateFlowPickerAssetItem) => {
       try {
         await applyImageToCanvas(item.image);
-        assetPickerModalRef.current?.dismiss();
+        dismissAssetPicker();
         return true;
       } catch (error) {
         console.error("Failed to apply upload asset:", error);
         return false;
       }
     },
-    [applyImageToCanvas],
+    [applyImageToCanvas, dismissAssetPicker],
   );
 
   const {
@@ -608,7 +698,7 @@ export default function VirtualCreativityScreen() {
     onComplete: async ({ finalUri }) => {
       try {
         await applyImageToCanvas(finalUri);
-        assetPickerModalRef.current?.dismiss();
+        dismissAssetPicker();
       } catch (error) {
         console.error("Failed to apply uploaded image:", error);
       }
@@ -621,10 +711,12 @@ export default function VirtualCreativityScreen() {
     }
 
     pendingUploadFlowLaunchRef.current = true;
-    assetPickerModalRef.current?.dismiss();
-  }, [isPickingImage]);
+    dismissAssetPicker();
+  }, [dismissAssetPicker, isPickingImage]);
 
   const handleCloseAssetPicker = useCallback(() => {
+    isAssetPickerVisibleRef.current = false;
+
     if (!pendingUploadFlowLaunchRef.current) {
       return;
     }
@@ -636,7 +728,6 @@ export default function VirtualCreativityScreen() {
   }, [startUploadFlow]);
 
   const handlePalette = useCallback(() => {
-    selectionRestoreToolRef.current = null;
     lastDrawingToolRef.current = "palette";
     if (viewMode === "composite") {
       selectLayer(null);
@@ -651,7 +742,6 @@ export default function VirtualCreativityScreen() {
   }, [selectLayer, viewMode]);
 
   const handlePattern = useCallback(() => {
-    selectionRestoreToolRef.current = null;
     lastDrawingToolRef.current = "pattern";
     if (viewMode === "composite") {
       selectLayer(null);
@@ -664,7 +754,6 @@ export default function VirtualCreativityScreen() {
   }, [selectLayer, viewMode]);
 
   const handleStroke = useCallback(() => {
-    selectionRestoreToolRef.current = null;
     lastDrawingToolRef.current = "stroke";
     if (viewMode === "composite") {
       selectLayer(null);
@@ -701,29 +790,47 @@ export default function VirtualCreativityScreen() {
   }, []);
 
   const handleSelectCanvasLayer = useCallback(
-    (id: string) => {
+    (id: string | null) => {
+      if (!id) {
+        setHandModeLayerIds(new Set());
+        selectLayer(null);
+        setIsFocusPlacementActive(false);
+        return;
+      }
+
       const targetLayer = allLayersSorted.find((layer) => layer.id === id);
       if (!targetLayer) {
         return;
       }
 
-      if (
-        selectedTool !== "gallery" &&
-        selectedTool !== "preview" &&
-        selectionRestoreToolRef.current === null
-      ) {
-        selectionRestoreToolRef.current = selectedTool;
+      if (selectedLayerId === id) {
+        setHandModeLayerIds((prev) => {
+          if (targetLayer.type === "text" || !prev.has(id)) {
+            return new Set();
+          }
+
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        selectLayer(null);
+        setIsFocusPlacementActive(false);
+        return;
       }
+
+      setHandModeLayerIds(
+        targetLayer.type === "image" ? new Set([id]) : new Set(),
+      );
 
       selectLayer(id);
       setIsFocusPlacementActive(false);
-      setSelectedTool("gallery");
       setViewMode("composite");
     },
     [
       allLayersSorted,
       selectLayer,
-      selectedTool,
+      selectedLayerId,
+      setHandModeLayerIds,
       setViewMode,
     ],
   );
@@ -780,7 +887,6 @@ export default function VirtualCreativityScreen() {
 
   const handleOpenLayerEditor = useCallback(
     (id: string) => {
-      selectionRestoreToolRef.current = null;
       const targetLayer = allLayersSorted.find((layer) => layer.id === id);
       if (!targetLayer) {
         return;
@@ -813,6 +919,103 @@ export default function VirtualCreativityScreen() {
     setViewMode("composite");
   }, [setViewMode]);
 
+  const handleDiscardExit = useCallback(() => {
+    reset();
+    router.replace("/(tabs)/home");
+  }, [reset, router]);
+
+  const handleConfirmDiscardExit = useCallback(() => {
+    Alert.alert(
+      "Discard changes?",
+      "If you leave now, your current canvas changes will be discarded.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: handleDiscardExit,
+        },
+      ],
+    );
+  }, [handleDiscardExit]);
+
+  const handleEditorBackPress = useCallback(() => {
+    if (isAssetPickerVisibleRef.current) {
+      dismissAssetPicker();
+      return true;
+    }
+
+    if (showPreviewModal) {
+      setShowPreviewModal(false);
+      return true;
+    }
+
+    if (signatureModalVisible) {
+      setSignatureModalVisible(false);
+      return true;
+    }
+
+    if (patternModalVisible) {
+      setPatternModalVisible(false);
+      return true;
+    }
+
+    if (colorPickerVisible) {
+      setColorPickerVisible(false);
+      return true;
+    }
+
+    if (selectedPremiumAsset) {
+      handleClosePremiumAsset();
+      return true;
+    }
+
+    if (viewMode === "single") {
+      handleCompositeRestore();
+      return true;
+    }
+
+    if (selectedLayerId) {
+      selectLayer(null);
+      return true;
+    }
+
+    handleConfirmDiscardExit();
+    return true;
+  }, [
+    colorPickerVisible,
+    dismissAssetPicker,
+    handleClosePremiumAsset,
+    handleCompositeRestore,
+    handleConfirmDiscardExit,
+    patternModalVisible,
+    selectedPremiumAsset,
+    showPreviewModal,
+    signatureModalVisible,
+    selectedLayerId,
+    selectLayer,
+    viewMode,
+  ]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (Platform.OS !== "android") {
+          return false;
+        }
+
+        return handleEditorBackPress();
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
+
+      return () => subscription.remove();
+    }, [handleEditorBackPress]),
+  );
+
   const handleExitFocusPlacement = useCallback(() => {
     if (!isFocusPlacementActive) {
       return;
@@ -827,20 +1030,20 @@ export default function VirtualCreativityScreen() {
       return;
     }
 
+    setHandModeLayerIds(new Set());
     selectLayer(null);
     setIsFocusPlacementActive(false);
-    restoreToolAfterSelection();
-  }, [restoreToolAfterSelection, selectLayer, viewMode]);
+  }, [selectLayer, setHandModeLayerIds, viewMode]);
 
   const handleClearSelectionToDraw = useCallback(() => {
     if (viewMode !== "composite") {
       return;
     }
 
+    setHandModeLayerIds(new Set());
     selectLayer(null);
     setIsFocusPlacementActive(false);
-    restoreToolAfterSelection();
-  }, [restoreToolAfterSelection, selectLayer, viewMode]);
+  }, [selectLayer, setHandModeLayerIds, viewMode]);
 
   const handleZoomReset = useCallback(() => {
     setZoomResetKey((prev) => prev + 1);
@@ -885,6 +1088,14 @@ export default function VirtualCreativityScreen() {
       );
 
       setSelectedSignatureId(selection.id);
+      setHandModeLayerIds((prev) => {
+        const next = new Set(prev);
+        if (existingSignatureLayer) {
+          next.delete(existingSignatureLayer.id);
+        }
+        next.delete(signatureLayer.id);
+        return next;
+      });
 
       if (existingSignatureLayer) {
         updateLayer(existingSignatureLayer.id, {
@@ -894,6 +1105,8 @@ export default function VirtualCreativityScreen() {
           color: existingSignatureLayer.color ?? signatureLayer.color,
           width: signatureLayer.width,
           height: signatureLayer.height,
+          x: signatureLayer.x,
+          y: signatureLayer.y,
         });
         selectLayerForPlacement(existingSignatureLayer.id);
       } else {
@@ -962,46 +1175,36 @@ export default function VirtualCreativityScreen() {
             ref={viewShotRef}
             collapsable={false}
           >
-            {isSmartFillPreloading ? (
-              <View style={styles.canvasLoaderOnly}>
-                <ActivityIndicator color="#000000" size="large" />
-              </View>
-            ) : (
-              <CanvasViewer
-                layers={displayedLayers}
-                activeLayerId={activeCanvasLayerId}
-                selectedLayerId={selectedSubLayerId}
-                onSelectLayer={
-                  viewMode === "composite"
-                    ? handleSelectCanvasLayer
-                    : undefined
-                }
-                onLongPressLayer={
-                  isLayerSelectionMode ? handleLayerLongPress : undefined
-                }
-                onClearSelection={handleClearSelection}
-                onClearSelectionToDraw={handleClearSelectionToDraw}
-                onExitFocusPlacement={handleExitFocusPlacement}
-                isZoomMode={isZoomMode}
-                currentColor={brush.color}
-                zoomResetKey={zoomResetKey}
-                currentBrushKind={brush.kind}
-                currentPatternUri={brush.patternUri}
-                currentSolidMode={brush.solidMode}
-                subLayerGesturesEnabled={
-                  isLayerSelectionMode && !!selectedSubLayerId
-                }
-                focusPlacementEnabled={false}
-                hideSelectionUI={isZoomMode || isCanvasCaptureInProgress}
-              />
-            )}
+            <CanvasViewer
+              layers={displayedLayers}
+              activeLayerId={activeCanvasLayerId}
+              selectedLayerId={selectedLayerId}
+              onSelectLayer={handleSelectCanvasLayer}
+              onLongPressLayer={
+                isLayerSelectionMode ? handleLayerLongPress : undefined
+              }
+              onClearSelection={handleClearSelection}
+              onClearSelectionToDraw={handleClearSelectionToDraw}
+              onExitFocusPlacement={handleExitFocusPlacement}
+              isZoomMode={isZoomMode}
+              currentColor={brush.color}
+              zoomResetKey={zoomResetKey}
+              currentBrushKind={brush.kind}
+              currentPatternUri={brush.patternUri}
+              currentSolidMode={brush.solidMode}
+              handModeLayerIds={handModeLayerIds}
+              layerSelectionMode={isLayerSelectionMode}
+              focusPlacementEnabled={false}
+              hideSelectionUI={isZoomMode || isCanvasCaptureInProgress}
+              smartFillSpaces={smartFillSpacesByLayerId}
+            />
           </View>
 
           {stripLayers.length > 0 ? (
             <LayerStrip
               layers={stripLayers}
-              selectedLayerId={selectedSubLayerId}
-              onSelectLayer={handleOpenLayerEditor}
+              handModeLayerIds={handModeLayerIds}
+              onToggleHandMode={handleToggleHandMode}
               horizontalInset={0}
             />
           ) : null}
@@ -1055,7 +1258,9 @@ export default function VirtualCreativityScreen() {
           isPremiumActionBusy={isPremiumActionBusy}
           premiumPriceLabel={premiumPriceLabel}
         />
+
         <ImageUploadFlowModal {...modalProps} />
+
         {isPremiumPickerModalFlow ? (
           <PremiumAssetModal
             asset={selectedPremiumAsset}
@@ -1072,6 +1277,7 @@ export default function VirtualCreativityScreen() {
             premiumPriceLabel={premiumPriceLabel}
           />
         ) : null}
+
         <ColorPickerModal
           visible={colorPickerVisible}
           onClose={handleCloseColorPicker}

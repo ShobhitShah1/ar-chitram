@@ -3,28 +3,31 @@ import { EmptyState } from "@/components/empty-state";
 import { PremiumAssetModal } from "@/components/premium-asset-modal";
 import { StoryRow } from "@/components/story/story-row";
 import TabsHeader from "@/components/tabs-header";
-import { WinnerModal } from "@/components/winner-modal";
 import { View as ThemedView } from "@/components/themed";
+import { WinnerModal } from "@/components/winner-modal";
 import { useTheme } from "@/context/theme-context";
+import { useUser } from "@/context/user-context";
+import { HorizontalGallery } from "@/components/horizontal-gallery";
+import { likeAndDislike } from "@/services/api-service";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
 import {
   fetchLocalUploadTabAssets,
   persistLocalUploadAsset,
 } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { useHomeTabAssets } from "@/hooks/api";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import {
   HomeWinnerItem,
   TabAssetItem,
 } from "@/services/api/tab-assets-service";
-import { apiQueryKeys } from "@/services/api/query-keys";
-import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -39,6 +42,7 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
+import { FontFamily } from "@/constants/fonts";
 
 const WINNER_CARD_WIDTH = 176;
 const WINNER_CARD_HEIGHT = 224;
@@ -141,74 +145,82 @@ const HomeWinnerSection = memo(
 interface HomeAssetGridProps {
   items: TabAssetItem[];
   onPress: (item: TabAssetItem) => void;
+  isPremiumAssetUnlocked: (item: TabAssetItem) => boolean;
 }
 
-const HomeAssetGrid = memo(({ items, onPress }: HomeAssetGridProps) => {
-  const { theme } = useTheme();
+const HomeAssetGrid = memo(
+  ({ items, onPress, isPremiumAssetUnlocked }: HomeAssetGridProps) => {
+    const { theme } = useTheme();
 
-  return (
-    <View style={styles.assetGridWrap}>
-      <View style={styles.assetGrid}>
-        {items.map((item, index) => {
-          const isFullWidth = index % 3 === 2;
-          const cardStyle = isFullWidth
-            ? styles.assetCardSingle
-            : styles.assetCardPair;
-          const imageStyle = isFullWidth
-            ? styles.assetImageSingle
-            : styles.assetImagePair;
+    return (
+      <View style={styles.assetGridWrap}>
+        <View style={styles.assetGrid}>
+          {items.map((item, index) => {
+            const isFullWidth = index % 3 === 2;
+            const cardStyle = isFullWidth
+              ? styles.assetCardSingle
+              : styles.assetCardPair;
+            const imageStyle = isFullWidth
+              ? styles.assetImageSingle
+              : styles.assetImagePair;
 
-          console.log(item.image);
+            const isUnlocked = isPremiumAssetUnlocked(item);
 
-          return (
-            <View
-              key={item.id}
-              style={{ width: isFullWidth ? GRID_FULL_WIDTH : GRID_CARD_WIDTH }}
-            >
-              <Pressable
-                onPress={() => onPress(item)}
-                style={[
-                  cardStyle,
-                  {
-                    backgroundColor: theme.drawingCardBackground,
-                    boxShadow: theme.drawingCardShadow,
-                  } as any,
-                ]}
+            return (
+              <View
+                key={item.id}
+                style={{
+                  width: isFullWidth ? GRID_FULL_WIDTH : GRID_CARD_WIDTH,
+                }}
               >
-                <Image
-                  source={{ uri: item.image }}
-                  style={imageStyle}
-                  contentFit="contain"
-                  cachePolicy="memory-disk"
-                  transition={200}
-                />
-                {item.isPremium ? (
-                  <View pointerEvents="none" style={styles.premiumBadgeWrap}>
-                    <Image
-                      source={ic_pro_icon}
-                      style={styles.premiumBadge}
-                      contentFit="contain"
-                      transition={0}
-                    />
-                  </View>
-                ) : null}
-              </Pressable>
-            </View>
-          );
-        })}
+                <Pressable
+                  onPress={() => onPress(item)}
+                  style={[
+                    cardStyle,
+                    {
+                      backgroundColor: theme.drawingCardBackground,
+                      boxShadow: theme.drawingCardShadow,
+                    } as any,
+                  ]}
+                >
+                  <Image
+                    source={{ uri: item.image }}
+                    style={imageStyle}
+                    contentFit="contain"
+                    cachePolicy="memory-disk"
+                    transition={200}
+                  />
+                  {item.isPremium && !isUnlocked ? (
+                    <View pointerEvents="none" style={styles.premiumBadgeWrap}>
+                      <Image
+                        source={ic_pro_icon}
+                        style={styles.premiumBadge}
+                        contentFit="contain"
+                        transition={0}
+                      />
+                    </View>
+                  ) : null}
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
       </View>
-    </View>
-  );
-});
+    );
+  },
+);
 
 export default function Home() {
-  const { theme } = useTheme();
   const clearPendingUploadUris = useVirtualCreativityStore(
     (state) => state.clearPendingUploadUris,
   );
+  const { syncProfile } = useUser();
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
+
   const { data, isLoading, isError, refetch } = useHomeTabAssets();
   const homeGridItems = data?.homeGridItems ?? [];
+
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedWinner, setSelectedWinner] = useState<HomeWinnerItem | null>(
@@ -224,9 +236,11 @@ export default function Home() {
     handleClosePremiumAsset,
     handleFreePremiumAsset,
     handlePremiumAsset,
+    isPremiumAssetUnlocked,
   } = usePremiumAssetGuideFlow({
     preloadItems: homeGridItems,
   });
+
   const { startUploadFlow, modalProps } = useImageUploadFlow({
     title: "Start With Your Photo",
     description:
@@ -251,6 +265,7 @@ export default function Home() {
     void refetch().finally(() => {
       setRefreshing(false);
     });
+    syncProfile();
   }, [refetch, refreshing]);
 
   useFocusEffect(
@@ -270,9 +285,22 @@ export default function Home() {
     }, [cameraPermission, requestCameraPermission]),
   );
 
+  useEffect(() => {
+    syncProfile();
+  }, []);
+
+  const hasAutoShownWinner = React.useRef(false);
+
   const contestStoryData = data?.stories ?? [];
   const todayWinners = data?.todayWinners ?? [];
   const last7DaysWinners = data?.last7DaysWinners ?? [];
+
+  useEffect(() => {
+    if (todayWinners.length > 0 && !hasAutoShownWinner.current) {
+      setSelectedWinner(todayWinners[0]);
+      hasAutoShownWinner.current = true;
+    }
+  }, [todayWinners]);
 
   const hasHomeContent =
     contestStoryData.length > 0 ||
@@ -341,20 +369,23 @@ export default function Home() {
                 </View>
               ) : null}
 
-              {todayWinners.length > 0 ? (
-                <HomeWinnerSection
-                  title="Today's Winners"
-                  winners={todayWinners}
-                  onPress={handleWinnerPress}
-                />
-              ) : null}
-
               {last7DaysWinners.length > 0 ? (
-                <HomeWinnerSection
-                  title="Last 7 Days"
-                  winners={last7DaysWinners}
-                  onPress={handleWinnerPress}
-                />
+                <View style={styles.sectionBlock}>
+                  <Text
+                    style={[styles.sectionTitle, { color: theme.textPrimary }]}
+                  >
+                    Last 7 Days
+                  </Text>
+                  <HorizontalGallery
+                    images={last7DaysWinners}
+                    onImagePress={(img) =>
+                      handleWinnerPress(img as HomeWinnerItem)
+                    }
+                    onLikePress={(imageId, liked) => {
+                      likeAndDislike(imageId, liked).catch(console.error);
+                    }}
+                  />
+                </View>
               ) : null}
 
               {homeGridItems.length > 0 ? (
@@ -362,6 +393,7 @@ export default function Home() {
                   <HomeAssetGrid
                     items={homeGridItems}
                     onPress={handleAssetPress}
+                    isPremiumAssetUnlocked={isPremiumAssetUnlocked}
                   />
                 </View>
               ) : null}
@@ -413,13 +445,13 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   sectionBlock: {
-    marginTop: 10,
+    marginTop: 5,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 20,
+    fontFamily: FontFamily.semibold,
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 5,
   },
   inlineSpacer: {
     width: 12,

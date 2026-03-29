@@ -86,6 +86,7 @@ interface ThumbnailTileProps {
   item: CreateSheetAssetItem;
   index: number;
   selected: boolean;
+  isUnlocked: boolean;
   onPress: (index: number) => void;
   borderColor: string;
   selectedBorderColor: string;
@@ -97,6 +98,7 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
     item,
     index,
     selected,
+    isUnlocked,
     onPress,
     borderColor,
     selectedBorderColor,
@@ -137,7 +139,7 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
             transition={120}
           />
         </View>
-        {item.isPremium ? (
+        {item.isPremium && !isUnlocked ? (
           <View pointerEvents="none" style={styles.thumbBadgeWrap}>
             <Image
               source={ic_pro_icon}
@@ -366,44 +368,55 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
   );
 
   const renderPreviewItem = useCallback(
-    ({ item }: ListRenderItemInfo<CreateSheetAssetItem>) => (
-      <View
-        style={[
-          styles.previewSlide,
-          { width: previewWidth, height: previewHeight },
-        ]}
-      >
+    ({ item }: ListRenderItemInfo<CreateSheetAssetItem>) => {
+      const isUnlocked = isPremiumAssetUnlocked?.(item) ?? false;
+
+      return (
         <View
           style={[
-            styles.previewCard,
-            {
-              width: previewCardWidth,
-              borderColor,
-              backgroundColor: surfaceColor,
-            },
+            styles.previewSlide,
+            { width: previewWidth, height: previewHeight },
           ]}
         >
-          <Image
-            source={{ uri: item.image }}
-            style={styles.previewImage}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-            transition={140}
-          />
-          {item.isPremium ? (
-            <View pointerEvents="none" style={styles.previewBadgeWrap}>
-              <Image
-                source={ic_pro_icon}
-                style={styles.previewBadge}
-                contentFit="contain"
-                transition={0}
-              />
-            </View>
-          ) : null}
+          <View
+            style={[
+              styles.previewCard,
+              {
+                width: previewCardWidth,
+                borderColor,
+                backgroundColor: surfaceColor,
+              },
+            ]}
+          >
+            <Image
+              source={{ uri: item.image }}
+              style={styles.previewImage}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={140}
+            />
+            {item.isPremium && !isUnlocked ? (
+              <View pointerEvents="none" style={styles.previewBadgeWrap}>
+                <Image
+                  source={ic_pro_icon}
+                  style={styles.previewBadge}
+                  contentFit="contain"
+                  transition={0}
+                />
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
-    ),
-    [borderColor, previewCardWidth, previewHeight, previewWidth, surfaceColor],
+      );
+    },
+    [
+      borderColor,
+      isPremiumAssetUnlocked,
+      previewCardWidth,
+      previewHeight,
+      previewWidth,
+      surfaceColor,
+    ],
   );
 
   const renderThumbItem = useCallback(
@@ -412,6 +425,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
         item={item}
         index={index}
         selected={index === selectedIndex}
+        isUnlocked={isPremiumAssetUnlocked?.(item) ?? false}
         onPress={scrollToIndex}
         borderColor={thumbBorder}
         selectedBorderColor={selectedThumbBorder}
@@ -419,6 +433,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
       />
     ),
     [
+      isPremiumAssetUnlocked,
       scrollToIndex,
       selectedIndex,
       selectedThumbBorder,

@@ -76,6 +76,24 @@ const toProductInfo = (product: {
 const getErrorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error ? error.message || fallback : fallback;
 
+const areProductsEqual = (
+  currentProducts: ProductInfo[],
+  nextProducts: ProductInfo[],
+) =>
+  currentProducts.length === nextProducts.length &&
+  currentProducts.every((product, index) => {
+    const nextProduct = nextProducts[index];
+    return (
+      product?.id === nextProduct?.id &&
+      product?.title === nextProduct?.title &&
+      product?.description === nextProduct?.description &&
+      product?.price === nextProduct?.price &&
+      product?.priceAmount === nextProduct?.priceAmount &&
+      product?.currency === nextProduct?.currency &&
+      product?.type === nextProduct?.type
+    );
+  });
+
 export function IAPProvider({ children }: IAPProviderProps) {
   const { purchasedSkus, syncProfile } = useUser();
   const iapStore = useIAPStore();
@@ -93,6 +111,7 @@ export function IAPProvider({ children }: IAPProviderProps) {
   const initializationPromiseRef = useRef<Promise<boolean> | null>(null);
   const isMountedRef = useRef(true);
   const hasInitializedRef = useRef(false);
+  const productsRef = useRef<ProductInfo[]>([]);
 
   const knownPurchasedSkus = useMemo(
     () =>
@@ -136,9 +155,22 @@ export function IAPProvider({ children }: IAPProviderProps) {
         productsById.set(product.id, product);
       }
 
-      return Array.from(productsById.values());
+      const mergedProducts = Array.from(productsById.values());
+
+      if (areProductsEqual(currentProducts, mergedProducts)) {
+        productsRef.current = currentProducts;
+        return currentProducts;
+      }
+
+      productsRef.current = mergedProducts;
+      return mergedProducts;
     });
   }, []);
+
+  const hasProduct = useCallback(
+    (sku: string) => productsRef.current.some((product) => product.id === sku),
+    [],
+  );
 
   const loadProducts = useCallback(
     async (
@@ -148,7 +180,7 @@ export function IAPProvider({ children }: IAPProviderProps) {
       const requestedSkus = getProductSKUs(additionalSkus);
 
       if (!requestedSkus.length) {
-        return products;
+        return productsRef.current;
       }
 
       const shouldFetch =
@@ -156,7 +188,7 @@ export function IAPProvider({ children }: IAPProviderProps) {
         requestedSkus.some((sku) => !loadedProductSkusRef.current.has(sku));
 
       if (!shouldFetch) {
-        return products;
+        return productsRef.current;
       }
 
       const storeProducts = await fetchProducts({
@@ -170,7 +202,7 @@ export function IAPProvider({ children }: IAPProviderProps) {
       mergeProducts(normalizedProducts);
       return normalizedProducts;
     },
-    [mergeProducts, products],
+    [mergeProducts],
   );
 
   const syncPurchasedSku = useCallback(
@@ -393,7 +425,7 @@ export function IAPProvider({ children }: IAPProviderProps) {
         const availableProducts = await loadProducts(
           [sku, ...knownPurchasedSkus],
           {
-            force: !products.some((product) => product.id === sku),
+            force: !hasProduct(sku),
           },
         );
 
@@ -452,10 +484,10 @@ export function IAPProvider({ children }: IAPProviderProps) {
       isConnected,
       isPurchasing,
       isSkuPurchased,
+      hasProduct,
       knownPurchasedSkus,
       loadProducts,
       processPurchase,
-      products,
     ],
   );
 
@@ -515,10 +547,10 @@ export function IAPProvider({ children }: IAPProviderProps) {
       }
 
       await loadProducts([sku], {
-        force: !products.some((product) => product.id === sku),
+        force: !hasProduct(sku),
       });
     },
-    [initializeIap, isConnected, loadProducts, products],
+    [hasProduct, initializeIap, isConnected, loadProducts],
   );
 
   const ensureProductsLoaded = useCallback(
@@ -536,12 +568,10 @@ export function IAPProvider({ children }: IAPProviderProps) {
       }
 
       await loadProducts(requestedSkus, {
-        force: requestedSkus.some(
-          (sku) => !products.some((product) => product.id === sku),
-        ),
+        force: requestedSkus.some((sku) => !hasProduct(sku)),
       });
     },
-    [initializeIap, isConnected, loadProducts, products],
+    [hasProduct, initializeIap, isConnected, loadProducts],
   );
 
   const value = useMemo<IAPContextType>(

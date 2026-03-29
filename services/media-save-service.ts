@@ -9,6 +9,20 @@ import * as MediaLibrary from "expo-media-library";
 
 const ALBUM_NAME = "ArChitram";
 
+const ensureMediaLibraryPermission = async (): Promise<boolean> => {
+  const currentPermission = await MediaLibrary.getPermissionsAsync();
+  if (currentPermission.granted) {
+    return true;
+  }
+
+  if (!currentPermission.canAskAgain) {
+    return false;
+  }
+
+  const requestedPermission = await MediaLibrary.requestPermissionsAsync();
+  return requestedPermission.granted;
+};
+
 /**
  * Save an asset to the ArChitram album.
  *
@@ -22,9 +36,8 @@ const ALBUM_NAME = "ArChitram";
 export async function saveToArChitramAlbum(
   assetUri: string,
 ): Promise<MediaLibrary.Asset> {
-  // Request permissions
-  const { status } = await MediaLibrary.requestPermissionsAsync();
-  if (status !== "granted") {
+  const hasPermission = await ensureMediaLibraryPermission();
+  if (!hasPermission) {
     throw new Error("Storage permission not granted");
   }
 
@@ -50,8 +63,7 @@ export async function saveToArChitramAlbum(
  * Request media library permissions
  */
 export async function requestMediaPermissions(): Promise<boolean> {
-  const { status } = await MediaLibrary.requestPermissionsAsync();
-  return status === "granted";
+  return ensureMediaLibraryPermission();
 }
 
 /**

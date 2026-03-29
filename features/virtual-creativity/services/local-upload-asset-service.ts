@@ -224,3 +224,15 @@ export const fetchLocalUploadTabAssets =
       flatAssets,
     };
   };
+
+export const deleteLocalUploadAsset = async (id: string) => {
+  const uploads = await getLocalUploadAssets();
+  const index = uploads.findIndex((upload) => upload.id === id);
+  if (index === -1) {
+    return;
+  }
+
+  const [removed] = uploads.splice(index, 1);
+  writeStoredLocalUploads(uploads);
+  await deleteLocalUploadFile(removed.uri);
+};

@@ -10,6 +10,7 @@ import {
   Dimensions,
   ScrollView,
   StyleSheet,
+  Switch,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -38,12 +39,7 @@ const COLOR_SHEET_MIN_HEIGHT = 420;
 const COLOR_SHEET_PREFERRED_HEIGHT = 560;
 const GRADIENT_SHEET_PREFERRED_HEIGHT = 470;
 
-const COLOR_MODE_OPTIONS: { mode: SolidDrawMode; label: string }[] = [
-  { mode: "object-draw", label: "Object" },
-  { mode: "free-draw", label: "Free" },
-  { mode: "tap-fill", label: "Tap" },
-  { mode: "erase", label: "Erase" },
-];
+const DEFAULT_SOLID_MODE: SolidDrawMode = "object-draw";
 
 const hsvToRgb = (
   h: number,
@@ -150,6 +146,8 @@ interface ColorPickerModalProps {
   onClose: () => void;
   onSelectColor: (color: string, solidMode: SolidDrawMode) => void;
   onSelectGradient?: (colors: [string, string]) => void;
+  isDrawModeActive?: boolean;
+  onDrawModeChange?: (enabled: boolean) => void;
   bottomInset?: number;
   mode?: "color" | "gradient";
   initialColor?: string;
@@ -161,6 +159,8 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   onClose,
   onSelectColor,
   onSelectGradient,
+  isDrawModeActive = false,
+  onDrawModeChange,
   bottomInset = 0,
   mode = "color",
   initialColor,
@@ -179,9 +179,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   const [brightness2, setBrightness2] = useState(0.8);
 
   const [activeColor, setActiveColor] = useState<1 | 2>(1);
-  const [solidMode, setSolidMode] = useState<SolidDrawMode>(
-    initialSolidMode ?? "object-draw",
-  );
+  const solidMode: SolidDrawMode = DEFAULT_SOLID_MODE;
 
   const rgb1 = hsvToRgb(hue1, saturation1, brightness1);
   const color1 = rgbToHex(...rgb1);
@@ -195,7 +193,6 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
 
   const syncPickerState = useCallback(() => {
     if (mode === "color") {
-      setSolidMode(initialSolidMode ?? "object-draw");
       setActiveColor(1);
 
       if (!initialColor) {
@@ -452,32 +449,18 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 />
               </View>
 
-              <View style={styles.modeSelectorSection}>
-                <Text style={styles.modeSelectorLabel}>Brush Mode</Text>
-                <View style={styles.modeSelectorRow}>
-                  {COLOR_MODE_OPTIONS.map((option) => {
-                    const isActive = solidMode === option.mode;
-                    return (
-                      <Pressable
-                        key={option.mode}
-                        onPress={() => setSolidMode(option.mode)}
-                        style={[
-                          styles.modeChip,
-                          isActive && styles.modeChipActive,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.modeChipText,
-                            isActive && styles.modeChipTextActive,
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+              <View style={styles.drawToggleSection}>
+                <Text style={styles.drawToggleLabel}>Canvas Draw</Text>
+                <Switch
+                  value={isDrawModeActive}
+                  onValueChange={onDrawModeChange}
+                  trackColor={{
+                    false: "rgba(0,0,0,0.14)",
+                    true: "#000000",
+                  }}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor="rgba(0,0,0,0.14)"
+                />
               </View>
             </>
           ) : null}
@@ -672,7 +655,7 @@ const styles = StyleSheet.create({
   },
   colorPreviewContainer: {
     paddingHorizontal: 24,
-    marginBottom: 16,
+    marginBottom: 14,
     alignItems: "center",
   },
   colorPreview: {
@@ -683,41 +666,20 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "rgba(255,255,255,0.3)",
   },
-  modeSelectorSection: {
-    paddingHorizontal: 24,
-    marginBottom: 16,
-    gap: 10,
-  },
-  modeSelectorLabel: {
-    fontSize: 12,
-    fontFamily: FontFamily.semibold,
-    color: "rgba(0,0,0,0.55)",
-  },
-  modeSelectorRow: {
+  drawToggleSection: {
+    marginHorizontal: 24,
+    marginBottom: 12,
+    paddingHorizontal: 4,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  modeChip: {
-    width: "22%",
-    minHeight: 40,
-    borderRadius: 20,
-    backgroundColor: "#F2F2F2",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 14,
+    justifyContent: "space-between",
   },
-  modeChipActive: {
-    backgroundColor: "#000000",
+  drawToggleLabel: {
+    fontSize: 14,
+    fontFamily: FontFamily.semibold,
+    color: "#000000",
   },
-  modeChipText: {
-    fontSize: 13,
-    fontFamily: FontFamily.medium,
-    color: "rgba(0,0,0,0.68)",
-  },
-  modeChipTextActive: {
-    color: "#FFFFFF",
-  },
+
   satBrightPicker: {
     width: PICKER_WIDTH,
     height: PICKER_HEIGHT,

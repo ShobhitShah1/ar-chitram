@@ -111,6 +111,8 @@ export const createSubImageLayer = async (
   }
 };
 
+const SIGNATURE_EDITOR_MARGIN = 60;
+
 export const createSignatureTextLayer = (
   selection: SignatureSelection,
   zIndex: number,
@@ -124,6 +126,8 @@ export const createSignatureTextLayer = (
     SIGNATURE_MIN_WIDTH,
     SIGNATURE_MAX_WIDTH,
   );
+  
+  const height = SIGNATURE_HEIGHT;
 
   return {
     id: `signature-${Date.now()}-${zIndex}`,
@@ -132,10 +136,10 @@ export const createSignatureTextLayer = (
     fontFamily: selection.fontFamily,
     fontSize: SIGNATURE_BASE_FONT_SIZE,
     color: "#111111",
-    x: 0,
-    y: 0,
+    x: (STORY_FRAME_WIDTH - width - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
+    y: (STORY_FRAME_HEIGHT - height - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
     width,
-    height: SIGNATURE_HEIGHT,
+    height,
     rotation: 0,
     scale: 1,
     opacity: 1,

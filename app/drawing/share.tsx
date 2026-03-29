@@ -189,6 +189,7 @@ const ShareScreen = () => {
 
                 return isInstagram ? (
                   <LinearGradient
+                    key={button.platform}
                     colors={[
                       "#FEDA75",
                       "#FA7E1E",

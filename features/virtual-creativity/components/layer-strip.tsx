@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
@@ -7,16 +8,16 @@ import { VirtualLayer } from "@/features/virtual-creativity/store/virtual-creati
 
 interface LayerStripProps {
   layers: VirtualLayer[];
-  selectedLayerId: string | null;
-  onSelectLayer: (id: string) => void;
+  handModeLayerIds: ReadonlySet<string>;
+  onToggleHandMode: (id: string) => void;
   horizontalInset?: number;
   reserveSpace?: boolean;
 }
 
 export const LayerStrip: React.FC<LayerStripProps> = ({
   layers,
-  selectedLayerId,
-  onSelectLayer,
+  handModeLayerIds,
+  onToggleHandMode,
   horizontalInset = 16,
   reserveSpace = false,
 }) => {
@@ -31,52 +32,100 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
   return (
     <View style={styles.container}>
       {orderedLayers.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingHorizontal: horizontalInset },
-          ]}
+        <View
+          style={[styles.stripRow, { paddingHorizontal: horizontalInset }]}
         >
-          {orderedLayers.map((layer, index) => (
-            <Pressable
-              key={layer.id}
-              onPress={() => onSelectLayer(layer.id)}
-              style={[
-                styles.thumbnailWrapper,
-                index > 0 && { marginLeft: -15 },
-                { zIndex: orderedLayers.length - index },
-                selectedLayerId && layer.id === selectedLayerId
-                  ? styles.selectedWrapper
-                  : null,
-              ]}
-            >
-              <View style={styles.thumbnail}>
-                {layer.uri || layer.type === "text" ? (
-                  <>
-                    <VirtualLayerVisual layer={layer} />
-                    <DrawingLayerSvg
-                      idPrefix={`strip-${layer.id}`}
-                      paths={layer.paths || []}
-                      layerWidth={layer.width}
-                      layerHeight={layer.height}
-                      strokeScale={0.12}
-                      minimumStrokeWidth={1}
+          {/* Layer thumbnails stacked on the left */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.thumbnailStack}
+            style={styles.thumbnailScroll}
+          >
+            {orderedLayers.map((layer, index) => (
+              <View
+                key={layer.id}
+                style={[
+                  styles.thumbnailWrapper,
+                  index > 0 && { marginLeft: -12 },
+                  { zIndex: orderedLayers.length - index },
+                ]}
+              >
+                <View style={styles.thumbnail}>
+                  {layer.uri || layer.type === "text" ? (
+                    <>
+                      <VirtualLayerVisual layer={layer} />
+                      <DrawingLayerSvg
+                        idPrefix={`strip-${layer.id}`}
+                        paths={layer.paths || []}
+                        layerWidth={layer.width}
+                        layerHeight={layer.height}
+                        strokeScale={0.12}
+                        minimumStrokeWidth={1}
+                      />
+                    </>
+                  ) : (
+                    <View
+                      style={[
+                        styles.colorPlaceholder,
+                        { backgroundColor: layer.color || "#ccc" },
+                      ]}
                     />
-                  </>
-                ) : (
-                  <View
-                    style={[
-                      styles.colorPlaceholder,
-                      { backgroundColor: layer.color || "#ccc" },
-                    ]}
-                  />
-                )}
+                  )}
+                </View>
               </View>
+            ))}
+          </ScrollView>
+
+          {/* Hand toggle on the right - only controls non-background image overlays */}
+          {orderedLayers.some((l) => l.type === "image" && l.id !== "main-image") ? (
+            <Pressable
+              onPress={() => {
+                const overlayImages = orderedLayers.filter(
+                  (l) => l.type === "image" && l.id !== "main-image",
+                );
+                const anyHandActive = overlayImages.some((l) =>
+                  handModeLayerIds.has(l.id),
+                );
+                for (const layer of overlayImages) {
+                  const isHand = handModeLayerIds.has(layer.id);
+                  if (anyHandActive && isHand) {
+                    onToggleHandMode(layer.id);
+                  } else if (!anyHandActive && !isHand) {
+                    onToggleHandMode(layer.id);
+                  }
+                }
+              }}
+              style={[
+                styles.handButton,
+                orderedLayers.some(
+                  (l) =>
+                    l.type === "image" &&
+                    l.id !== "main-image" &&
+                    handModeLayerIds.has(l.id),
+                )
+                  ? styles.handButtonActive
+                  : styles.handButtonInactive,
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons
+                name="hand-left"
+                size={18}
+                color={
+                  orderedLayers.some(
+                    (l) =>
+                      l.type === "image" &&
+                      l.id !== "main-image" &&
+                      handModeLayerIds.has(l.id),
+                  )
+                    ? "#FFFFFF"
+                    : "#666666"
+                }
+              />
             </Pressable>
-          ))}
-        </ScrollView>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -84,22 +133,25 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    minHeight: 40,
+    minHeight: 48,
     justifyContent: "center",
     marginBottom: 0,
   },
-  scrollContent: {
+  stripRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  thumbnailScroll: {
+    flexShrink: 1,
+  },
+  thumbnailStack: {
     alignItems: "center",
   },
   thumbnailWrapper: {
-    width: 40,
-    height: 40,
-    borderWidth: 1,
+    width: 42,
+    height: 42,
     borderRadius: 8,
-    borderColor: "transparent",
-  },
-  selectedWrapper: {
-    borderColor: "#000",
   },
   thumbnail: {
     width: "100%",
@@ -107,10 +159,24 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
     backgroundColor: "#f0f0f0",
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: "#fff",
   },
   colorPlaceholder: {
     flex: 1,
+  },
+  handButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+  handButtonActive: {
+    backgroundColor: "#000000",
+  },
+  handButtonInactive: {
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
 });

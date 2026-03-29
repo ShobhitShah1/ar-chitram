@@ -41,7 +41,7 @@ export const CategoryChips = ({
           colors={theme.drawingButton as any}
           style={styles.chipWrapper}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
+          end={{ x: 1, y: 0 }}
         >
           <Pressable onPress={() => onSelect(item)} style={styles.pressable}>
             <Text style={[styles.text, { color: "white", fontWeight: "600" }]}>

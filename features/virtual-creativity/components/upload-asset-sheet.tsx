@@ -95,6 +95,7 @@ interface ThumbnailTileProps {
   item: CreateFlowPickerAssetItem;
   index: number;
   selected: boolean;
+  isUnlocked: boolean;
   onPress: (index: number) => void;
   borderColor: string;
   selectedBorderColor: string;
@@ -123,6 +124,7 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
     item,
     index,
     selected,
+    isUnlocked,
     onPress,
     borderColor,
     selectedBorderColor,
@@ -167,7 +169,7 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
             transition={120}
           />
         </View>
-        {item.isPremium ? (
+        {item.isPremium && !isUnlocked ? (
           <View pointerEvents="none" style={styles.thumbBadgeWrap}>
             <Image
               source={ic_pro_icon}
@@ -344,6 +346,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
     Number(hasSourceFilters) +
     Number(hasCategoryFilters) +
     Number(hasUploadAction);
+
   const occupiedHeight =
     HEADER_HEIGHT +
     (hasUploadAction ? UPLOAD_SECTION_HEIGHT : 0) +
@@ -354,11 +357,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
     (hasCategoryFilters ? CATEGORY_FILTER_HEIGHT : 0);
 
   const fixedSheetHeight = useMemo(() => {
-    const maxAllowed = Math.max(screenHeight - 12, 440);
-    const minPreferred = Math.min(560, maxAllowed);
-    const target = Math.min(screenHeight, maxAllowed);
-
-    return Math.round(Math.max(minPreferred, target));
+    return Math.round(screenHeight);
   }, [screenHeight]);
 
   const previewHeight = useMemo(() => {
@@ -366,11 +365,17 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
       fixedSheetHeight -
       occupiedHeight -
       sheetBottomPadding -
-      SHEET_TOP_PADDING -
+      Math.max(insets.top, 4) -
       CONTENT_VERTICAL_GAP * (sectionCount - 1);
 
     return Math.max(PREVIEW_MIN_HEIGHT, available);
-  }, [fixedSheetHeight, occupiedHeight, sectionCount, sheetBottomPadding]);
+  }, [
+    fixedSheetHeight,
+    occupiedHeight,
+    sectionCount,
+    sheetBottomPadding,
+    insets.top,
+  ]);
 
   const shuffleRotation = useSharedValue(0);
   const segmentedIndicatorOffset = useSharedValue(0);
@@ -526,44 +531,55 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   );
 
   const renderPreviewItem = useCallback(
-    ({ item }: ListRenderItemInfo<CreateFlowPickerAssetItem>) => (
-      <View
-        style={[
-          styles.previewSlide,
-          { width: previewWidth, height: previewHeight },
-        ]}
-      >
+    ({ item }: ListRenderItemInfo<CreateFlowPickerAssetItem>) => {
+      const isUnlocked = isPremiumAssetUnlocked?.(item) ?? false;
+
+      return (
         <View
           style={[
-            styles.previewCard,
-            {
-              width: previewCardWidth,
-              borderColor,
-              backgroundColor: surfaceColor,
-            },
+            styles.previewSlide,
+            { width: previewWidth, height: previewHeight },
           ]}
         >
-          <Image
-            source={{ uri: item.image }}
-            style={styles.previewImage}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-            transition={140}
-          />
-          {item.isPremium ? (
-            <View pointerEvents="none" style={styles.previewBadgeWrap}>
-              <Image
-                source={ic_pro_icon}
-                style={styles.previewBadge}
-                contentFit="contain"
-                transition={0}
-              />
-            </View>
-          ) : null}
+          <View
+            style={[
+              styles.previewCard,
+              {
+                width: previewCardWidth,
+                borderColor,
+                backgroundColor: surfaceColor,
+              },
+            ]}
+          >
+            <Image
+              source={{ uri: item.image }}
+              style={styles.previewImage}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={140}
+            />
+            {item.isPremium && !isUnlocked ? (
+              <View pointerEvents="none" style={styles.previewBadgeWrap}>
+                <Image
+                  source={ic_pro_icon}
+                  style={styles.previewBadge}
+                  contentFit="contain"
+                  transition={0}
+                />
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
-    ),
-    [borderColor, previewCardWidth, previewHeight, previewWidth, surfaceColor],
+      );
+    },
+    [
+      borderColor,
+      isPremiumAssetUnlocked,
+      previewCardWidth,
+      previewHeight,
+      previewWidth,
+      surfaceColor,
+    ],
   );
 
   const renderThumbItem = useCallback(
@@ -572,6 +588,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
         item={item}
         index={index}
         selected={index === selectedIndex}
+        isUnlocked={isPremiumAssetUnlocked?.(item) ?? false}
         onPress={scrollToIndex}
         borderColor={thumbBorder}
         selectedBorderColor={selectedThumbBorder}
@@ -579,6 +596,7 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
       />
     ),
     [
+      isPremiumAssetUnlocked,
       scrollToIndex,
       selectedIndex,
       selectedThumbBorder,
@@ -639,10 +657,13 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
     <CommonBottomSheet
       modalRef={modalRef}
       onDismiss={onClose}
-      snapPoints={[fixedSheetHeight]}
+      snapPoints={["100%"]}
       contentContainerStyle={[
         styles.sheetContent,
-        { paddingBottom: sheetBottomPadding },
+        {
+          paddingBottom: sheetBottomPadding,
+          paddingTop: Math.max(insets.top, 4),
+        },
       ]}
       backgroundStyle={{
         backgroundColor: sheetBackground,
@@ -902,7 +923,6 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
 const styles = StyleSheet.create({
   sheetContent: {
     flex: 1,
-    paddingTop: SHEET_TOP_PADDING,
   },
   container: {
     flex: 1,

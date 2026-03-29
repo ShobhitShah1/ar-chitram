@@ -120,7 +120,7 @@ export const darkTheme: Theme = {
   textSecondary: "#484848",
 
   // Border colors
-  borderPrimary: "rgba(83, 145, 245, 1)",
+  borderPrimary: "rgba(112, 112, 112, 1)",
   modalBorder: "rgba(83, 145, 245, 1)",
 
   // Component colors
@@ -159,8 +159,8 @@ export const darkTheme: Theme = {
     "rgba(19, 19, 19, 1)",
   ],
   centerTabBubbleGradient: ["#808080", "#606060", "#2D2D2D", "#131313"],
-  drawingCardBackground: "#E4E4E4",
-  drawingCardShadow: "0px 0px 10px 0px rgba(0,0,0,0.1)",
+  drawingCardBackground: "rgba(228,228,228,1)",
+  drawingCardShadow: "0px 0px 20px 0px rgba(0,0,0,0.5)",
 };
 
 // Backward compatibility exports

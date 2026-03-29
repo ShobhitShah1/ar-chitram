@@ -21,6 +21,7 @@ export interface SmartFillSpace {
 export interface SmartFillRegion extends SmartFillSpace {
   path: string;
   regionTransform?: string;
+  touchesEdge?: boolean;
 }
 
 interface PrimeSmartFillLookupOptions {
@@ -151,11 +152,16 @@ const ensurePreparedLookup = async (
   }
 };
 
+interface ResolvedPreparedRegion {
+  path: string;
+  touchesEdge: boolean;
+}
+
 const resolvePreparedRegionPath = (
   lookup: SmartFillPreparedLookup,
   x: number,
   y: number,
-): string => {
+): ResolvedPreparedRegion => {
   const clampedX = clamp(Math.round(x), 0, lookup.width - 1);
   const clampedY = clamp(Math.round(y), 0, lookup.height - 1);
 
@@ -166,7 +172,11 @@ const resolvePreparedRegionPath = (
     const regionId = row[index + 2];
 
     if (clampedX >= startX && clampedX < endXExclusive) {
-      return lookup.regionPaths[String(regionId)] ?? "";
+      const regionKey = String(regionId);
+      return {
+        path: lookup.regionPaths[regionKey] ?? "",
+        touchesEdge: lookup.regionTouchesEdge[regionKey] ?? false,
+      };
     }
   }
 
@@ -218,12 +228,21 @@ const resolvePreparedRegionPath = (
     }
 
     if (bestRegionId !== null) {
-      return lookup.regionPaths[String(bestRegionId)] ?? "";
+      const regionKey = String(bestRegionId);
+      return {
+        path: lookup.regionPaths[regionKey] ?? "",
+        touchesEdge: lookup.regionTouchesEdge[regionKey] ?? false,
+      };
     }
   }
 
   const firstRegionId = Object.keys(lookup.regionPaths)[0];
-  return firstRegionId ? lookup.regionPaths[firstRegionId] : "";
+  return {
+    path: firstRegionId ? lookup.regionPaths[firstRegionId] : "",
+    touchesEdge: firstRegionId
+      ? (lookup.regionTouchesEdge[firstRegionId] ?? false)
+      : false,
+  };
 };
 
 export const primeSmartFillLookup = async ({
@@ -292,15 +311,15 @@ export const resolveSmartFillRegion = async ({
     return null;
   }
 
-  const preparedPath = sanitizeRegionPath(
-    resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y),
-  );
+  const resolved = resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y);
+  const preparedPath = sanitizeRegionPath(resolved.path);
   if (preparedPath) {
     return {
       path: preparedPath,
       width: lookup.width,
       height: lookup.height,
       regionTransform: mappedPoint.regionTransform,
+      touchesEdge: resolved.touchesEdge,
     };
   }
 
@@ -324,6 +343,37 @@ export const resolveSmartFillRegion = async ({
     height: lookup.height,
     regionTransform: mappedPoint.regionTransform,
   };
+};
+
+export const checkPointTouchesEdge = (
+  imageUri: string,
+  layerWidth: number,
+  layerHeight: number,
+  x: number,
+  y: number,
+  tolerance?: number,
+): boolean => {
+  const lookupKey = getPreparedLookupKey(imageUri, getTolerance(tolerance));
+  const lookup = preparedLookupValueCache.get(lookupKey);
+  if (!lookup) {
+    return false;
+  }
+
+  const mappedPoint = mapLayerPointToSmartFillSpace(
+    x,
+    y,
+    lookup.width,
+    lookup.height,
+    layerWidth,
+    layerHeight,
+  );
+
+  if (!mappedPoint) {
+    return false;
+  }
+
+  const resolved = resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y);
+  return resolved.touchesEdge;
 };
 
 export const getSmartFillErrorMessage = (error: unknown) => {

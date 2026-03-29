@@ -34,8 +34,6 @@ export default function Sketch() {
   } = usePremiumAssetGuideFlow({
     preloadItems: gridItems,
   });
-
-  console.log("data", JSON.stringify(data, null, 2));
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = useCallback(() => {

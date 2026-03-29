@@ -138,7 +138,7 @@ const NewSetting = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "red" }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <Header title="Setting" />
 
       <ScrollView
@@ -146,11 +146,22 @@ const NewSetting = () => {
         contentContainerStyle={{ paddingBottom: 100 }}
         style={styles.content}
       >
-        <SectionHeader title="Preference" style={{ marginTop: 0 }} />
-        <View style={[styles.section]}>
+        <SectionHeader title="Media" style={{ marginTop: 0 }} />
+        <View
+          style={[styles.section, { backgroundColor: theme.cardBackground }]}
+        >
+          <SettingsItem
+            title="My Uploads"
+            onPress={() => router.push("/other/my-uploads")}
+          />
+        </View>
+
+        <SectionHeader title="Preference" />
+        <View style={styles.section}>
           <View
             style={[
-              [styles.settingsItem, { backgroundColor: theme.cardBackground }],
+              styles.settingsItem,
+              { backgroundColor: theme.cardBackground },
             ]}
           >
             <Text

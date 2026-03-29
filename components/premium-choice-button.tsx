@@ -163,8 +163,8 @@ const styles = StyleSheet.create({
   },
   labelGroupFull: {
     position: "absolute",
-    left: 14,
-    right: 64,
+    left: 0,
+    right: 0,
     justifyContent: "center",
     gap: 8,
   },
@@ -199,9 +199,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   metaFull: {
-    marginLeft: "auto",
-    width: 64,
+    position: "absolute",
+    right: 10,
     zIndex: 1,
+    alignItems: "flex-end",
   },
   metaCompact: {
     width: 54,
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   },
   detailFull: {
     width: 64,
-    marginTop: 1,
+    marginTop: 3,
     fontSize: 9,
     lineHeight: 10,
   },

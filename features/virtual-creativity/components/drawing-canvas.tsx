@@ -61,6 +61,7 @@ interface DrawingCanvasProps {
   brushKind?: BrushKind;
   solidMode?: SolidDrawMode;
   patternUri?: string;
+  onSelectLayer?: (id: string | null) => void;
   signatureId?: string;
   enabled?: boolean;
   layerWidth?: number;
@@ -87,6 +88,7 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   brushKind,
   solidMode = "free-draw",
   patternUri,
+  onSelectLayer,
   signatureId,
   enabled = true,
   layerWidth = STORY_FRAME_WIDTH,
@@ -127,8 +129,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
   const setActiveRegionState = useCallback(
     (nextRegion: SmartFillRegion | null) => {
-      activeRegionRef.current = nextRegion;
-      setActiveRegion(nextRegion);
+      const region = nextRegion?.touchesEdge ? null : nextRegion;
+      activeRegionRef.current = region;
+      setActiveRegion(region);
     },
     [],
   );
@@ -324,39 +327,43 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
 
         if (isObjectDrawMode) {
           const region = await resolveRegionForCommit();
-          if (region?.path) {
-            const safeRegionPath = sanitizeSvgPathData(region.path);
-            if (!safeRegionPath) {
-              resetPreview();
-              return;
-            }
 
-            const imageSpacePath = pathIsImageSpace
-              ? sanitizedBasePath
-              : transformFreehandPathToImageSpace(
-                  sanitizedBasePath,
-                  region.width,
-                  region.height,
-                );
+          if (!region?.path || region.touchesEdge) {
+            resetPreview();
+            return;
+          }
 
-            const sanitizedImageSpacePath = imageSpacePath
-              ? sanitizeSvgPathData(imageSpacePath)
-              : null;
+          const safeRegionPath = sanitizeSvgPathData(region.path);
+          if (!safeRegionPath) {
+            resetPreview();
+            return;
+          }
 
-            if (sanitizedImageSpacePath) {
-              nextPath.path = sanitizedImageSpacePath;
-              nextPath.strokeWidth = getObjectStrokeWidth(
+          const imageSpacePath = pathIsImageSpace
+            ? sanitizedBasePath
+            : transformFreehandPathToImageSpace(
+                sanitizedBasePath,
                 region.width,
                 region.height,
               );
-              nextPath.clipPath = safeRegionPath;
-              nextPath.pathSpace = "image";
-              nextPath.pathSpaceWidth = region.width;
-              nextPath.pathSpaceHeight = region.height;
-            } else {
-              nextPath.clipPath = safeRegionPath;
-              nextPath.regionTransform = region.regionTransform;
-            }
+
+          const sanitizedImageSpacePath = imageSpacePath
+            ? sanitizeSvgPathData(imageSpacePath)
+            : null;
+
+          if (sanitizedImageSpacePath) {
+            nextPath.path = sanitizedImageSpacePath;
+            nextPath.strokeWidth = getObjectStrokeWidth(
+              region.width,
+              region.height,
+            );
+            nextPath.clipPath = safeRegionPath;
+            nextPath.pathSpace = "image";
+            nextPath.pathSpaceWidth = region.width;
+            nextPath.pathSpaceHeight = region.height;
+          } else {
+            nextPath.clipPath = safeRegionPath;
+            nextPath.regionTransform = region.regionTransform;
           }
         }
 
@@ -470,6 +477,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     .minDistance(1)
     .onStart((event) => {
       "worklet";
+      if (onSelectLayer) {
+        runOnJS(onSelectLayer)(null);
+      }
       const sx = viewWidth.value > 0 ? layerWidth / viewWidth.value : 1;
       const sy = viewHeight.value > 0 ? layerHeight / viewHeight.value : 1;
       const x = Math.round(event.x * sx * 10) / 10;
@@ -599,7 +609,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       if (!success) {
         return;
       }
-
+      if (onSelectLayer) {
+        runOnJS(onSelectLayer)(null);
+      }
       const sx = viewWidth.value > 0 ? layerWidth / viewWidth.value : 1;
       const sy = viewHeight.value > 0 ? layerHeight / viewHeight.value : 1;
       const x = Math.round(event.x * sx * 10) / 10;
@@ -612,6 +624,9 @@ export const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
     .minDistance(1)
     .onStart((event) => {
       "worklet";
+      if (onSelectLayer) {
+        runOnJS(onSelectLayer)(null);
+      }
       const sx = viewWidth.value > 0 ? layerWidth / viewWidth.value : 1;
       const sy = viewHeight.value > 0 ? layerHeight / viewHeight.value : 1;
       const x = Math.round(event.x * sx * 10) / 10;

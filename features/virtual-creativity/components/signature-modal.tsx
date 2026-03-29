@@ -22,9 +22,9 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type SignatureTab = "custom" | "artist";
-const SHEET_MIN_HEIGHT = 420;
-const SHEET_CUSTOM_PREFERRED_HEIGHT = 560;
-const SHEET_ARTIST_PREFERRED_HEIGHT = 500;
+const SHEET_MIN_HEIGHT = 500;
+const SHEET_CUSTOM_PREFERRED_HEIGHT = 900;
+const SHEET_ARTIST_PREFERRED_HEIGHT = 840;
 
 interface SignatureModalProps {
   visible: boolean;
@@ -157,7 +157,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     [selectedArtistId],
   );
 
-  const sheetMaxHeight = Math.min(screenHeight - 12, screenHeight * 0.86);
+  const sheetMaxHeight = Math.min(screenHeight, screenHeight * 0.97);
   const sheetPreferredHeight = Math.min(
     sheetMaxHeight,
     Math.max(

@@ -38,94 +38,93 @@ export function useInternetConnection(
     onConnectionRestored,
   } = options;
 
-  // Use NetInfo's official React hook
   const netInfo = useNetInfo();
-
-  // Track previous connection state to detect actual transitions
   const previousConnectionRef = useRef<boolean | null>(null);
   const hasInitializedRef = useRef(false);
   const callbackFiredRef = useRef(false);
   const wasDisconnectedRef = useRef(false);
+  const restoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callbackResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
-  // Derive values from NetInfo state
-  // NetInfo returns null initially, so treat null as connected to avoid false offline state
   const isConnected = netInfo.isConnected !== false;
   const isOffline = netInfo.isConnected === false;
   const connectionType = netInfo.type || "unknown";
 
-  // Only show modal when offline and after initialization
   const showOfflineModal =
     showModalOnOffline && isOffline && hasInitializedRef.current;
 
-  // Handle connection state changes
   useEffect(() => {
     const wasConnected = previousConnectionRef.current;
 
-    // First run - just initialize without calling callbacks
-    // Wait for actual connection state (not null)
     if (!hasInitializedRef.current) {
-      // Only initialize when we have actual state (not null)
       if (netInfo.isConnected !== null) {
         hasInitializedRef.current = true;
         previousConnectionRef.current = isConnected;
         callbackFiredRef.current = false;
-        console.log(
-          "Internet hook initialized:",
-          isConnected ? "ONLINE" : "OFFLINE",
-        );
       }
       return;
     }
 
-    // No state change - skip
     if (wasConnected === isConnected) {
       return;
     }
 
-    // State changed - only call callback once per transition
     if (!callbackFiredRef.current) {
-      console.log(
-        "Connection state changed:",
-        wasConnected ? "ONLINE→OFFLINE" : "OFFLINE→ONLINE",
-      );
-
       onConnectionChange?.(isConnected);
 
-      // Track disconnection
       if (!isConnected) {
         wasDisconnectedRef.current = true;
       }
 
-      // Call restoration callback ONLY when:
-      // 1. We were previously offline (wasDisconnectedRef is true)
-      // 2. We're now online (isConnected is true)
-      // 3. Previous state was explicitly false (actual transition)
       if (
         wasDisconnectedRef.current &&
         isConnected &&
         wasConnected === false &&
         onConnectionRestored
       ) {
-        console.log("Calling onConnectionRestored");
-        wasDisconnectedRef.current = false; // Reset flag
+        wasDisconnectedRef.current = false;
 
-        // Small delay to ensure state is stable
-        setTimeout(() => {
-          onConnectionRestored();
+        if (restoreTimeoutRef.current) {
+          clearTimeout(restoreTimeoutRef.current);
+        }
+
+        restoreTimeoutRef.current = setTimeout(() => {
+          void onConnectionRestored();
         }, 500);
       }
 
       callbackFiredRef.current = true;
 
-      // Reset the flag after a short delay to allow for next transition
-      setTimeout(() => {
+      if (callbackResetTimeoutRef.current) {
+        clearTimeout(callbackResetTimeoutRef.current);
+      }
+
+      callbackResetTimeoutRef.current = setTimeout(() => {
         callbackFiredRef.current = false;
       }, 2000);
     }
 
-    // Update previous state
     previousConnectionRef.current = isConnected;
-  }, [isConnected, onConnectionChange, netInfo.isConnected]);
+  }, [
+    isConnected,
+    onConnectionChange,
+    onConnectionRestored,
+    netInfo.isConnected,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (restoreTimeoutRef.current) {
+        clearTimeout(restoreTimeoutRef.current);
+      }
+
+      if (callbackResetTimeoutRef.current) {
+        clearTimeout(callbackResetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     isConnected,
