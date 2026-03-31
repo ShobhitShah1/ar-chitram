@@ -1,45 +1,60 @@
-import { useEffect, useRef } from "react";
-import { AppState, Platform } from "react-native";
+import { useCameraPermissions } from "expo-camera";
+import { useFocusEffect } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
-import * as ImagePicker from "expo-image-picker";
+import { InteractionManager } from "react-native";
+import { useCallback, useRef } from "react";
 
 /**
- * Hook to request all necessary app permissions on the home screen.
- * This centralizes the permission flow rather than asking on individual screens.
+ * Automatically request app permissions once when a screen first gains focus.
+ * Used on entry screens so camera-driven flows do not surprise the user later.
  */
 export const useAppPermissions = () => {
   const hasRequested = useRef(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
 
-  useEffect(() => {
-    if (hasRequested.current) return;
-
-    const requestPermissions = async () => {
-      hasRequested.current = true;
-
-      try {
-        // 3. Media Library (for saving/loading images and videos)
-        const { status: mediaStatus } =
-          await MediaLibrary.getPermissionsAsync();
-        if (mediaStatus !== "granted") {
-          await MediaLibrary.requestPermissionsAsync();
+  useFocusEffect(
+    useCallback(() => {
+      const task = InteractionManager.runAfterInteractions(() => {
+        if (hasRequested.current) {
+          return;
         }
 
-        // 4. Camera (for creating content)
-        const { status: cameraStatus } =
-          await ImagePicker.getCameraPermissionsAsync();
-        if (cameraStatus !== "granted") {
-          await ImagePicker.requestCameraPermissionsAsync();
+        if (!cameraPermission || !mediaPermission) {
+          return;
         }
-      } catch (error) {
-        console.error("Error requesting app permissions:", error);
-      }
-    };
 
-    // Small delay to ensure UI is mounted and ready
-    const timer = setTimeout(() => {
-      requestPermissions();
-    }, 1000);
+        hasRequested.current = true;
 
-    return () => clearTimeout(timer);
-  }, []);
+        void (async () => {
+          try {
+            if (!cameraPermission.granted && cameraPermission.canAskAgain) {
+              await requestCameraPermission();
+            }
+
+            if (!mediaPermission.granted && mediaPermission.canAskAgain) {
+              await requestMediaPermission();
+            }
+          } catch (error) {
+            console.error("Error requesting app permissions:", error);
+            hasRequested.current = false;
+          }
+        })();
+      });
+
+      return () => {
+        task.cancel();
+      };
+    }, [
+      cameraPermission,
+      mediaPermission,
+      requestCameraPermission,
+      requestMediaPermission,
+    ]),
+  );
+
+  return {
+    cameraPermission,
+    mediaPermission,
+  };
 };

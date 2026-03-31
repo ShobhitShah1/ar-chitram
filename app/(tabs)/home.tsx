@@ -23,15 +23,13 @@ import {
   HomeWinnerItem,
   TabAssetItem,
 } from "@/services/api/tab-assets-service";
+import { useAppPermissions } from "@/hooks/use-app-permissions";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
-import { useFocusEffect } from "expo-router";
 import React, { memo, useCallback, useEffect, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
@@ -221,12 +219,11 @@ export default function Home() {
   const { data, isLoading, isError, refetch } = useHomeTabAssets();
   const homeGridItems = data?.homeGridItems ?? [];
 
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  useAppPermissions();
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedWinner, setSelectedWinner] = useState<HomeWinnerItem | null>(
     null,
   );
-  const hasAutoRequestedPermission = React.useRef(false);
   const {
     selectedPremiumAsset,
     premiumPriceLabel,
@@ -267,23 +264,6 @@ export default function Home() {
     });
     syncProfile();
   }, [refetch, refreshing]);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      const canAutoRequest =
-        cameraPermission &&
-        !cameraPermission.granted &&
-        cameraPermission.canAskAgain &&
-        !hasAutoRequestedPermission.current;
-
-      if (canAutoRequest) {
-        hasAutoRequestedPermission.current = true;
-        InteractionManager.runAfterInteractions(() => {
-          void requestCameraPermission();
-        });
-      }
-    }, [cameraPermission, requestCameraPermission]),
-  );
 
   useEffect(() => {
     syncProfile();

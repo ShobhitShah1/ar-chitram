@@ -12,6 +12,7 @@ import { apiQueryKeys } from "@/services/api/query-keys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import React, { useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   Alert,
   Dimensions,
@@ -22,6 +23,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 const COLUMN_COUNT = 2;
@@ -30,6 +32,7 @@ const ITEM_WIDTH = (width - 50) / 2;
 const ITEM_HEIGHT = ITEM_WIDTH + 60;
 
 export default function MyUploadsScreen() {
+  const { bottom } = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const queryClient = useQueryClient();
 
@@ -39,6 +42,14 @@ export default function MyUploadsScreen() {
   });
 
   const uploads = data?.flatAssets ?? [];
+
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKeys.assets.localUploads,
+      });
+    }, [queryClient]),
+  );
 
   const { startUploadFlow, isPickingImage, modalProps } = useImageUploadFlow({
     title: "Upload Image",
@@ -121,7 +132,8 @@ export default function MyUploadsScreen() {
             title="No Uploads Yet"
             description="Images you upload and process for AR will appear here."
           />
-          <View style={styles.emptyAction}>
+
+          <View style={[styles.emptyAction, { paddingBottom: bottom }]}>
             <Pressable
               style={[styles.primaryBtn, { backgroundColor: "#000" }]}
               onPress={() => void startUploadFlow()}
@@ -150,7 +162,7 @@ export default function MyUploadsScreen() {
       )}
 
       {uploads.length > 0 && (
-        <View style={styles.fabContainer}>
+        <View style={[styles.fabContainer, { bottom: bottom }]}>
           <Pressable
             style={[styles.fab, { backgroundColor: "#000" }]}
             onPress={() => void startUploadFlow()}
@@ -237,8 +249,8 @@ const styles = StyleSheet.create({
   },
   fabContainer: {
     position: "absolute",
-    right: 24,
-    bottom: 40,
+    right: 10,
+    bottom: 0,
   },
   fab: {
     height: 54,

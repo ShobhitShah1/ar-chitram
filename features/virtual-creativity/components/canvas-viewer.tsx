@@ -724,14 +724,18 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                           : undefined
                       }
                       gesturesEnabled={
-                        layer.type === "text"
-                          ? selectedLayerId === layer.id
-                          : !!handModeLayerIds?.has(layer.id)
+                        !isZoomMode && (
+                          layer.type === "text"
+                            ? selectedLayerId === layer.id
+                            : !!handModeLayerIds?.has(layer.id)
+                        )
                       }
                       enablePinchResize={
-                        layer.type === "text"
-                          ? selectedLayerId === layer.id
-                          : !!handModeLayerIds?.has(layer.id)
+                        !isZoomMode && (
+                          layer.type === "text"
+                            ? selectedLayerId === layer.id
+                            : !!handModeLayerIds?.has(layer.id)
+                        )
                       }
                       isSelected={selectedLayerId === layer.id}
                       zoomScale={scale}

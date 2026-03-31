@@ -21,7 +21,10 @@ import { LayerStrip } from "@/features/virtual-creativity/components/layer-strip
 import { PatternModal } from "@/features/virtual-creativity/components/pattern-modal";
 import { SignatureModal } from "@/features/virtual-creativity/components/signature-modal";
 import { TopBar } from "@/features/virtual-creativity/components/top-bar";
-import { fetchLocalUploadTabAssets } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import {
+  fetchLocalUploadTabAssets,
+  clearAllLocalUploads,
+} from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { FontFamily } from "@/constants/fonts";
 import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
 import { useTheme } from "@/context/theme-context";
@@ -53,7 +56,7 @@ import {
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 import * as ImageManipulator from "expo-image-manipulator";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -87,6 +90,7 @@ export default function VirtualCreativityScreen() {
   const { theme, isDark } = useTheme();
   const { bottom: bottomInset } = useSafeAreaInsets();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isPremiumPickerModalFlow = PREMIUM_PICKER_ENTRY_MODE === "modal";
   const assetPickerModalRef = useRef<BottomSheetModal | null>(null);
   const isAssetPickerVisibleRef = useRef(false);
@@ -300,7 +304,12 @@ export default function VirtualCreativityScreen() {
     }
 
     return brushTargetLayerId;
-  }, [brushTargetLayerId, isFocusPlacementActive, selectedTool, handModeLayerIds]);
+  }, [
+    brushTargetLayerId,
+    isFocusPlacementActive,
+    selectedTool,
+    handModeLayerIds,
+  ]);
   const activeOrderLayerId = selectedSubLayerId;
   const canDeleteLayer = !!selectedSubLayerId;
   const isLayerSelectionMode = viewMode === "composite" && !isZoomMode;
@@ -400,6 +409,31 @@ export default function VirtualCreativityScreen() {
       if (cancelled || uploadLayers.length === 0) {
         return;
       }
+
+      // Align images side-by-side in a grid
+      const itemsPerRow = 2;
+      const gap = 48;
+      const standardWidth = 440;
+      const standardHeight = 600;
+
+      uploadLayers.forEach((layer, index) => {
+        const row = Math.floor(index / itemsPerRow);
+        const col = index % itemsPerRow;
+
+        const numInThisRow = Math.min(
+          itemsPerRow,
+          uploadLayers.length - row * itemsPerRow,
+        );
+        const rowWidth = numInThisRow * standardWidth + (numInThisRow - 1) * gap;
+        const rowStartX = -(rowWidth / 2) + standardWidth / 2;
+
+        const totalRows = Math.ceil(uploadLayers.length / itemsPerRow);
+        const gridHeight = totalRows * standardHeight + (totalRows - 1) * gap;
+        const startY = -(gridHeight / 2) + standardHeight / 2;
+
+        layer.x = rowStartX + col * (standardWidth + gap);
+        layer.y = startY + row * (standardHeight + gap);
+      });
 
       setLayers([...layers, ...uploadLayers], uploadLayers[0]?.id ?? null);
 
@@ -921,8 +955,12 @@ export default function VirtualCreativityScreen() {
 
   const handleDiscardExit = useCallback(() => {
     reset();
+    void clearAllLocalUploads();
+    void queryClient.invalidateQueries({
+      queryKey: apiQueryKeys.assets.localUploads,
+    });
     router.replace("/(tabs)/home");
-  }, [reset, router]);
+  }, [reset, queryClient, router]);
 
   const handleConfirmDiscardExit = useCallback(() => {
     Alert.alert(
@@ -1014,6 +1052,15 @@ export default function VirtualCreativityScreen() {
 
       return () => subscription.remove();
     }, [handleEditorBackPress]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      // Refresh local uploads on focus to catch any changes made in other screens
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKeys.assets.localUploads,
+      });
+    }, [queryClient]),
   );
 
   const handleExitFocusPlacement = useCallback(() => {
@@ -1205,6 +1252,8 @@ export default function VirtualCreativityScreen() {
               layers={stripLayers}
               handModeLayerIds={handModeLayerIds}
               onToggleHandMode={handleToggleHandMode}
+              onSelectLayer={handleOpenLayerEditor}
+              isZoomMode={isZoomMode}
               horizontalInset={0}
             />
           ) : null}

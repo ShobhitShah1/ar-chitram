@@ -10,6 +10,8 @@ interface LayerStripProps {
   layers: VirtualLayer[];
   handModeLayerIds: ReadonlySet<string>;
   onToggleHandMode: (id: string) => void;
+  onSelectLayer?: (id: string) => void;
+  isZoomMode?: boolean;
   horizontalInset?: number;
   reserveSpace?: boolean;
 }
@@ -18,6 +20,8 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
   layers,
   handModeLayerIds,
   onToggleHandMode,
+  onSelectLayer,
+  isZoomMode = false,
   horizontalInset = 16,
   reserveSpace = false,
 }) => {
@@ -43,8 +47,9 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
             style={styles.thumbnailScroll}
           >
             {orderedLayers.map((layer, index) => (
-              <View
+              <Pressable
                 key={layer.id}
+                onPress={() => onSelectLayer?.(layer.id)}
                 style={[
                   styles.thumbnailWrapper,
                   index > 0 && { marginLeft: -12 },
@@ -73,7 +78,7 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
                     />
                   )}
                 </View>
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
 
@@ -81,6 +86,9 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
           {orderedLayers.some((l) => l.type === "image" && l.id !== "main-image") ? (
             <Pressable
               onPress={() => {
+                if (isZoomMode) {
+                  return;
+                }
                 const overlayImages = orderedLayers.filter(
                   (l) => l.type === "image" && l.id !== "main-image",
                 );
@@ -106,8 +114,10 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
                 )
                   ? styles.handButtonActive
                   : styles.handButtonInactive,
+                isZoomMode && { opacity: 0.3 },
               ]}
               hitSlop={8}
+              disabled={isZoomMode}
             >
               <Ionicons
                 name="hand-left"

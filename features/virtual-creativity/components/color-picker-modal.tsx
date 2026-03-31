@@ -146,8 +146,6 @@ interface ColorPickerModalProps {
   onClose: () => void;
   onSelectColor: (color: string, solidMode: SolidDrawMode) => void;
   onSelectGradient?: (colors: [string, string]) => void;
-  isDrawModeActive?: boolean;
-  onDrawModeChange?: (enabled: boolean) => void;
   bottomInset?: number;
   mode?: "color" | "gradient";
   initialColor?: string;
@@ -159,8 +157,6 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   onClose,
   onSelectColor,
   onSelectGradient,
-  isDrawModeActive = false,
-  onDrawModeChange,
   bottomInset = 0,
   mode = "color",
   initialColor,
@@ -439,30 +435,6 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 </Pressable>
               </View>
             </View>
-          ) : null}
-
-          {mode === "color" ? (
-            <>
-              <View style={styles.colorPreviewContainer}>
-                <View
-                  style={[styles.colorPreview, { backgroundColor: color1 }]}
-                />
-              </View>
-
-              <View style={styles.drawToggleSection}>
-                <Text style={styles.drawToggleLabel}>Canvas Draw</Text>
-                <Switch
-                  value={isDrawModeActive}
-                  onValueChange={onDrawModeChange}
-                  trackColor={{
-                    false: "rgba(0,0,0,0.14)",
-                    true: "#000000",
-                  }}
-                  thumbColor="#FFFFFF"
-                  ios_backgroundColor="rgba(0,0,0,0.14)"
-                />
-              </View>
-            </>
           ) : null}
 
           <GestureDetector gesture={satBrightGesture}>

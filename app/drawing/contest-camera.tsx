@@ -10,16 +10,37 @@ import PrimaryButton from "@/components/ui/primary-button";
 import { saveToArChitramAlbum } from "@/services/media-save-service";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
+import { clearAllLocalUploads } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiQueryKeys } from "@/services/api/query-keys";
 
 const ContestCamera = () => {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
   const [processing, setProcessing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
+  const resetStore = useVirtualCreativityStore((state) => state.reset);
+
+  React.useEffect(() => {
+    // Clear everything once we reach the contest screen
+    const cleanup = async () => {
+      await clearAllLocalUploads();
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKeys.assets.localUploads,
+      });
+      // Reset the store to clear snapshots and layers for the next session
+      resetStore();
+    };
+    void cleanup();
+  }, [queryClient, resetStore]);
+
   const handleBack = () => {
+    resetStore();
     router.back();
   };
 
@@ -46,6 +67,9 @@ const ContestCamera = () => {
               error,
             );
           }
+
+          resetStore();
+          void clearAllLocalUploads();
 
           router.push({
             pathname: "/drawing/share",

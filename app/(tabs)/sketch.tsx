@@ -5,12 +5,14 @@ import ImageGrid from "@/components/image-grid";
 import TabsHeader from "@/components/tabs-header";
 import { useCommonThemedStyles } from "@/components/themed";
 import { useSketchesTabGrid } from "@/hooks/api";
+import { useAppPermissions } from "@/hooks/use-app-permissions";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
 import React, { useCallback } from "react";
 import { View } from "react-native";
 
 export default function Sketch() {
   const commonStyles = useCommonThemedStyles();
+  useAppPermissions();
   const {
     data,
     categories,
