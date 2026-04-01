@@ -283,9 +283,20 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     .enabled(isZoomMode)
     .onStart(() => {
       savedScale.value = scale.value;
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
     })
     .onUpdate((event) => {
-      scale.value = savedScale.value * event.scale;
+      const nextScale = savedScale.value * event.scale;
+      const scaleRatio = nextScale / scale.value;
+
+      // Smooth focal point zoom calculation
+      translateX.value =
+        event.focalX - (event.focalX - translateX.value) * scaleRatio;
+      translateY.value =
+        event.focalY - (event.focalY - translateY.value) * scaleRatio;
+
+      scale.value = nextScale;
     })
     .onEnd(() => {
       if (scale.value < 1) {
@@ -297,11 +308,13 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
         savedTranslateY.value = 0;
       } else {
         savedScale.value = scale.value;
+        savedTranslateX.value = translateX.value;
+        savedTranslateY.value = translateY.value;
       }
     });
 
   const stageTapGesture = Gesture.Tap().onStart(() => {
-    if (onSelectLayer) {
+    if (onSelectLayer && !isolatedEditingLayer) {
       runOnJS(onSelectLayer)(null);
     }
   });
@@ -645,6 +658,7 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                 onAddPath={(path) =>
                   handleAddPath(path, isolatedEditingLayer.id)
                 }
+                isIsolated={!!isolatedEditingLayer}
                 onTapFill={(point) =>
                   handleTapFill(isolatedEditingLayer.id, point)
                 }

@@ -800,6 +800,12 @@ export default function VirtualCreativityScreen() {
   }, [selectLayer, viewMode]);
 
   const handlePreview = useCallback(async () => {
+    // Deselect everything to ensure a clean capture
+    selectLayer(null);
+    setHandModeLayerIds(new Set());
+    setIsZoomMode(false);
+    setIsFocusPlacementActive(false);
+
     setSelectedTool("preview");
     try {
       const uri = await captureCanvasSnapshot(0.9);
@@ -817,7 +823,14 @@ export default function VirtualCreativityScreen() {
     } catch (error) {
       console.error("Snapshot failed:", error);
     }
-  }, [addSnapshot, captureCanvasSnapshot]);
+  }, [
+    addSnapshot,
+    captureCanvasSnapshot,
+    selectLayer,
+    setHandModeLayerIds,
+    setIsZoomMode,
+    setIsFocusPlacementActive,
+  ]);
 
   const handlePreviewLongPress = useCallback(() => {
     setShowPreviewModal(true);

@@ -76,6 +76,7 @@ interface CanvasLayerProps {
   ) => Promise<SmartFillRegion | null>;
   renderReferenceWidth?: number;
   renderReferenceHeight?: number;
+  isIsolated?: boolean;
 }
 
 const deferCallback = (callback?: () => void) => {
@@ -230,6 +231,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
     resolveSmartFillPath,
     renderReferenceWidth = STORY_FRAME_WIDTH,
     renderReferenceHeight = STORY_FRAME_HEIGHT,
+    isIsolated = false,
   }) => {
     const isTextLayer = layer.type === "text";
     const translateX = useSharedValue(layer.x);
@@ -251,9 +253,9 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
               return;
             }
 
-            runOnJS(onSelectLayer)(isSelected ? null : layer.id);
+            runOnJS(onSelectLayer)(isIsolated ? layer.id : isSelected ? null : layer.id);
           }),
-      [layer.id, onSelectLayer, isSelected],
+      [layer.id, onSelectLayer, isSelected, isIsolated],
     );
 
     const maxFitScale = React.useMemo(

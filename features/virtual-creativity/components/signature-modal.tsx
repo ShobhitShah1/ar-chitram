@@ -10,7 +10,9 @@ import { useTheme } from "@/context/theme-context";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
+  Dimensions,
   FlatList,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -20,10 +22,11 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BottomSheetTextInput, BottomSheetView } from "@gorhom/bottom-sheet";
 
 type SignatureTab = "custom" | "artist";
 const SHEET_MIN_HEIGHT = 500;
-const SHEET_CUSTOM_PREFERRED_HEIGHT = 900;
+const SHEET_CUSTOM_PREFERRED_HEIGHT = 800;
 const SHEET_ARTIST_PREFERRED_HEIGHT = 840;
 
 interface SignatureModalProps {
@@ -45,16 +48,31 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const screenHeight = Dimensions.get("window").height;
 
   const [tab, setTab] = React.useState<SignatureTab>("custom");
-  const [typedName, setTypedName] = React.useState(defaultName);
+  const [typedName, setTypedName] = React.useState("");
   const [selectedCustomFontId, setSelectedCustomFontId] = React.useState(
     SIGNATURE_FONT_PRESETS[0].id,
   );
   const [selectedArtistId, setSelectedArtistId] = React.useState(
     ARTIST_SIGNATURE_PRESETS[0].id,
   );
+
+  const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () =>
+      setIsKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener("keyboardDidHide", () =>
+      setIsKeyboardVisible(false),
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!visible) return;
@@ -168,22 +186,23 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     ),
   );
 
+  const snapPoints = React.useMemo(
+    () => (isKeyboardVisible ? ["90%"] : ["55%"]),
+    [isKeyboardVisible, sheetPreferredHeight],
+  );
+
   return (
     <ControlledBottomSheet
       visible={visible}
       onClose={onClose}
-      snapPoints={[sheetPreferredHeight]}
+      snapPoints={snapPoints}
       bottomInset={bottomInset}
-      enableDynamicSizing
+      enableDynamicSizing={false}
       showHandle={false}
       backgroundStyle={styles.sheetBackground}
       contentContainerStyle={styles.sheetContent}
     >
-      <KeyboardAvoidingView
-        behavior="padding"
-        enabled={visible}
-        style={styles.keyboardWrap}
-      >
+      <View style={styles.keyboardWrap}>
         <View
           style={[
             styles.card,
@@ -295,7 +314,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </ControlledBottomSheet>
   );
 };

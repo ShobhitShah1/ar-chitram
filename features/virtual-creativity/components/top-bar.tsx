@@ -101,40 +101,44 @@ const TopBarComponent: React.FC<TopBarProps> = ({
         </Pressable>
 
         {/* Bring to Front (was Layers) */}
-        <Pressable
-          onPress={onBringToFront}
-          style={({ pressed }) => [
-            styles.btn,
-            !canReorder && styles.disabled,
-            pressed && styles.pressed,
-            { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
-          ]}
-          disabled={!canReorder}
-        >
-          <Image
-            source={ic_frontface}
-            style={styles.icon}
-            contentFit="contain"
-          />
-        </Pressable>
+        {!hideNext && (
+          <Pressable
+            onPress={onBringToFront}
+            style={({ pressed }) => [
+              styles.btn,
+              !canReorder && styles.disabled,
+              pressed && styles.pressed,
+              { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
+            ]}
+            disabled={!canReorder}
+          >
+            <Image
+              source={ic_frontface}
+              style={styles.icon}
+              contentFit="contain"
+            />
+          </Pressable>
+        )}
 
         {/* Send to Back (was Copy) */}
-        <Pressable
-          onPress={onSendToBack}
-          style={({ pressed }) => [
-            styles.btn,
-            !canReorder && styles.disabled,
-            pressed && styles.pressed,
-            { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
-          ]}
-          disabled={!canReorder}
-        >
-          <Image
-            source={ic_backface}
-            style={styles.icon}
-            contentFit="contain"
-          />
-        </Pressable>
+        {!hideNext && (
+          <Pressable
+            onPress={onSendToBack}
+            style={({ pressed }) => [
+              styles.btn,
+              !canReorder && styles.disabled,
+              pressed && styles.pressed,
+              { backgroundColor: isDark ? "#D5D5D5" : "#EBEBEB" },
+            ]}
+            disabled={!canReorder}
+          >
+            <Image
+              source={ic_backface}
+              style={styles.icon}
+              contentFit="contain"
+            />
+          </Pressable>
+        )}
 
         {/* Zoom Toggle */}
         <Pressable
@@ -175,7 +179,6 @@ const TopBarComponent: React.FC<TopBarProps> = ({
         </Pressable>
       </View>
 
-      {/* Next Button */}
       {onNext && !hideNext && (
         <Animated.View
           entering={FadeIn.duration(180)}

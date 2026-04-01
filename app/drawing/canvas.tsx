@@ -19,6 +19,7 @@ import Animated, {
   FadeOut,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
 } from "react-native-reanimated";
 
 import { preview_1 } from "@/assets/images";
@@ -47,7 +48,7 @@ const MAX_CAMERA_ZOOM = 1;
 const Canvas = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams();
   const sliderWidth = width - 210;
   const virtualSnapshots = useVirtualCreativityStore(
@@ -61,6 +62,17 @@ const Canvas = () => {
   const [zoom, setZoom] = useState<number>(0);
   const [isZoomBadgeVisible, setIsZoomBadgeVisible] = useState(false);
   const opacity = useSharedValue(0.5);
+  
+  // Image transformation shared values
+  const imageScale = useSharedValue(1);
+  const imageTranslateX = useSharedValue(0);
+  const imageTranslateY = useSharedValue(0);
+  const imageRotation = useSharedValue(0);
+
+  const savedImageScale = useSharedValue(1);
+  const savedImageTranslateX = useSharedValue(0);
+  const savedImageTranslateY = useSharedValue(0);
+  const savedImageRotation = useSharedValue(0);
 
   // Drawing camera snapshot state
   const [cameraSnapshots, setCameraSnapshots] = useState<Snapshot[]>([]);
@@ -150,6 +162,12 @@ const Canvas = () => {
   const overlayStyle = useAnimatedStyle(() => {
     return {
       opacity: opacity.value,
+      transform: [
+        { translateX: imageTranslateX.value },
+        { translateY: imageTranslateY.value },
+        { scale: imageScale.value },
+        { rotate: `${imageRotation.value}rad` },
+      ],
     };
   });
 
@@ -201,6 +219,59 @@ const Canvas = () => {
           (event.scale - 1) * CAMERA_PINCH_SENSITIVITY,
       );
     });
+
+  const imageGestures = Gesture.Simultaneous(
+    Gesture.Pan()
+      .enabled(!isLocked)
+      .onUpdate((e) => {
+        imageTranslateX.value = savedImageTranslateX.value + e.translationX;
+        imageTranslateY.value = savedImageTranslateY.value + e.translationY;
+      })
+      .onEnd(() => {
+        savedImageTranslateX.value = imageTranslateX.value;
+        savedImageTranslateY.value = imageTranslateY.value;
+      }),
+    Gesture.Pinch()
+      .enabled(!isLocked)
+      .onUpdate((e) => {
+        const nextScale = savedImageScale.value * e.scale;
+        const scaleRatio = nextScale / imageScale.value;
+
+        // Origin for overlay is screen center
+        const focalX = e.focalX - width / 2;
+        const focalY = e.focalY - height / 2;
+
+        imageTranslateX.value = focalX - (focalX - imageTranslateX.value) * scaleRatio;
+        imageTranslateY.value = focalY - (focalY - imageTranslateY.value) * scaleRatio;
+
+        imageScale.value = nextScale;
+      })
+      .onEnd(() => {
+        savedImageScale.value = imageScale.value;
+        savedImageTranslateX.value = imageTranslateX.value;
+        savedImageTranslateY.value = imageTranslateY.value;
+      }),
+    Gesture.Rotation()
+      .enabled(!isLocked)
+      .onUpdate((e) => {
+        imageRotation.value = savedImageRotation.value + e.rotation;
+      })
+      .onEnd(() => {
+        savedImageRotation.value = imageRotation.value;
+      }),
+    Gesture.LongPress()
+      .enabled(!isLocked)
+      .onStart(() => {
+        imageScale.value = withSpring(1);
+        imageTranslateX.value = withSpring(0);
+        imageTranslateY.value = withSpring(0);
+        imageRotation.value = withSpring(0);
+        savedImageScale.value = 1;
+        savedImageTranslateX.value = 0;
+        savedImageTranslateY.value = 0;
+        savedImageRotation.value = 0;
+      })
+  );
 
   const handleSnapshot = async () => {
     let coords = { x: 0, y: 0 };
@@ -346,19 +417,21 @@ const Canvas = () => {
         </GestureDetector>
       </View>
 
-      <View style={styles.imageOverlayWrapper}>
-        <AnimatedImage
-          source={sketchImage}
-          style={[
-            styles.overlayImage,
-            overlayStyle,
-            {
-              width: overlayFrame.width,
-              height: overlayFrame.height,
-            },
-          ]}
-          contentFit="contain"
-        />
+      <View style={styles.imageOverlayWrapper} pointerEvents="box-none">
+        <GestureDetector gesture={imageGestures}>
+          <AnimatedImage
+            source={sketchImage}
+            style={[
+              styles.overlayImage,
+              overlayStyle,
+              {
+                width: overlayFrame.width,
+                height: overlayFrame.height,
+              },
+            ]}
+            contentFit="contain"
+          />
+        </GestureDetector>
       </View>
 
       {isZoomBadgeVisible && (
@@ -475,7 +548,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1,
-    pointerEvents: "none",
+    pointerEvents: "box-none",
   },
   overlayImage: {
     borderRadius: 18,
