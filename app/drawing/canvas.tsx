@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -38,6 +38,7 @@ import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
+import { ENABLE_BOUNDARY_OVERFLOW } from "@/features/virtual-creativity/services/virtual-layer-transform";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
@@ -51,8 +52,11 @@ const Canvas = () => {
   const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams();
   const sliderWidth = width - 210;
-  const virtualSnapshots = useVirtualCreativityStore(
+  const virtualSnapshotsStore = useVirtualCreativityStore(
     (state) => state.snapshots,
+  );
+  const drawingHistorySnapshotsStore = useVirtualCreativityStore(
+    (state) => state.drawingHistorySnapshots,
   );
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -62,7 +66,7 @@ const Canvas = () => {
   const [zoom, setZoom] = useState<number>(0);
   const [isZoomBadgeVisible, setIsZoomBadgeVisible] = useState(false);
   const opacity = useSharedValue(0.5);
-  
+
   // Image transformation shared values
   const imageScale = useSharedValue(1);
   const imageTranslateX = useSharedValue(0);
@@ -94,12 +98,58 @@ const Canvas = () => {
   const routeImageUri = Array.isArray(params.imageUri)
     ? params.imageUri[0]
     : params.imageUri;
+  const routeOriginalImageUri = Array.isArray(params.originalImageUri)
+    ? params.originalImageUri[0]
+    : params.originalImageUri;
+  const routeRestoredSnapshots = Array.isArray(params.restoredSnapshots)
+    ? params.restoredSnapshots[0]
+    : params.restoredSnapshots;
   const routeSignatureText = Array.isArray(params.signatureText)
     ? params.signatureText[0]
     : params.signatureText;
   const routeSignatureFont = Array.isArray(params.signatureFont)
     ? params.signatureFont[0]
     : params.signatureFont;
+  const restoredSnapshots = useMemo<Snapshot[]>(() => {
+    if (!routeRestoredSnapshots || typeof routeRestoredSnapshots !== "string") {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(routeRestoredSnapshots) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .filter(
+          (
+            item,
+          ): item is {
+            id: string;
+            uri: string;
+            timestamp?: number;
+          } =>
+            !!item &&
+            typeof item === "object" &&
+            typeof (item as { id?: unknown }).id === "string" &&
+            typeof (item as { uri?: unknown }).uri === "string",
+        )
+        .map((item) => ({
+          id: item.id,
+          uri: item.uri,
+          timestamp: item.timestamp,
+        }));
+    } catch {
+      return [];
+    }
+  }, [routeRestoredSnapshots]);
+  const virtualSnapshots =
+    drawingHistorySnapshotsStore.length > 0
+      ? drawingHistorySnapshotsStore
+      : restoredSnapshots.length > 0
+        ? restoredSnapshots
+        : virtualSnapshotsStore;
   const overlayFrame = useStoryFrameSize({
     maxWidthRatio: 0.9,
     maxHeightRatio: 0.74,
@@ -128,7 +178,20 @@ const Canvas = () => {
       setFacing("back");
       setZoom(0);
       setIsZoomBadgeVisible(false);
-    }, []),
+
+      // Systematically re-request camera permission if not granted
+      const checkAndRequest = async () => {
+        const { status, canAskAgain } = await requestPermission();
+        if (status !== "granted" && !canAskAgain) {
+          // If definitively blocked, we at least show the permission view
+          // but we've tried our best to auto-toggle the system prompt
+        }
+      };
+
+      if (!permission?.granted) {
+        void checkAndRequest();
+      }
+    }, [permission?.granted, requestPermission]),
   );
 
   useEffect(() => {
@@ -224,8 +287,22 @@ const Canvas = () => {
     Gesture.Pan()
       .enabled(!isLocked)
       .onUpdate((e) => {
-        imageTranslateX.value = savedImageTranslateX.value + e.translationX;
-        imageTranslateY.value = savedImageTranslateY.value + e.translationY;
+        const nextX = savedImageTranslateX.value + e.translationX;
+        const nextY = savedImageTranslateY.value + e.translationY;
+
+        // Apply clamping logic here
+        const currentWidth = overlayFrame.width * imageScale.value;
+        const currentHeight = overlayFrame.height * imageScale.value;
+        const allowanceX = ENABLE_BOUNDARY_OVERFLOW ? currentWidth * 0.2 : 0;
+        const allowanceY = ENABLE_BOUNDARY_OVERFLOW ? currentHeight * 0.2 : 0;
+
+        const minX = -width / 2 + currentWidth / 2 - allowanceX;
+        const maxX = width / 2 - currentWidth / 2 + allowanceX;
+        const minY = -height / 2 + currentHeight / 2 - allowanceY;
+        const maxY = height / 2 - currentHeight / 2 + allowanceY;
+
+        imageTranslateX.value = Math.max(minX, Math.min(maxX, nextX));
+        imageTranslateY.value = Math.max(minY, Math.min(maxY, nextY));
       })
       .onEnd(() => {
         savedImageTranslateX.value = imageTranslateX.value;
@@ -241,8 +318,24 @@ const Canvas = () => {
         const focalX = e.focalX - width / 2;
         const focalY = e.focalY - height / 2;
 
-        imageTranslateX.value = focalX - (focalX - imageTranslateX.value) * scaleRatio;
-        imageTranslateY.value = focalY - (focalY - imageTranslateY.value) * scaleRatio;
+        const nextTranslateX =
+          focalX - (focalX - imageTranslateX.value) * scaleRatio;
+        const nextTranslateY =
+          focalY - (focalY - imageTranslateY.value) * scaleRatio;
+
+        // Apply clamping logic here
+        const currentWidth = overlayFrame.width * nextScale;
+        const currentHeight = overlayFrame.height * nextScale;
+        const allowanceX = ENABLE_BOUNDARY_OVERFLOW ? currentWidth * 0.2 : 0;
+        const allowanceY = ENABLE_BOUNDARY_OVERFLOW ? currentHeight * 0.2 : 0;
+
+        const minX = -width / 2 + currentWidth / 2 - allowanceX;
+        const maxX = width / 2 - currentWidth / 2 + allowanceX;
+        const minY = -height / 2 + currentHeight / 2 - allowanceY;
+        const maxY = height / 2 - currentHeight / 2 + allowanceY;
+
+        imageTranslateX.value = Math.max(minX, Math.min(maxX, nextTranslateX));
+        imageTranslateY.value = Math.max(minY, Math.min(maxY, nextTranslateY));
 
         imageScale.value = nextScale;
       })
@@ -270,7 +363,7 @@ const Canvas = () => {
         savedImageTranslateX.value = 0;
         savedImageTranslateY.value = 0;
         savedImageRotation.value = 0;
-      })
+      }),
   );
 
   const handleSnapshot = async () => {
@@ -319,6 +412,7 @@ const Canvas = () => {
         pathname: "/drawing/preview",
         params: {
           imageUri: lastSnapshot.uri,
+          originalImageUri: routeOriginalImageUri ?? routeImageUri,
           signatureText: routeSignatureText,
           signatureFont: routeSignatureFont,
         },
@@ -340,6 +434,7 @@ const Canvas = () => {
             pathname: "/drawing/preview",
             params: {
               imageUri: normalizedUri,
+              originalImageUri: routeOriginalImageUri ?? routeImageUri,
               signatureText: routeSignatureText,
               signatureFont: routeSignatureFont,
             },
@@ -351,6 +446,7 @@ const Canvas = () => {
         router.push({
           pathname: "/drawing/preview",
           params: {
+            originalImageUri: routeOriginalImageUri ?? routeImageUri,
             signatureText: routeSignatureText,
             signatureFont: routeSignatureFont,
           },
@@ -360,6 +456,7 @@ const Canvas = () => {
       router.push({
         pathname: "/drawing/preview",
         params: {
+          originalImageUri: routeOriginalImageUri ?? routeImageUri,
           signatureText: routeSignatureText,
           signatureFont: routeSignatureFont,
         },

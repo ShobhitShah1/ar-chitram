@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontFamily } from "@/constants/fonts";
@@ -11,6 +11,7 @@ import { saveToArChitramAlbum } from "@/services/media-save-service";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 import { clearAllLocalUploads } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import { persistExhibitionCaptureReference } from "@/features/gallery/services/local-gallery-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiQueryKeys } from "@/services/api/query-keys";
@@ -18,6 +19,7 @@ import { apiQueryKeys } from "@/services/api/query-keys";
 const ContestCamera = () => {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const params = useLocalSearchParams();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
@@ -25,6 +27,25 @@ const ContestCamera = () => {
   const cameraRef = useRef<CameraView>(null);
 
   const resetStore = useVirtualCreativityStore((state) => state.reset);
+  const originalImageUri = Array.isArray(params.originalImageUri)
+    ? params.originalImageUri[0]
+    : params.originalImageUri;
+
+  useFocusEffect(
+    useCallback(() => {
+      // Systematically re-request camera permission if not granted
+      const checkAndRequest = async () => {
+        const { status } = await requestPermission();
+        if (status !== "granted") {
+          // If we can't ask again, the UI will fallback to PermissionView naturally
+        }
+      };
+
+      if (!permission?.granted) {
+        void checkAndRequest();
+      }
+    }, [permission?.granted, requestPermission]),
+  );
 
   React.useEffect(() => {
     // Clear everything once we reach the contest screen
@@ -60,7 +81,12 @@ const ContestCamera = () => {
 
         if (normalizedUri) {
           try {
-            await saveToArChitramAlbum(normalizedUri);
+            const asset = await saveToArChitramAlbum(normalizedUri);
+            await persistExhibitionCaptureReference({
+              assetId: asset.id,
+              assetUri: asset.uri,
+              originalUri: originalImageUri ?? null,
+            });
           } catch (error) {
             console.warn(
               "Contest image was captured but could not be saved to gallery",

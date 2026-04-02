@@ -8,18 +8,24 @@ import Header from "@/components/header";
 import { StoryFramePreviewCard } from "@/components/story/story-frame-preview-card";
 import PrimaryButton from "@/components/ui/primary-button";
 import { useTheme } from "@/context/theme-context";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 
 const VirtualCreativityPreview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { imageUri } = useLocalSearchParams();
+  const { imageUri, originalImageUri } = useLocalSearchParams();
+  const clearDrawingHistorySnapshots = useVirtualCreativityStore(
+    (state) => state.clearDrawingHistorySnapshots,
+  );
 
   const handleContinue = () => {
+    clearDrawingHistorySnapshots();
     // Navigate to Guide with the image Uri
     router.push({
       pathname: "/drawing/guide",
       params: {
         imageUri: imageUri,
+        originalImageUri: originalImageUri ?? imageUri,
       },
     });
   };
@@ -29,7 +35,7 @@ const VirtualCreativityPreview = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <Header title="" />
+      <Header title="Preview" />
 
       {/* Main Content */}
       <View style={styles.content}>

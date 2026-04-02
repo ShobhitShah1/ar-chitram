@@ -159,6 +159,9 @@ export default function TabLayout() {
 
   const { gridItems, isLoading, isError, refetch } =
     useCreateFlowTabAssetsGrid();
+  const resetVirtualCreativity = useVirtualCreativityStore(
+    (state) => state.reset,
+  );
   const setLayers = useVirtualCreativityStore((state) => state.setLayers);
 
   const createAssets = useMemo<CreateSheetAssetItem[]>(
@@ -194,6 +197,7 @@ export default function TabLayout() {
 
   const openCanvasWithImage = useCallback(
     (uri: string) => {
+      resetVirtualCreativity();
       setLayers([createMainImageLayer(uri)], null);
       closeCreateSheet();
 
@@ -201,7 +205,7 @@ export default function TabLayout() {
         router.push("/virtual-creativity");
       });
     },
-    [closeCreateSheet, setLayers],
+    [closeCreateSheet, resetVirtualCreativity, setLayers],
   );
 
   const handleUnlockedCreateAsset = useCallback(

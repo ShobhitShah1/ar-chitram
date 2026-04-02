@@ -89,6 +89,7 @@ android {
 
     namespace 'com.architram'
     defaultConfig {
+
         applicationId 'com.architram'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion

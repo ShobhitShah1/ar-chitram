@@ -37,7 +37,8 @@ function Carousel<T extends any>({
   style,
   itemWidth = SCREEN_WIDTH,
   scrollX: externalScrollX,
-}: CarouselProps<T>) {
+  flatListRef,
+}: CarouselProps<T> & { flatListRef?: React.RefObject<any> }) {
   const internalScrollX = useSharedValue(0);
   const scrollX = externalScrollX || internalScrollX;
 
@@ -48,6 +49,7 @@ function Carousel<T extends any>({
   return (
     <View style={[styles.container, { width, height }, style]}>
       <Animated.FlatList
+        ref={flatListRef}
         data={data}
         keyExtractor={(_, index) => index.toString()}
         renderItem={({ item, index }) => {

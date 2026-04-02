@@ -14,11 +14,17 @@ import { useTheme } from "@/context/theme-context";
 const Preview = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { imageUri, signatureText, signatureFont } = useLocalSearchParams();
+  const { imageUri, originalImageUri, signatureText, signatureFont } =
+    useLocalSearchParams();
 
   const handleContinue = () => {
     // Navigate to Contest Camera step
-    router.push("/drawing/contest-camera");
+    router.push({
+      pathname: "/drawing/contest-camera",
+      params: {
+        originalImageUri: originalImageUri ?? imageUri,
+      },
+    });
   };
 
   const displayImage = imageUri ? { uri: imageUri as string } : preview_1;

@@ -55,6 +55,7 @@ interface HistoryState {
 interface VirtualCreativityStore {
   layers: VirtualLayer[];
   snapshots: VirtualCreativitySnapshot[];
+  drawingHistorySnapshots: VirtualCreativitySnapshot[];
   selectedLayerId: string | null;
   canvasSize: { width: number; height: number };
   pendingUploadUris: string[];
@@ -75,6 +76,10 @@ interface VirtualCreativityStore {
   setSnapshots: (snapshots: VirtualCreativitySnapshot[]) => void;
   removeSnapshot: (id: string) => void;
   clearSnapshots: () => void;
+  setDrawingHistorySnapshots: (
+    snapshots: VirtualCreativitySnapshot[],
+  ) => void;
+  clearDrawingHistorySnapshots: () => void;
 
   setPendingUploadUris: (uris: string[]) => void;
   clearPendingUploadUris: () => void;
@@ -113,6 +118,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
   (set, get) => ({
     layers: [],
     snapshots: [],
+    drawingHistorySnapshots: [],
     selectedLayerId: null,
     canvasSize: { width: 0, height: 0 },
     pendingUploadUris: [],
@@ -219,6 +225,9 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
         snapshots: state.snapshots.filter((snapshot) => snapshot.id !== id),
       })),
     clearSnapshots: () => set({ snapshots: [] }),
+    setDrawingHistorySnapshots: (snapshots) =>
+      set({ drawingHistorySnapshots: snapshots }),
+    clearDrawingHistorySnapshots: () => set({ drawingHistorySnapshots: [] }),
 
     setPendingUploadUris: (uris) => set({ pendingUploadUris: uris }),
     clearPendingUploadUris: () => set({ pendingUploadUris: [] }),
@@ -313,6 +322,7 @@ export const useVirtualCreativityStore = create<VirtualCreativityStore>(
       set({
         layers: [],
         snapshots: [],
+        drawingHistorySnapshots: [],
         selectedLayerId: null,
         pendingUploadUris: [],
         history: { past: [], future: [] },

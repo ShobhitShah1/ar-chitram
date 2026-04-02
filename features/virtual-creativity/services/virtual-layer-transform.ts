@@ -1,6 +1,7 @@
 export const MIN_LAYER_SCALE = 0.2;
 export const MAX_LAYER_SCALE = 2.6;
 export const LAYER_BOUNDARY_PADDING = 0;
+export const ENABLE_BOUNDARY_OVERFLOW = true;
 
 interface MaxFitScaleParams {
   canvasHeight: number;
@@ -69,10 +70,13 @@ export const clampLayerAxisPosition = ({
 }: ClampAxisParams) => {
   "worklet";
   const fittedScale = Math.min(nextScale, maxFitScale);
-  const halfSize = (layerSize * fittedScale) / 2;
+  const currentSize = layerSize * fittedScale;
+  const halfSize = currentSize / 2;
+  const allowance = ENABLE_BOUNDARY_OVERFLOW ? currentSize * 0.2 : 0; // Toggleable 20% overflow allowance
+
   const center = canvasSize / 2 + nextPosition;
-  const minCenter = padding + halfSize;
-  const maxCenter = canvasSize - padding - halfSize;
+  const minCenter = padding + halfSize - allowance;
+  const maxCenter = canvasSize - padding - halfSize + allowance;
 
   return clampValue(center, minCenter, maxCenter) - canvasSize / 2;
 };

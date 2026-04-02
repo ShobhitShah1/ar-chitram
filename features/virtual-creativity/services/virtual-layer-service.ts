@@ -20,10 +20,20 @@ const clampValue = (value: number, min: number, max: number) =>
 
 const getImageSize = (uri: string) =>
   new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error("Timeout"));
+    }, 400);
+
     RNImage.getSize(
       uri,
-      (width, height) => resolve({ width, height }),
-      (error) => reject(error),
+      (width, height) => {
+        clearTimeout(timeout);
+        resolve({ width, height });
+      },
+      (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      },
     );
   });
 
@@ -75,18 +85,21 @@ export const createMainImageLayer = (uri: string): VirtualLayer => ({
 export const createSubImageLayer = async (
   uri: string,
   zIndex: number,
+  existingLayers: VirtualLayer[] = [],
 ): Promise<VirtualLayer> => {
   try {
     const { width: sourceWidth, height: sourceHeight } =
       await getImageSize(uri);
     const { width, height } = fitOverlaySize(sourceWidth, sourceHeight);
 
+    const pos = findNonOverlappingPosition(width, height, existingLayers);
+
     return {
       id: `upload-${Date.now()}-${zIndex}`,
       type: "image",
       uri,
-      x: 0,
-      y: 0,
+      x: pos.x,
+      y: pos.y,
       width,
       height,
       rotation: 0,
@@ -95,14 +108,18 @@ export const createSubImageLayer = async (
       zIndex,
     };
   } catch {
+    const width = OVERLAY_MAX_WIDTH;
+    const height = OVERLAY_MAX_WIDTH;
+    const pos = findNonOverlappingPosition(width, height, existingLayers);
+
     return {
       id: `upload-${Date.now()}-${zIndex}`,
       type: "image",
       uri,
-      x: 0,
-      y: 0,
-      width: OVERLAY_MAX_WIDTH,
-      height: OVERLAY_MAX_WIDTH,
+      x: pos.x,
+      y: pos.y,
+      width,
+      height,
       rotation: 0,
       scale: 1,
       opacity: 1,
@@ -116,6 +133,7 @@ const SIGNATURE_EDITOR_MARGIN = 60;
 export const createSignatureTextLayer = (
   selection: SignatureSelection,
   zIndex: number,
+  existingLayers: VirtualLayer[] = [],
 ): VirtualLayer => {
   const text = selection.value.trim() || "AR Chitram";
   const width = clampValue(
@@ -126,8 +144,9 @@ export const createSignatureTextLayer = (
     SIGNATURE_MIN_WIDTH,
     SIGNATURE_MAX_WIDTH,
   );
-  
+
   const height = SIGNATURE_HEIGHT;
+  const pos = findNonOverlappingPosition(width, height, existingLayers);
 
   return {
     id: `signature-${Date.now()}-${zIndex}`,
@@ -136,14 +155,105 @@ export const createSignatureTextLayer = (
     fontFamily: selection.fontFamily,
     fontSize: SIGNATURE_BASE_FONT_SIZE,
     color: "#111111",
-    x: (STORY_FRAME_WIDTH - width - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
-    y: (STORY_FRAME_HEIGHT - height - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
+    x: pos.x || (STORY_FRAME_WIDTH - width - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
+    y: pos.y || (STORY_FRAME_HEIGHT - height - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
     width,
     height,
     rotation: 0,
     scale: 1,
     opacity: 1,
     zIndex,
+  };
+};
+
+export const findNonOverlappingPosition = (
+  width: number,
+  height: number,
+  existingLayers: VirtualLayer[],
+  canvasWidth: number = STORY_FRAME_WIDTH,
+  canvasHeight: number = STORY_FRAME_HEIGHT,
+): { x: number; y: number } => {
+  const overlays = existingLayers.filter(
+    (l) => l.id !== "main-image" && l.type !== "drawing",
+  );
+  if (overlays.length === 0) return { x: 0, y: 0 };
+
+  const checkOverlap = (
+    x1: number,
+    y1: number,
+    w1: number,
+    h1: number,
+    x2: number,
+    y2: number,
+    w2: number,
+    h2: number,
+  ) => {
+    const margin = 10; // Tighter margin for efficient packing
+    return (
+      Math.abs(x1 - x2) < (w1 + w2) / 2 + margin &&
+      Math.abs(y1 - y2) < (h1 + h2) / 2 + margin
+    );
+  };
+
+  const isPositionValid = (x: number, y: number) => {
+    // Canvas containment check (relative to center)
+    const padding = 16;
+    const maxX = (canvasWidth - width - padding) / 2;
+    const maxY = (canvasHeight - height - padding) / 2;
+
+    if (Math.abs(x) > maxX || Math.abs(y) > maxY) return false;
+
+    // Layer overlap check
+    for (const layer of overlays) {
+      const layerW = (layer.width || 0) * (layer.scale || 1);
+      const layerH = (layer.height || 0) * (layer.scale || 1);
+      if (checkOverlap(x, y, width, height, layer.x, layer.y, layerW, layerH)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 1. Try Dead Center First (User preference for focus)
+  if (isPositionValid(0, 0)) return { x: 0, y: 0 };
+
+  // 2. Comprehensive Grid Search (Checking the WHOLE View)
+  const gridPoints: { x: number; y: number }[] = [];
+  const gridCount = 10; // 10x10 Grid = 100 potential spots across whole screen
+  
+  for (let r = 0; r < gridCount; r++) {
+    for (let c = 0; c < gridCount; c++) {
+      // Calculate coord relative to center
+      const tx = (canvasWidth / gridCount) * (c + 0.5) - canvasWidth / 2;
+      const ty = (canvasHeight / gridCount) * (r + 0.5) - canvasHeight / 2;
+      
+      // Check if this box physically fits inside the screen first
+      const maxX = (canvasWidth - width - 10) / 2;
+      const maxY = (canvasHeight - height - 10) / 2;
+      if (Math.abs(tx) <= maxX && Math.abs(ty) <= maxY) {
+        gridPoints.push({ x: tx, y: ty });
+      }
+    }
+  }
+
+  // 3. Shuffle Grid Points for "Random" Feel Across Whole View
+  // Using a simple modern Fisher-Yates shuffle
+  for (let i = gridPoints.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [gridPoints[i], gridPoints[j]] = [gridPoints[j], gridPoints[i]];
+  }
+
+  // 4. Return First Empty Spot Found
+  for (const point of gridPoints) {
+    if (isPositionValid(point.x, point.y)) {
+      return { x: Math.round(point.x), y: Math.round(point.y) };
+    }
+  }
+
+  // Final fallback (slightly randomized center to allow manual adjustment)
+  return {
+    x: (Math.random() - 0.5) * 60,
+    y: (Math.random() - 0.5) * 60,
   };
 };
 

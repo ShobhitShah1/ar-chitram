@@ -21,6 +21,7 @@ import { LayerStrip } from "@/features/virtual-creativity/components/layer-strip
 import { PatternModal } from "@/features/virtual-creativity/components/pattern-modal";
 import { SignatureModal } from "@/features/virtual-creativity/components/signature-modal";
 import { TopBar } from "@/features/virtual-creativity/components/top-bar";
+import { persistLocalArtCaptures } from "@/features/gallery/services/local-gallery-service";
 import {
   fetchLocalUploadTabAssets,
   clearAllLocalUploads,
@@ -424,7 +425,8 @@ export default function VirtualCreativityScreen() {
           itemsPerRow,
           uploadLayers.length - row * itemsPerRow,
         );
-        const rowWidth = numInThisRow * standardWidth + (numInThisRow - 1) * gap;
+        const rowWidth =
+          numInThisRow * standardWidth + (numInThisRow - 1) * gap;
         const rowStartX = -(rowWidth / 2) + standardWidth / 2;
 
         const totalRows = Math.ceil(uploadLayers.length / itemsPerRow);
@@ -595,9 +597,27 @@ export default function VirtualCreativityScreen() {
     try {
       const uri = await captureCanvasSnapshot(1);
       if (uri) {
+        try {
+          const snapshotUris = snapshots.map((snapshot) => snapshot.uri);
+          const persistedUris =
+            snapshotUris.length > 0 &&
+            snapshotUris[snapshotUris.length - 1] === uri
+              ? snapshotUris
+              : [...snapshotUris, uri];
+
+          await persistLocalArtCaptures(persistedUris, {
+            originalUri: mainImageUri ?? uri,
+          });
+        } catch (error) {
+          console.warn("Failed to persist virtual creativity capture:", error);
+        }
+
         router.push({
           pathname: "/virtual-creativity/preview",
-          params: { imageUri: uri },
+          params: {
+            imageUri: uri,
+            originalImageUri: mainImageUri ?? uri,
+          },
         });
       }
     } catch (error) {
@@ -605,7 +625,9 @@ export default function VirtualCreativityScreen() {
     }
   }, [
     captureCanvasSnapshot,
+    mainImageUri,
     router,
+    snapshots,
     viewMode,
     selectLayer,
     setHandModeLayerIds,
@@ -676,6 +698,7 @@ export default function VirtualCreativityScreen() {
       const subLayer = await createSubImageLayer(
         imageUri,
         allLayersSorted.length + 1,
+        layers,
       );
       addLayer(subLayer);
       selectLayerForPlacement(subLayer.id);
@@ -1145,6 +1168,7 @@ export default function VirtualCreativityScreen() {
       const signatureLayer = createSignatureTextLayer(
         selection,
         existingSignatureLayer?.zIndex ?? allLayersSorted.length + 1,
+        layers,
       );
 
       setSelectedSignatureId(selection.id);

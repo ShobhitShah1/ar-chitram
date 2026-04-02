@@ -1,54 +1,67 @@
+import { ArtGalleryGrid } from "@/components/art-gallery-grid";
+import { CategoryChips } from "@/components/category-chips";
 import { EmptyState } from "@/components/empty-state";
-import RenderGalleryImage from "@/components/render-gallery-image";
+import ImageGrid from "@/components/image-grid";
 import TabsHeader from "@/components/tabs-header";
 import { useCommonThemedStyles } from "@/components/themed";
-import { FontFamily } from "@/constants/fonts";
 import { GalleryItem } from "@/constants/interface";
-import { useTheme } from "@/context/theme-context";
-import * as MediaLibrary from "expo-media-library";
-import { useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
 import {
-  Dimensions,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  View,
-} from "react-native";
+  ArtCaptureGroup,
+  getLocalArtCaptureGroups,
+} from "@/features/gallery/services/local-gallery-service";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import * as MediaLibrary from "expo-media-library";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { View } from "react-native";
 
-const { width } = Dimensions.get("window");
+const GALLERY_FILTERS = ["Exhibition", "Art"] as const;
+
+type GalleryFilter = (typeof GALLERY_FILTERS)[number];
 
 function GalleryScreen() {
-  const { theme } = useTheme();
   const commonStyles = useCommonThemedStyles();
-  const [images, setImages] = useState<GalleryItem[]>([]);
+  const setDrawingHistorySnapshots = useVirtualCreativityStore(
+    (state) => state.setDrawingHistorySnapshots,
+  );
+  const [selectedFilter, setSelectedFilter] =
+    useState<GalleryFilter>("Exhibition");
+  const [exhibitionImages, setExhibitionImages] = useState<GalleryItem[]>([]);
+  const [artGroups, setArtGroups] = useState<ArtCaptureGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadDownloadedImages = useCallback(async () => {
+  const loadExhibitionImages = useCallback(async () => {
     try {
-      const { status } = await MediaLibrary.getPermissionsAsync();
+      const { status, canAskAgain } = await MediaLibrary.getPermissionsAsync();
       if (status !== "granted") {
-        setImages([]);
-        return;
+        if (canAskAgain) {
+          const { status: nextStatus } =
+            await MediaLibrary.requestPermissionsAsync();
+          if (nextStatus !== "granted") {
+            setExhibitionImages([]);
+            return;
+          }
+        } else {
+          setExhibitionImages([]);
+          return;
+        }
       }
 
       const album = await MediaLibrary.getAlbumAsync("ArChitram");
       if (!album) {
-        setImages([]);
+        setExhibitionImages([]);
         return;
       }
 
       const albumAssets = await MediaLibrary.getAssetsAsync({
-        album: album,
+        album,
         mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
         sortBy: "modificationTime",
         first: 500,
       });
 
-      const uniqueAssets = albumAssets.assets;
-
-      const galleryItems: GalleryItem[] = uniqueAssets.map((asset) => ({
+      const nextImages: GalleryItem[] = albumAssets.assets.map((asset) => ({
         id: asset.id,
         _id: asset.id,
         uri: asset.uri,
@@ -60,24 +73,38 @@ function GalleryScreen() {
           : asset.mediaType) as "photo" | "video" | "audio" | "unknown",
       }));
 
-      setImages(galleryItems);
+      setExhibitionImages(nextImages);
     } catch (error) {
-      console.error("Error loading images:", error);
-      setImages([]);
+      console.error("Error loading exhibition gallery:", error);
+      setExhibitionImages([]);
     }
   }, []);
 
+  const loadArtGroups = useCallback(async () => {
+    try {
+      const nextGroups = await getLocalArtCaptureGroups();
+      setArtGroups(nextGroups);
+    } catch (error) {
+      console.error("Error loading art gallery:", error);
+      setArtGroups([]);
+    }
+  }, []);
+
+  const loadGalleryData = useCallback(async () => {
+    await Promise.all([loadExhibitionImages(), loadArtGroups()]);
+  }, [loadArtGroups, loadExhibitionImages]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadDownloadedImages();
+    await loadGalleryData();
     setRefreshing(false);
-  }, [loadDownloadedImages]);
+  }, [loadGalleryData]);
 
   const initializeGallery = useCallback(async () => {
     setLoading(true);
-    await loadDownloadedImages();
+    await loadGalleryData();
     setLoading(false);
-  }, [loadDownloadedImages]);
+  }, [loadGalleryData]);
 
   useEffect(() => {
     void initializeGallery();
@@ -85,142 +112,100 @@ function GalleryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void loadDownloadedImages();
-    }, [loadDownloadedImages]),
+      void loadGalleryData();
+    }, [loadGalleryData]),
   );
 
-  const renderItem = useCallback(
-    ({ item, index }: { item: GalleryItem; index: number }) => (
-      <RenderGalleryImage
-        index={index}
-        item={item}
-        images={images}
-        setSelectedStoryIndex={() => {}}
-        setShowStoryModal={() => {}}
-      />
-    ),
-    [images],
+  const handleExhibitionPress = useCallback(
+    (id: string) => {
+      const index = exhibitionImages.findIndex((image) => image.id === id);
+      if (index === -1) {
+        return;
+      }
+
+      router.push({
+        pathname: "/gallery-view",
+        params: {
+          images: JSON.stringify(exhibitionImages),
+          initialIndex: index.toString(),
+        },
+      });
+    },
+    [exhibitionImages],
   );
 
-  const keyExtractor = useCallback((item: GalleryItem) => item.id, []);
+  const handleArtGroupPress = useCallback(
+    (group: ArtCaptureGroup) => {
+      const orderedSnapshots = [...group.captures]
+        .sort((left, right) => left.createdAt - right.createdAt)
+        .map((capture) => ({
+          id: capture.id,
+          uri: capture.uri,
+          timestamp: capture.createdAt,
+        }));
+      const imageUri = orderedSnapshots[0]?.uri ?? group.coverUri;
 
-  const getItemLayout = useCallback((_data: any, index: number) => {
-    const ITEM_HEIGHT = (width - 60) / 2 + 20; // item height + margin
-    return {
-      length: ITEM_HEIGHT,
-      offset: ITEM_HEIGHT * Math.floor(index / 2),
-      index,
-    };
-  }, []);
+      setDrawingHistorySnapshots(orderedSnapshots);
+      router.push({
+        pathname: "/drawing/guide",
+        params: {
+          imageUri,
+          originalImageUri: group.originalUri ?? imageUri,
+        },
+      });
+    },
+    [setDrawingHistorySnapshots],
+  );
+
+  const isExhibitionFilter = selectedFilter === "Exhibition";
+  const exhibitionEmptyState = (
+    <EmptyState
+      title="No Saved Media"
+      description="Photos and videos saved by ArChitram appear here automatically."
+    />
+  );
+  const artEmptyState = (
+    <EmptyState
+      title="No Art Yet"
+      description="Virtual Creativity captures you continue with will appear here."
+    />
+  );
 
   return (
     <View style={commonStyles.container}>
-      <TabsHeader isShuffle />
+      <TabsHeader isShuffle onShufflePress={loadGalleryData} />
+      <CategoryChips
+        items={[...GALLERY_FILTERS]}
+        selected={selectedFilter}
+        onSelect={(item) => setSelectedFilter(item as GalleryFilter)}
+      />
 
       {loading ? (
-        <EmptyState showLoading={true} title="Loading images..." />
-      ) : images.length === 0 ? (
-        <EmptyState
-          title="No Saved Media"
-          description="Photos and videos saved by ArChitram appear here automatically."
+        <EmptyState showLoading={true} title="Loading gallery..." />
+      ) : isExhibitionFilter ? (
+        <ImageGrid
+          numColumns={2}
+          data={exhibitionImages.map((image) => ({
+            id: image.id,
+            image: image.uri,
+            isPremium: false,
+          }))}
+          onPress={(item) => handleExhibitionPress(String(item.id))}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={exhibitionEmptyState}
         />
       ) : (
-        <FlatList
-          data={images}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          numColumns={2}
-          contentContainerStyle={styles.gridContainer}
-          showsVerticalScrollIndicator={false}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
-          initialNumToRender={6}
-          windowSize={5}
-          updateCellsBatchingPeriod={50}
-          getItemLayout={getItemLayout}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={["#000000"]}
-              tintColor="#000000"
-            />
-          }
+        <ArtGalleryGrid
+          data={artGroups}
+          onPress={handleArtGroupPress}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={artEmptyState}
         />
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: FontFamily.bold,
-    color: "#333",
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-    fontFamily: FontFamily.medium,
-  },
-  refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  gridContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-    paddingTop: 10,
-  },
-
-  imageOverlay: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    padding: 8,
-  },
-  imageDate: {
-    color: "#fff",
-    fontSize: 11,
-    textAlign: "center",
-  },
-  emptyButton: {
-    marginTop: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: FontFamily.semibold,
-  },
-});
 
 export default GalleryScreen;

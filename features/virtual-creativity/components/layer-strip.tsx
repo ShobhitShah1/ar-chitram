@@ -36,9 +36,7 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
   return (
     <View style={styles.container}>
       {orderedLayers.length > 0 ? (
-        <View
-          style={[styles.stripRow, { paddingHorizontal: horizontalInset }]}
-        >
+        <View style={[styles.stripRow, { paddingHorizontal: horizontalInset }]}>
           {/* Layer thumbnails stacked on the left */}
           <ScrollView
             horizontal
@@ -52,8 +50,8 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
                 onPress={() => onSelectLayer?.(layer.id)}
                 style={[
                   styles.thumbnailWrapper,
-                  index > 0 && { marginLeft: -12 },
-                  { zIndex: orderedLayers.length - index },
+                  // index > 0 && { marginLeft: -12 },
+                  // { zIndex: orderedLayers.length - index },
                 ]}
               >
                 <View style={styles.thumbnail}>
@@ -83,7 +81,9 @@ export const LayerStrip: React.FC<LayerStripProps> = ({
           </ScrollView>
 
           {/* Hand toggle on the right - only controls non-background image overlays */}
-          {orderedLayers.some((l) => l.type === "image" && l.id !== "main-image") ? (
+          {orderedLayers.some(
+            (l) => l.type === "image" && l.id !== "main-image",
+          ) ? (
             <Pressable
               onPress={() => {
                 if (isZoomMode) {

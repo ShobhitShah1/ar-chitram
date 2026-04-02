@@ -29,6 +29,7 @@ interface ImageGridProps {
   contentContainerStyle?: any;
   refreshing?: boolean;
   onRefresh?: () => void;
+  numColumns?: 2 | 3; // 3 for staggered, 2 for uniform
 }
 
 const GAP = 12;
@@ -44,6 +45,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   contentContainerStyle,
   refreshing = false,
   onRefresh,
+  numColumns = 3,
 }) => {
   const { theme, isDark } = useTheme();
   const isEmpty = data.length === 0;
@@ -75,8 +77,9 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         <View style={styles.grid}>
           {data.map((item, index) => {
             // Pattern: 2 items (Half), 1 item (Full)
-            // Index % 3 === 2 -> Full, else Half
-            const isFullWidth = index % 3 === 2;
+            // numColumns = 3 (Default) -> Index % 3 === 2 -> Full
+            // numColumns = 2 (Gallery) -> Index % 2 === 1 -> Half
+            const isFullWidth = numColumns === 3 && index % 3 === 2;
 
             const itemWidth = isFullWidth ? FULL_WIDTH : CARD_WIDTH;
             const isSingle = isFullWidth; // For image styling logic
