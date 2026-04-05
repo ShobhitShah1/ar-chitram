@@ -366,9 +366,20 @@ export default function VirtualCreativityScreen() {
       return;
     }
 
-    void primeSmartFillLookup({ imageUri }).catch(() => {
-      // Warm cache in the background without interrupting the current flow.
-    });
+    void primeSmartFillLookup({ imageUri })
+      .then((space) => {
+        preloadedSmartFillUrisRef.current.add(imageUri);
+        setSmartFillSpacesByUri((prev) =>
+          prev[imageUri] &&
+          prev[imageUri].width === space.width &&
+          prev[imageUri].height === space.height
+            ? prev
+            : { ...prev, [imageUri]: space },
+        );
+      })
+      .catch(() => {
+        // Warm cache in the background without interrupting the current flow.
+      });
   }, []);
 
   React.useEffect(() => {
@@ -788,6 +799,7 @@ export default function VirtualCreativityScreen() {
     lastDrawingToolRef.current = "palette";
     if (viewMode === "composite") {
       selectLayer(null);
+      setHandModeLayerIds(new Set());
     }
     setIsFocusPlacementActive(false);
     setSelectedTool("palette");
@@ -796,31 +808,33 @@ export default function VirtualCreativityScreen() {
     setPatternModalVisible(false);
     setSignatureModalVisible(false);
     setColorPickerVisible(true);
-  }, [selectLayer, viewMode]);
+  }, [selectLayer, setHandModeLayerIds, viewMode]);
 
   const handlePattern = useCallback(() => {
     lastDrawingToolRef.current = "pattern";
     if (viewMode === "composite") {
       selectLayer(null);
+      setHandModeLayerIds(new Set());
     }
     setIsFocusPlacementActive(false);
     setSelectedTool("pattern");
     setColorPickerVisible(false);
     setSignatureModalVisible(false);
     setPatternModalVisible(true);
-  }, [selectLayer, viewMode]);
+  }, [selectLayer, setHandModeLayerIds, viewMode]);
 
   const handleStroke = useCallback(() => {
     lastDrawingToolRef.current = "stroke";
     if (viewMode === "composite") {
       selectLayer(null);
+      setHandModeLayerIds(new Set());
     }
     setIsFocusPlacementActive(false);
     setSelectedTool("stroke");
     setColorPickerVisible(false);
     setPatternModalVisible(false);
     setSignatureModalVisible(true);
-  }, [selectLayer, viewMode]);
+  }, [selectLayer, setHandModeLayerIds, viewMode]);
 
   const handlePreview = useCallback(async () => {
     // Deselect everything to ensure a clean capture

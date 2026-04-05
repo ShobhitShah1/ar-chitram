@@ -22,6 +22,7 @@ const Preview = () => {
     router.push({
       pathname: "/drawing/contest-camera",
       params: {
+        imageUri,
         originalImageUri: originalImageUri ?? imageUri,
       },
     });

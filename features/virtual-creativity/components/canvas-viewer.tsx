@@ -17,6 +17,7 @@ import { getSmartFillDisplayLayout } from "@/features/virtual-creativity/service
 import {
   getSmartFillErrorMessage,
   primeSmartFillLookup,
+  resolveCachedSmartFillRegion,
   resolveSmartFillRegion,
   type SmartFillSpace,
 } from "@/features/virtual-creativity/services/smart-fill-path-service";
@@ -362,6 +363,18 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
       const targetLayer = getCurrentLayer(layerId);
       if (!targetLayer?.uri) {
         return null;
+      }
+
+      const cachedRegion = resolveCachedSmartFillRegion({
+        imageUri: targetLayer.uri,
+        layerWidth: targetLayer.width,
+        layerHeight: targetLayer.height,
+        x: point.x,
+        y: point.y,
+      });
+
+      if (cachedRegion) {
+        return cachedRegion;
       }
 
       try {

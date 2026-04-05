@@ -34,7 +34,8 @@ interface ImageGridProps {
 
 const GAP = 12;
 const PADDING = 16;
-const CARD_WIDTH = (width - PADDING * 2 - GAP) / 2;
+const CARD_WIDTH = Math.floor((width - PADDING * 2 - GAP) / 2);
+const THIRD_WIDTH = Math.floor((width - PADDING * 2 - GAP * 2) / 3);
 const FULL_WIDTH = width - PADDING * 2;
 
 const ImageGrid: React.FC<ImageGridProps> = ({
@@ -76,16 +77,19 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       ) : (
         <View style={styles.grid}>
           {data.map((item, index) => {
-            // Pattern: 2 items (Half), 1 item (Full)
-            // numColumns = 3 (Default) -> Index % 3 === 2 -> Full
-            // numColumns = 2 (Gallery) -> Index % 2 === 1 -> Half
-            const isFullWidth = numColumns === 3 && index % 3 === 2;
+            // Pattern requested:
+            // 1 1     (2 items)
+            // 1 1 1   (3 items)
+            let itemWidth = CARD_WIDTH;
+            let cardStyle = styles.cardPair;
+            let imageStyle = styles.imagePair;
 
-            const itemWidth = isFullWidth ? FULL_WIDTH : CARD_WIDTH;
-            const isSingle = isFullWidth; // For image styling logic
-
-            const cardStyle = isSingle ? styles.cardSingle : styles.cardPair;
-            const imageStyle = isSingle ? styles.imageSingle : styles.imagePair;
+            if (numColumns === 3) {
+              const isThird = index % 5 >= 2;
+              itemWidth = isThird ? THIRD_WIDTH : CARD_WIDTH;
+              cardStyle = isThird ? styles.cardThird : styles.cardPair;
+              imageStyle = isThird ? styles.imageThird : styles.imagePair;
+            }
 
             return (
               <Animated.View
@@ -167,22 +171,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 10,
   },
-  cardSingle: {
-    height: CARD_WIDTH * 0.85,
-    borderRadius: 24,
+  cardThird: {
+    height: THIRD_WIDTH + 30,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 8,
   },
   imagePair: {
     width: "100%",
     height: "100%",
   },
-  imageSingle: {
-    width: "80%",
-    height: "80%",
+  imageThird: {
+    width: "100%",
+    height: "100%",
   },
   premiumBadgeWrap: {
     position: "absolute",

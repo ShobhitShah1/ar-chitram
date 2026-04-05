@@ -47,8 +47,8 @@ const WINNER_CARD_HEIGHT = 224;
 const GRID_GAP = 12;
 const GRID_PADDING = 16;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
-const GRID_FULL_WIDTH = SCREEN_WIDTH - GRID_PADDING * 2;
+const GRID_CARD_WIDTH = Math.floor((SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2);
+const GRID_THIRD_WIDTH = Math.floor((SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * 2) / 3);
 
 interface HomeWinnerCardProps {
   winner: HomeWinnerItem;
@@ -148,18 +148,18 @@ interface HomeAssetGridProps {
 
 const HomeAssetGrid = memo(
   ({ items, onPress, isPremiumAssetUnlocked }: HomeAssetGridProps) => {
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
 
     return (
       <View style={styles.assetGridWrap}>
         <View style={styles.assetGrid}>
           {items.map((item, index) => {
-            const isFullWidth = index % 3 === 2;
-            const cardStyle = isFullWidth
-              ? styles.assetCardSingle
+            const isThird = index % 5 >= 2;
+            const cardStyle = isThird
+              ? styles.assetCardThird
               : styles.assetCardPair;
-            const imageStyle = isFullWidth
-              ? styles.assetImageSingle
+            const imageStyle = isThird
+              ? styles.assetImageThird
               : styles.assetImagePair;
 
             const isUnlocked = isPremiumAssetUnlocked(item);
@@ -168,7 +168,7 @@ const HomeAssetGrid = memo(
               <View
                 key={item.id}
                 style={{
-                  width: isFullWidth ? GRID_FULL_WIDTH : GRID_CARD_WIDTH,
+                  width: isThird ? GRID_THIRD_WIDTH : GRID_CARD_WIDTH,
                 }}
               >
                 <Pressable
@@ -177,7 +177,9 @@ const HomeAssetGrid = memo(
                     cardStyle,
                     {
                       backgroundColor: theme.drawingCardBackground,
-                      boxShadow: theme.drawingCardShadow,
+                      ...(!isDark && theme.drawingCardShadow
+                        ? { boxShadow: theme.drawingCardShadow }
+                        : {}),
                     } as any,
                   ]}
                 >
@@ -510,22 +512,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 10,
   },
-  assetCardSingle: {
-    height: GRID_CARD_WIDTH * 0.85,
-    borderRadius: 24,
+  assetCardThird: {
+    height: GRID_THIRD_WIDTH,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 8,
   },
   assetImagePair: {
     width: "100%",
     height: "100%",
   },
-  assetImageSingle: {
-    width: "80%",
-    height: "80%",
+  assetImageThird: {
+    width: "100%",
+    height: "100%",
   },
   premiumBadgeWrap: {
     position: "absolute",

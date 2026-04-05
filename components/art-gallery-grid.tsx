@@ -18,7 +18,7 @@ const { width } = Dimensions.get("window");
 
 const GAP = 12;
 const PADDING = 16;
-const CARD_WIDTH = (width - PADDING * 2 - GAP) / 2;
+const CARD_WIDTH = Math.floor((width - PADDING * 2 - GAP) / 2);
 const IMAGE_SIZE = CARD_WIDTH - 24;
 const STAGE_HEIGHT = IMAGE_SIZE + 30;
 
@@ -90,8 +90,7 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
                   styles.card,
                   {
                     backgroundColor: theme.drawingCardBackground,
-                    ...cardBorder,
-                    ...(theme.drawingCardShadow
+                    ...(!isDark && theme.drawingCardShadow
                       ? { boxShadow: theme.drawingCardShadow }
                       : {}),
                   },
@@ -159,7 +158,8 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
                       <View style={styles.countPill}>
                         <View style={styles.countDot} />
                         <Text style={styles.countText}>
-                          {Math.max(0, group.captures.length - 1)} snapshots
+                          {Math.max(0, group.captures.length - 1)}{" "}
+                          {group?.captures?.length > 2 ? "frames" : "frame"}
                         </Text>
                       </View>
                     ) : null}
@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 12,
     paddingTop: 16,
-    borderWidth: 1,
     overflow: "visible",
   },
   stage: {

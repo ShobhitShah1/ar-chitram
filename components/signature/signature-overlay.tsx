@@ -1,12 +1,8 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 
 type ParamLike = string | string[] | undefined;
-
-const DEFAULT_SIGNATURE_TEXT = "AR Chitram";
-const DEFAULT_SIGNATURE_FONT = FontFamily.signatureMonteCarlo;
 
 const coerceParam = (value: ParamLike): string | undefined => {
   if (typeof value === "string") return value;
@@ -24,11 +20,12 @@ export const SignatureOverlay: React.FC<SignatureOverlayProps> = ({
   signatureFontFamily,
 }) => {
   const { isDark } = useTheme();
+  const text = coerceParam(signatureText)?.trim();
+  const fontFamily = coerceParam(signatureFontFamily);
 
-  const text = (
-    coerceParam(signatureText)?.trim() || DEFAULT_SIGNATURE_TEXT
-  ).trim();
-  const fontFamily = coerceParam(signatureFontFamily) || DEFAULT_SIGNATURE_FONT;
+  if (!text || !fontFamily) {
+    return null;
+  }
 
   return (
     <View pointerEvents="none" style={styles.wrap}>

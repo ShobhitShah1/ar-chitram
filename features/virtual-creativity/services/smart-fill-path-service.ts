@@ -345,6 +345,48 @@ export const resolveSmartFillRegion = async ({
   };
 };
 
+export const resolveCachedSmartFillRegion = ({
+  imageUri,
+  tolerance,
+  layerWidth,
+  layerHeight,
+  x,
+  y,
+}: ResolveSmartFillRegionOptions): SmartFillRegion | null => {
+  const lookupKey = getPreparedLookupKey(imageUri, getTolerance(tolerance));
+  const lookup = preparedLookupValueCache.get(lookupKey);
+  if (!lookup) {
+    return null;
+  }
+
+  const mappedPoint = mapLayerPointToSmartFillSpace(
+    x,
+    y,
+    lookup.width,
+    lookup.height,
+    layerWidth,
+    layerHeight,
+  );
+
+  if (!mappedPoint) {
+    return null;
+  }
+
+  const resolved = resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y);
+  const preparedPath = sanitizeRegionPath(resolved.path);
+  if (!preparedPath) {
+    return null;
+  }
+
+  return {
+    path: preparedPath,
+    width: lookup.width,
+    height: lookup.height,
+    regionTransform: mappedPoint.regionTransform,
+    touchesEdge: resolved.touchesEdge,
+  };
+};
+
 export const checkPointTouchesEdge = (
   imageUri: string,
   layerWidth: number,
