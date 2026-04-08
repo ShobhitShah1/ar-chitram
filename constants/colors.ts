@@ -42,6 +42,7 @@ export interface Theme {
   // Drawing Card
   drawingCardBackground: string;
   drawingCardShadow: string;
+  drawingCardShadowDark: string;
 }
 
 // Light theme (current/default)
@@ -62,7 +63,7 @@ export const lightTheme: Theme = {
   modalBorder: "#E5E5EA",
 
   // Component colors
-  accent: "rgba(50, 89, 244, 1)",
+  accent: "1C1C1E",
   secondary: "#FF3B30",
   error: "#FF3B30",
   success: "#34C759",
@@ -104,6 +105,7 @@ export const lightTheme: Theme = {
   ],
   drawingCardBackground: "#FFFFFF",
   drawingCardShadow: "0px 0px 10px 0px rgba(0,0,0,0.05)",
+  drawingCardShadowDark: "0px 0px 10px 0px rgba(0,0,0,0.05)",
 };
 
 // Dark theme (new)
@@ -124,7 +126,7 @@ export const darkTheme: Theme = {
   modalBorder: "rgba(83, 145, 245, 1)",
 
   // Component colors
-  accent: "#007AFF",
+  accent: "#000000",
   secondary: "#FF3B30",
   error: "#FF3B30",
   success: "#34C759",
@@ -161,6 +163,7 @@ export const darkTheme: Theme = {
   centerTabBubbleGradient: ["#808080", "#606060", "#2D2D2D", "#131313"],
   drawingCardBackground: "rgba(228,228,228,1)",
   drawingCardShadow: "0px 0px 20px 0px rgba(0,0,0,0.5)",
+  drawingCardShadowDark: "0px 0px 20px 0px rgba(0,0,0,0.12)",
 };
 
 // Backward compatibility exports

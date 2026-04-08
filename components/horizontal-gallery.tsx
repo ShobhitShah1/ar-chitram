@@ -10,10 +10,12 @@ import Animated, {
 } from "react-native-reanimated";
 import { Image } from "expo-image";
 import { Pressable } from "./themed";
-import { storage } from "@/utils/storage";
+import {
+  getLikedContestImages,
+  saveLikedContestImages,
+} from "@/utils/contest-like-storage";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const LIKED_IMAGES_STORAGE_KEY = "liked_gallery_images";
 
 interface GalleryImage {
   id: string;
@@ -30,27 +32,6 @@ interface HorizontalGalleryProps {
 const containerWidth = SCREEN_WIDTH - 32; // 16px padding on each side
 const containerHeight = 550; // Fixed height that works well for most images
 
-// Helper functions to manage liked images in storage
-const getLikedImagesFromStorage = (): { [key: string]: boolean } => {
-  try {
-    const stored = storage.getString(LIKED_IMAGES_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.warn("Failed to load liked images from storage:", error);
-  }
-  return {};
-};
-
-const saveLikedImagesToStorage = (likedImages: { [key: string]: boolean }) => {
-  try {
-    storage.setString(LIKED_IMAGES_STORAGE_KEY, JSON.stringify(likedImages));
-  } catch (error) {
-    console.warn("Failed to save liked images to storage:", error);
-  }
-};
-
 export const HorizontalGallery: React.FC<HorizontalGalleryProps> = ({
   images,
   onImagePress,
@@ -64,7 +45,7 @@ export const HorizontalGallery: React.FC<HorizontalGalleryProps> = ({
 
   // Load liked images from storage on mount
   useEffect(() => {
-    const storedLikes = getLikedImagesFromStorage();
+    const storedLikes = getLikedContestImages();
     setLiked(storedLikes);
   }, []);
 
@@ -76,7 +57,7 @@ export const HorizontalGallery: React.FC<HorizontalGalleryProps> = ({
     setLiked(updatedLikes);
 
     // Persist to storage
-    saveLikedImagesToStorage(updatedLikes);
+    saveLikedContestImages(updatedLikes);
 
     // Notify parent
     onLikePress?.(imageId, isLiked);
@@ -122,8 +103,8 @@ export const HorizontalGallery: React.FC<HorizontalGalleryProps> = ({
         >
           <Animated.View style={[styles.likeButton, likeButtonStyle]}>
             <Ionicons
-              name={liked[item.id] ? "heart" : "heart-outline"}
               size={22}
+              name={liked[item.id] ? "heart" : "heart-outline"}
               color={liked[item.id] ? "#FF3040" : "#FFFFFF"}
             />
           </Animated.View>
@@ -256,11 +237,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "rgba(255, 255, 255, 0.4)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    // borderWidth: 1,
+    // borderColor: "rgba(255, 255, 255, 0.1)",
   },
   fixedIndicatorOverlay: {
     position: "absolute",

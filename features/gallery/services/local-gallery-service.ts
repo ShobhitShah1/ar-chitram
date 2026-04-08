@@ -13,6 +13,7 @@ const MAX_EXHIBITION_CAPTURE_REFS = 200;
 
 export interface LocalArtCaptureRecord {
   id: string;
+  groupId: string | null;
   uri: string;
   originalUri: string | null;
   createdAt: number;
@@ -46,6 +47,9 @@ const isLocalArtCaptureRecord = (
 
   return (
     typeof value.id === "string" &&
+    (typeof value.groupId === "string" ||
+      value.groupId === null ||
+      value.groupId === undefined) &&
     typeof value.uri === "string" &&
     typeof value.createdAt === "number" &&
     (typeof value.originalUri === "string" || value.originalUri === null)
@@ -210,21 +214,56 @@ export const persistLocalArtCapture = async (
   sourceUri: string,
   options?: { originalUri?: string | null },
 ): Promise<LocalArtCaptureRecord> => {
+  const [persistedCapture] = await persistLocalArtCaptures([sourceUri], options);
+  if (!persistedCapture) {
+    throw new Error("Failed to persist local art capture");
+  }
+
+  return persistedCapture;
+};
+
+export const persistLocalArtCaptures = async (
+  sourceUris: string[],
+  options?: { originalUri?: string | null },
+): Promise<LocalArtCaptureRecord[]> => {
+  const normalizedUris = Array.from(
+    new Set(
+      sourceUris
+        .map((uri) => uri?.trim())
+        .filter((uri): uri is string => Boolean(uri)),
+    ),
+  );
+
+  if (normalizedUris.length === 0) {
+    return [];
+  }
+
   await ensureDirectory(LOCAL_ART_CAPTURES_DIR);
 
-  const persistedUri = await createPersistedImageCopy(
-    sourceUri,
-    LOCAL_ART_CAPTURES_DIR,
-  );
   const existingCaptures = await getExistingArtCaptures();
-  const nextCapture: LocalArtCaptureRecord = {
-    id: `art-capture-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    uri: persistedUri,
-    originalUri: options?.originalUri ?? null,
-    createdAt: Date.now(),
-  };
+  const groupId = `art-group-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const persistedCaptures: LocalArtCaptureRecord[] = [];
 
-  const nextCaptures = [nextCapture, ...existingCaptures].slice(
+  for (const sourceUri of normalizedUris) {
+    const persistedUri = await createPersistedImageCopy(
+      sourceUri,
+      LOCAL_ART_CAPTURES_DIR,
+    );
+
+    persistedCaptures.push({
+      id: `art-capture-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`,
+      groupId,
+      uri: persistedUri,
+      originalUri: options?.originalUri ?? null,
+      createdAt: Date.now(),
+    });
+  }
+
+  const nextCaptures = [...persistedCaptures.reverse(), ...existingCaptures].slice(
     0,
     MAX_LOCAL_ART_CAPTURES,
   );
@@ -239,28 +278,6 @@ export const persistLocalArtCapture = async (
     removedCaptures.map((capture) => deleteFileIfExists(capture.uri)),
   );
 
-  return nextCapture;
-};
-
-export const persistLocalArtCaptures = async (
-  sourceUris: string[],
-  options?: { originalUri?: string | null },
-): Promise<LocalArtCaptureRecord[]> => {
-  const normalizedUris = sourceUris
-    .map((uri) => uri?.trim())
-    .filter((uri): uri is string => Boolean(uri));
-
-  if (normalizedUris.length === 0) {
-    return [];
-  }
-
-  const persistedCaptures: LocalArtCaptureRecord[] = [];
-
-  for (const sourceUri of normalizedUris) {
-    const persistedCapture = await persistLocalArtCapture(sourceUri, options);
-    persistedCaptures.push(persistedCapture);
-  }
-
   return persistedCaptures;
 };
 
@@ -272,7 +289,10 @@ export const getLocalArtCaptureGroups = async (): Promise<ArtCaptureGroup[]> => 
   const groupMap = new Map<string, ArtCaptureGroup>();
 
   for (const capture of captures) {
-    const groupKey = capture.originalUri?.trim() || capture.id;
+    const legacyBatchKey = Math.floor(capture.createdAt / 30000);
+    const groupKey =
+      capture.groupId ??
+      `${capture.originalUri?.trim() || "legacy-art"}::${legacyBatchKey}`;
     const existingGroup = groupMap.get(groupKey);
 
     if (existingGroup) {

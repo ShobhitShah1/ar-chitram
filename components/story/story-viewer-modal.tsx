@@ -1,4 +1,8 @@
 import { Story } from "@/constants/interface";
+import {
+  getLikedContestImages,
+  saveLikedContestImages,
+} from "@/utils/contest-like-storage";
 import { getProfileImageUrl } from "@/utils/asset-url";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -159,7 +163,7 @@ interface StoryViewerModalProps {
   initialIndex: number;
   onClose: () => void;
   isLikeEnabled: boolean;
-  onLikePress: (id: string) => void;
+  onLikePress: (id: string, liked: boolean) => void;
 }
 
 export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
@@ -176,8 +180,10 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
   const [imageError, setImageError] = useState<Record<number, boolean>>({});
   const [isClosing, setIsClosing] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(true);
+  const [liked, setLiked] = useState<Record<string, boolean>>({});
   const translateX = useSharedValue(-initialIndex * screenWidth);
   const progress = useSharedValue(0);
+  const likeScale = useSharedValue(1);
   const isMountedRef = useRef(true);
   const isMountedShared = useSharedValue(1);
 
@@ -401,6 +407,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
   useEffect(() => {
     if (visible && stories?.length) {
+      setLiked(getLikedContestImages());
       isMountedRef.current = true;
       isMountedShared.value = 1;
       const safeInitialIndex = Math.max(
@@ -455,6 +462,24 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
       setIsImageLoading(false);
     }
   }, [visible, initialIndex]);
+
+  const handleLike = () => {
+    const currentStoryId = stories[currentIndex]?._id;
+    if (!currentStoryId) {
+      return;
+    }
+
+    const isLiked = !liked[currentStoryId];
+    const updatedLikes = { ...liked, [currentStoryId]: isLiked };
+
+    setLiked(updatedLikes);
+    saveLikedContestImages(updatedLikes);
+    onLikePress(currentStoryId, isLiked);
+
+    likeScale.value = withTiming(1.2, { duration: 100 }, () => {
+      likeScale.value = withTiming(1, { duration: 100 });
+    });
+  };
 
   // Cleanup on unmount
   useEffect(() => {
@@ -639,6 +664,10 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
     };
   });
 
+  const likeButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: likeScale.value }],
+  }));
+
   if (!visible || !stories?.length) return null;
 
   return (
@@ -787,27 +816,22 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
           {isLikeEnabled && (
             <View style={styles.overlay}>
-              <Pressable
-                onPress={() => onLikePress(stories[currentIndex]._id)}
-                style={styles.likeButtonContainer}
-              >
-                <View style={styles.likeButton}>
+              <Pressable onPress={handleLike} style={styles.likeButtonContainer}>
+                <Animated.View
+                  style={[styles.likeButton, likeButtonAnimatedStyle]}
+                >
                   <Ionicons
                     name={
-                      !stories[currentIndex]._id ? "heart" : "heart-outline"
+                      liked[stories[currentIndex]?._id] ? "heart" : "heart-outline"
                     }
                     size={22}
-                    color={!stories[currentIndex]._id ? "#FF3040" : "#FFFFFF"}
+                    color={
+                      liked[stories[currentIndex]?._id] ? "#FF3040" : "#FFFFFF"
+                    }
                   />
-                </View>
+                </Animated.View>
               </Pressable>
             </View>
-            // <Pressable
-            //   style={styles.likeButton}
-            //   onPress={() => onLikePress(stories[currentIndex]._id)}
-            // >
-            //   <Ionicons name="heart" size={24} color="red" />
-            // </Pressable>
           )}
         </Animated.View>
       </GestureHandlerRootView>

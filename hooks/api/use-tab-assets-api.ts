@@ -1,4 +1,5 @@
 import { apiQueryKeys } from "@/services/api/query-keys";
+import { useFocusEffect } from "expo-router";
 import {
   CategorizedTabAssets,
   TabAssetCategory,
@@ -18,6 +19,7 @@ import {
 } from "@tanstack/react-query";
 import { InteractionManager } from "react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useShuffleStore } from "@/store/shuffle-store";
 
 const ASSETS_STALE_TIME = 15 * 60 * 1000;
 const ASSETS_GC_TIME = 30 * 60 * 1000;
@@ -35,13 +37,27 @@ const useHasAuthSession = () =>
 
 export const useHomeTabAssets = () => {
   const isAuthenticated = useHasAuthSession();
+  const shuffleSeed = useShuffleStore((state) =>
+    (state.shuffleSeeds && state.shuffleSeeds.home) || 0,
+  );
+  const isShuffleActive = shuffleSeed > 0;
 
-  return useQuery({
+  const query = useQuery({
     queryKey: apiQueryKeys.assets.home,
     queryFn: fetchHomeTabAssets,
     enabled: isAuthenticated,
     ...getDefaultAssetsQueryOptions(),
   });
+
+  const shuffledData = useMemo(() => {
+    if (!query.data || !isShuffleActive) return query.data;
+    return {
+      ...query.data,
+      homeGridItems: shuffleItemsSeeded(query.data.homeGridItems, shuffleSeed),
+    };
+  }, [query.data, isShuffleActive]);
+
+  return { ...query, data: shuffledData };
 };
 
 export const useColorsTabAssets = () => {
@@ -77,14 +93,7 @@ export const useSketchesTabAssets = () => {
   });
 };
 
-const shuffleItems = <T>(items: readonly T[]): T[] => {
-  const cloned = [...items];
-  for (let idx = cloned.length - 1; idx > 0; idx -= 1) {
-    const randomIndex = Math.floor(Math.random() * (idx + 1));
-    [cloned[idx], cloned[randomIndex]] = [cloned[randomIndex], cloned[idx]];
-  }
-  return cloned;
-};
+import { shuffleItemsSeeded } from "@/utils/shuffle";
 
 interface TabGridControllerResult {
   categories: string[];
@@ -116,10 +125,24 @@ export interface CreateFlowPickerAssetItem extends TabAssetItem {
 
 const useTabGridController = (
   queryData: CategorizedTabAssets | undefined,
+  screenId: string = "default",
 ): TabGridControllerResult => {
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [shuffledItems, setShuffledItems] = useState<TabAssetItem[] | null>(
-    null,
+  const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
+  const refreshShuffle = useShuffleStore((state) => state.refreshShuffle);
+  const shuffleSeed = useShuffleStore((state) =>
+    (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
+  );
+
+  const handleToggleShuffle = useCallback(
+    () => toggleShuffle(screenId),
+    [toggleShuffle, screenId],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshShuffle(screenId);
+    }, [refreshShuffle, screenId]),
   );
 
   const categories = useMemo(() => {
@@ -150,20 +173,16 @@ const useTabGridController = (
     }
   }, [categories, selectedCategory]);
 
-  useEffect(() => {
-    setShuffledItems(null);
-  }, [selectedCategory, queryData]);
-
-  const shuffle = useCallback(() => {
-    setShuffledItems(shuffleItems(rawItems));
-  }, [rawItems]);
+  const displayItems = useMemo(() => {
+    return shuffleItemsSeeded(rawItems, shuffleSeed);
+  }, [rawItems, shuffleSeed]);
 
   return {
     categories,
     selectedCategory,
     setSelectedCategory,
-    gridItems: shuffledItems ?? rawItems,
-    shuffle,
+    gridItems: displayItems,
+    shuffle: handleToggleShuffle,
   };
 };
 
@@ -305,7 +324,7 @@ const useMergedTabAssetsGrid = (
     [sourceConfigs, sourceQueries],
   );
 
-  const gridController = useTabGridController(mergedData);
+  const gridController = useTabGridController(mergedData, "create");
   const hasResolvedData = sourceQueries.some(
     (query) => query.data !== undefined,
   );
@@ -334,13 +353,21 @@ const useMergedTabAssetsGrid = (
 
 const useCreateFlowAssetPickerController = (
   sourceConfigs: readonly TabAssetSourceConfig[],
+  screenId: string = "modal",
 ) => {
   const isAuthenticated = useHasAuthSession();
   const [selectedSourceId, setSelectedSourceId] = useState(ALL_FILTER_ID);
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_FILTER_ID);
-  const [shuffledItems, setShuffledItems] = useState<
-    CreateFlowPickerAssetItem[] | null
-  >(null);
+  const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
+  const shuffleSeed = useShuffleStore((state) =>
+    (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
+  );
+  const isShuffleActive = shuffleSeed > 0;
+
+  const handleToggleShuffle = useCallback(
+    () => toggleShuffle(screenId),
+    [toggleShuffle, screenId],
+  );
 
   const sourceQueries = useQueries({
     queries: sourceConfigs.map((source) => ({
@@ -439,13 +466,9 @@ const useCreateFlowAssetPickerController = (
     }
   }, [categoryOptions, selectedCategoryId]);
 
-  useEffect(() => {
-    setShuffledItems(null);
-  }, [filteredAssets, selectedCategoryId, selectedSourceId]);
-
-  const shuffle = useCallback(() => {
-    setShuffledItems(shuffleItems(filteredAssets));
-  }, [filteredAssets]);
+  const displayAssets = useMemo(() => {
+    return shuffleItemsSeeded(filteredAssets, shuffleSeed);
+  }, [filteredAssets, shuffleSeed]);
 
   const refetch = useCallback(async () => {
     await Promise.allSettled(sourceQueries.map((query) => query.refetch()));
@@ -462,7 +485,7 @@ const useCreateFlowAssetPickerController = (
   const error = sourceQueries.find((query) => query.error)?.error ?? null;
 
   return {
-    assets: shuffledItems ?? filteredAssets,
+    assets: displayAssets,
     allAssets,
     sourceOptions,
     selectedSourceId,
@@ -470,7 +493,7 @@ const useCreateFlowAssetPickerController = (
     categoryOptions,
     selectedCategoryId,
     setSelectedCategoryId,
-    shuffle,
+    shuffle: handleToggleShuffle,
     isLoading,
     isFetching,
     isError,
@@ -483,7 +506,7 @@ export const useColorsTabGrid = () => {
   const query = useColorsTabAssets();
   return {
     ...query,
-    ...useTabGridController(query.data),
+    ...useTabGridController(query.data, "colors"),
   };
 };
 
@@ -491,7 +514,7 @@ export const useDrawingsTabGrid = () => {
   const query = useDrawingsTabAssets();
   return {
     ...query,
-    ...useTabGridController(query.data),
+    ...useTabGridController(query.data, "drawings"),
   };
 };
 
@@ -499,7 +522,7 @@ export const useCreateFlowTabAssetsGrid = () =>
   useMergedTabAssetsGrid(CREATE_FLOW_ASSET_SOURCES);
 
 export const useCreateFlowAssetPicker = () =>
-  useCreateFlowAssetPickerController(CREATE_FLOW_ASSET_SOURCES);
+  useCreateFlowAssetPickerController(CREATE_FLOW_ASSET_SOURCES, "modal");
 
 export const useColorsAndDrawingsTabGrid = () => useCreateFlowTabAssetsGrid();
 
@@ -507,7 +530,7 @@ export const useSketchesTabGrid = () => {
   const query = useSketchesTabAssets();
   return {
     ...query,
-    ...useTabGridController(query.data),
+    ...useTabGridController(query.data, "sketches"),
   };
 };
 

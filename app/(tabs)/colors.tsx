@@ -66,7 +66,7 @@ export default function Colors() {
 
   return (
     <View style={commonStyles.container}>
-      <TabsHeader isShuffle onShufflePress={shuffle} />
+      <TabsHeader isShuffle screenId="colors" onShufflePress={shuffle} />
 
       <CategoryChips
         items={categories}

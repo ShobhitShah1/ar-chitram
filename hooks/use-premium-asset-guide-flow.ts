@@ -351,7 +351,7 @@ export const usePremiumAssetGuideFlow = (
       }
 
       router.push({
-        pathname: "/drawing/guide",
+        pathname: "/virtual-creativity/preview",
         params: { imageUri },
       });
 

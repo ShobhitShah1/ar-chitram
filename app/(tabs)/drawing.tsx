@@ -66,7 +66,8 @@ const Drawing = () => {
 
   return (
     <View style={commonStyles.container}>
-      <TabsHeader isShuffle onShufflePress={shuffle} />
+      <TabsHeader isShuffle screenId="drawings" onShufflePress={shuffle} />
+
       <CategoryChips
         items={categories}
         selected={selectedCategory}

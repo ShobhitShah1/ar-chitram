@@ -2,13 +2,13 @@ import { Image } from "expo-image";
 import React from "react";
 import {
   Dimensions,
+  Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
-  Pressable,
 } from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
 
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
@@ -23,8 +23,8 @@ const IMAGE_SIZE = CARD_WIDTH - 24;
 const STAGE_HEIGHT = IMAGE_SIZE + 30;
 
 const BACK_CONFIGS = [
-  { rotate: "-12deg", translateX: -8, opacity: 0.55, scale: 0.84 },
-  { rotate: "10deg", translateX: 6, opacity: 0.72, scale: 0.9 },
+  { rotate: "-12deg", translateX: -8, opacity: 0.78, scale: 0.84 },
+  { rotate: "10deg", translateX: 6, opacity: 0.9, scale: 0.9 },
 ];
 
 interface ArtGalleryGridProps {
@@ -46,7 +46,7 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
   const isEmpty = data.length === 0;
 
   return (
-    <ScrollView
+    <Animated.ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[
         styles.container,
@@ -68,109 +68,119 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
       ) : (
         <View style={styles.grid}>
           {data.map((group) => {
-            const isFolder = group.captures.length > 1;
-            const previewCaptures = [...group.captures]
-              .sort((a, b) => b.createdAt - a.createdAt)
-              .slice(0, 3);
+            const visibleCaptures = [...group.captures].sort(
+              (a, b) => b.createdAt - a.createdAt,
+            );
+            const isFolder = visibleCaptures.length > 1;
+            const previewCaptures = visibleCaptures.slice(0, 3);
 
             const backCaptures = previewCaptures.slice(1);
             const frontCapture = previewCaptures[0];
 
             const cardBorder = {
-              borderColor: isDark
-                ? "rgba(255,255,255,0.08)"
-                : "rgba(0,0,0,0.06)",
+              borderColor: isDark ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.12)",
             };
 
             return (
-              <Pressable
+              <Animated.View
                 key={group.id}
-                onPress={() => onPress(group)}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: theme.drawingCardBackground,
-                    ...(!isDark && theme.drawingCardShadow
-                      ? { boxShadow: theme.drawingCardShadow }
-                      : {}),
-                  },
-                ]}
+                layout={LinearTransition.springify()
+                  .mass(1)
+                  .damping(25)
+                  .stiffness(140)}
+                style={styles.cardWrap}
               >
-                <View
+                <Pressable
+                  onPress={() => onPress(group)}
                   style={[
-                    styles.stage,
-                    { height: isFolder ? STAGE_HEIGHT : IMAGE_SIZE },
+                    styles.card,
+                    {
+                      backgroundColor: theme.drawingCardBackground,
+                      ...(!isDark && theme.drawingCardShadow
+                        ? { boxShadow: theme.drawingCardShadow }
+                        : {}),
+                    },
                   ]}
                 >
-                  {backCaptures.map((capture, i) => {
-                    const cfg = BACK_CONFIGS[i] ?? BACK_CONFIGS[0];
-                    return (
-                      <View
-                        key={capture.id}
-                        style={[
-                          styles.backCard,
-                          {
-                            width: IMAGE_SIZE * cfg.scale,
-                            height: IMAGE_SIZE * cfg.scale,
-                            opacity: cfg.opacity,
-                            zIndex: i + 1,
-                            transform: [
-                              { translateX: cfg.translateX },
-                              { rotate: cfg.rotate },
-                            ],
-                            backgroundColor: theme.drawingCardBackground,
-                            ...cardBorder,
-                          },
-                        ]}
-                      >
-                        <Image
-                          source={{ uri: capture.uri }}
-                          contentFit="cover"
-                          style={styles.image}
-                          cachePolicy="memory-disk"
-                        />
-                      </View>
-                    );
-                  })}
-
                   <View
                     style={[
-                      styles.frontCard,
-                      isFolder
-                        ? styles.frontCardFolder
-                        : styles.frontCardSingle,
-                      {
-                        width: IMAGE_SIZE,
-                        height: IMAGE_SIZE,
-                        backgroundColor: theme.drawingCardBackground,
-                        ...cardBorder,
-                      },
+                      styles.stage,
+                      { height: isFolder ? STAGE_HEIGHT : IMAGE_SIZE },
                     ]}
                   >
-                    <Image
-                      source={{ uri: frontCapture.uri }}
-                      contentFit="cover"
-                      style={styles.image}
-                      cachePolicy="memory-disk"
-                    />
+                    {backCaptures.map((capture, i) => {
+                      const cfg = BACK_CONFIGS[i] ?? BACK_CONFIGS[0];
+                      return (
+                        <View
+                          key={capture.id}
+                          style={[
+                            styles.backCard,
+                            {
+                              width: IMAGE_SIZE * cfg.scale,
+                              height: IMAGE_SIZE * cfg.scale,
+                              opacity: cfg.opacity,
+                              zIndex: i + 1,
+                              transform: [
+                                { translateX: cfg.translateX },
+                                { rotate: cfg.rotate },
+                              ],
+                              backgroundColor: theme.drawingCardBackground,
+                              boxShadow: isDark
+                                ? theme.drawingCardShadowDark
+                                : theme.drawingCardShadow,
+                              ...cardBorder,
+                            },
+                          ]}
+                        >
+                          <Image
+                            source={{ uri: capture.uri }}
+                            contentFit="cover"
+                            style={styles.image}
+                            cachePolicy="memory-disk"
+                          />
+                        </View>
+                      );
+                    })}
 
-                    {isFolder ? (
-                      <View style={styles.countPill}>
-                        <View style={styles.countDot} />
-                        <Text style={styles.countText}>
-                          {Math.max(0, group.captures.length - 1)}{" "}
-                          {group?.captures?.length > 2 ? "frames" : "frame"}
-                        </Text>
-                      </View>
-                    ) : null}
+                    <View
+                      style={[
+                        styles.frontCard,
+                        isFolder
+                          ? styles.frontCardFolder
+                          : styles.frontCardSingle,
+                        {
+                          width: IMAGE_SIZE,
+                          height: IMAGE_SIZE,
+                          backgroundColor: theme.drawingCardBackground,
+                          ...cardBorder,
+                        },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: frontCapture.uri }}
+                        contentFit="cover"
+                        style={styles.image}
+                        cachePolicy="memory-disk"
+                      />
+
+                      {isFolder ? (
+                        <View style={styles.countPill}>
+                          <View style={styles.countDot} />
+                          <Text style={styles.countText}>
+                            {visibleCaptures.length}{" "}
+                            {visibleCaptures.length === 1 ? "frame" : "frames"}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              </Pressable>
+                </Pressable>
+              </Animated.View>
             );
           })}
         </View>
       )}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 };
 
@@ -189,6 +199,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: GAP,
   },
+  cardWrap: {
+    width: CARD_WIDTH,
+  },
   card: {
     width: CARD_WIDTH,
     borderRadius: 24,
@@ -205,12 +218,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: "hidden",
   },
   frontCard: {
     borderRadius: 18,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: "hidden",
   },
   frontCardSingle: {},

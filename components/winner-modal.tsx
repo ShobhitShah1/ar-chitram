@@ -6,25 +6,69 @@ import {
 } from "@/assets/icons";
 import { Images } from "@/assets/images";
 import { FontFamily } from "@/constants/fonts";
+import {
+  getLikedContestImages,
+  saveLikedContestImages,
+} from "@/utils/contest-like-storage";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { Pressable, Text } from "./themed";
 
 interface WinnerModalProps {
   visible: boolean;
   onClose: () => void;
+  winnerId?: string;
   userImage?: string;
   backgroundImage?: string;
+  onLikePress?: (id: string, liked: boolean) => void;
 }
 
 export const WinnerModal: React.FC<WinnerModalProps> = ({
   visible,
   onClose,
+  winnerId,
   userImage,
   backgroundImage,
+  onLikePress,
 }) => {
+  const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const likeScale = useSharedValue(1);
+
+  useEffect(() => {
+    if (visible) {
+      setLiked(getLikedContestImages());
+    }
+  }, [visible]);
+
+  const handleLike = () => {
+    if (!winnerId) {
+      return;
+    }
+
+    const isLiked = !liked[winnerId];
+    const updatedLikes = { ...liked, [winnerId]: isLiked };
+
+    setLiked(updatedLikes);
+    saveLikedContestImages(updatedLikes);
+    onLikePress?.(winnerId, isLiked);
+
+    likeScale.value = withTiming(1.2, { duration: 100 }, () => {
+      likeScale.value = withTiming(1, { duration: 100 });
+    });
+  };
+
+  const likeButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: likeScale.value }],
+  }));
+
   return (
     <Modal
       visible={visible}
@@ -81,6 +125,32 @@ export const WinnerModal: React.FC<WinnerModalProps> = ({
                 style={{ width: "95%", height: 300 }}
               />
             </View>
+
+            {/* <View
+              style={{
+                position: "absolute",
+                bottom: 68,
+                width: "100%",
+                alignItems: "center",
+              }}
+            >
+              {winnerId ? (
+                <Pressable
+                  onPress={handleLike}
+                  style={styles.likeButtonContainer}
+                >
+                  <Animated.View
+                    style={[styles.likeButton, likeButtonAnimatedStyle]}
+                  >
+                    <Ionicons
+                      name={liked[winnerId] ? "heart" : "heart-outline"}
+                      size={22}
+                      color={liked[winnerId] ? "#FF3040" : "#FFFFFF"}
+                    />
+                  </Animated.View>
+                </Pressable>
+              ) : null}
+            </View> */}
 
             <View
               style={{
@@ -157,5 +227,18 @@ const styles = StyleSheet.create({
   closeIcon: {
     width: 12,
     height: 12,
+  },
+  likeButtonContainer: {
+    alignItems: "center",
+  },
+  likeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
   },
 });

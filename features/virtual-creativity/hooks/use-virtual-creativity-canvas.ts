@@ -50,6 +50,13 @@ export function useCanvasInitialization(
       }
 
       if (pendingUploadUris.length > 0) {
+        const hasMainImage = layers.some((layer) => layer.id === "main-image");
+        if (hasMainImage) {
+          clearPendingUploadUris();
+          setViewMode("composite");
+          return;
+        }
+
         const uploadLayers = await Promise.all(
           pendingUploadUris.map((uri, index) =>
             createSubImageLayer(uri, index + 1),

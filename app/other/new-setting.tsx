@@ -93,7 +93,13 @@ const SectionHeader: React.FC<{
 
 const NewSetting = () => {
   const router = useRouter();
-  const { theme, setThemeMode, isDark } = useTheme();
+  const {
+    theme,
+    setThemeMode,
+    themeMode,
+    autoThemeEnabled,
+    setAutoThemeEnabled,
+  } = useTheme();
 
   const commonStyles = useCommonThemedStyles();
 
@@ -167,13 +173,39 @@ const NewSetting = () => {
             <Text
               style={[styles.settingsItemText, { color: theme.textPrimary }]}
             >
-              Dark Theme
+              Auto Dark Mode
             </Text>
             <Switch
-              value={isDark}
-              onValueChange={(value) => setThemeMode(value ? "dark" : "light")}
+              value={autoThemeEnabled}
+              onValueChange={setAutoThemeEnabled}
               trackColor={{ false: "#E5E5E5", true: "#4CAF50" }}
-              thumbColor={isDark ? "#fff" : "#fff"}
+              thumbColor="#fff"
+            />
+          </View>
+          <View
+            style={[
+              styles.settingsItem,
+              {
+                backgroundColor: theme.cardBackground,
+                opacity: autoThemeEnabled ? 0.45 : 1,
+              },
+            ]}
+          >
+            <Text
+              style={[styles.settingsItemText, { color: theme.textPrimary }]}
+            >
+              Dark Mode
+            </Text>
+            <Switch
+              value={!autoThemeEnabled && themeMode === "dark"}
+              onValueChange={(value) => {
+                if (!autoThemeEnabled) {
+                  setThemeMode(value ? "dark" : "light");
+                }
+              }}
+              disabled={autoThemeEnabled}
+              trackColor={{ false: "#E5E5E5", true: "#4CAF50" }}
+              thumbColor="#fff"
             />
           </View>
         </View>
@@ -184,7 +216,7 @@ const NewSetting = () => {
         >
           <SettingsItem
             title="Contact Us"
-            onPress={() => Linking.openURL("mailto:ArChitram01@gmail.com")}
+            onPress={() => Linking.openURL("mailto:architram.app@gmail.com")}
           />
           <View
             style={[

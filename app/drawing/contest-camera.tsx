@@ -1,6 +1,13 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  BackHandler,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +36,33 @@ const ContestCamera = () => {
   const originalImageUri = Array.isArray(params.originalImageUri)
     ? params.originalImageUri[0]
     : params.originalImageUri;
+
+  const handleBackToHome = useCallback(() => {
+    resetStore();
+    void clearAllLocalUploads();
+    void queryClient.invalidateQueries({
+      queryKey: apiQueryKeys.assets.localUploads,
+    });
+    router.replace("/(tabs)/home");
+  }, [queryClient, resetStore]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") {
+        return undefined;
+      }
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          handleBackToHome();
+          return true;
+        },
+      );
+
+      return () => subscription.remove();
+    }, [handleBackToHome]),
+  );
 
   const handleJoinContest = useCallback(async () => {
     if (!imageUri || processing) {
@@ -80,7 +114,7 @@ const ContestCamera = () => {
       </View>
 
       <View style={[styles.overlay, { paddingTop: insets.top }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackToHome}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
       </View>

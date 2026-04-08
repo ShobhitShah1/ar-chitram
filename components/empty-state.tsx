@@ -12,7 +12,6 @@ import {
   ViewStyle,
 } from "react-native";
 import { Text } from "./themed";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 interface EmptyStateProps {
   /** Main title text */
@@ -131,5 +130,8 @@ const styles = StyleSheet.create({
     marginTop: 5,
     fontFamily: FontFamily.medium,
     textAlign: "center",
+    lineHeight: 20,
+    width: "90%",
+    alignSelf: "center",
   },
 });

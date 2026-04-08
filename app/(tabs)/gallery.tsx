@@ -10,10 +10,12 @@ import {
   getLocalArtCaptureGroups,
 } from "@/features/gallery/services/local-gallery-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { useShuffleStore } from "@/store/shuffle-store";
 import * as MediaLibrary from "expo-media-library";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
-import { View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Animated from "react-native-reanimated";
+import { shuffleItemsSeeded } from "../../utils/shuffle";
 
 const GALLERY_FILTERS = ["Exhibition", "Art"] as const;
 
@@ -23,6 +25,14 @@ function GalleryScreen() {
   const commonStyles = useCommonThemedStyles();
   const setDrawingHistorySnapshots = useVirtualCreativityStore(
     (state) => state.setDrawingHistorySnapshots,
+  );
+  const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
+  const handleToggleShuffle = useCallback(
+    () => toggleShuffle("gallery"),
+    [toggleShuffle],
+  );
+  const shuffleSeed = useShuffleStore(
+    (state) => (state.shuffleSeeds && state.shuffleSeeds["gallery"]) || 0,
   );
   const [selectedFilter, setSelectedFilter] =
     useState<GalleryFilter>("Exhibition");
@@ -116,24 +126,6 @@ function GalleryScreen() {
     }, [loadGalleryData]),
   );
 
-  const handleExhibitionPress = useCallback(
-    (id: string) => {
-      const index = exhibitionImages.findIndex((image) => image.id === id);
-      if (index === -1) {
-        return;
-      }
-
-      router.push({
-        pathname: "/gallery-view",
-        params: {
-          images: JSON.stringify(exhibitionImages),
-          initialIndex: index.toString(),
-        },
-      });
-    },
-    [exhibitionImages],
-  );
-
   const handleArtGroupPress = useCallback(
     (group: ArtCaptureGroup) => {
       const orderedSnapshots = [...group.captures]
@@ -157,13 +149,47 @@ function GalleryScreen() {
     [setDrawingHistorySnapshots],
   );
 
+  const handleExhibitionPress = useCallback(
+    (id: string) => {
+      const index = exhibitionImages.findIndex((image) => image.id === id);
+      if (index === -1) {
+        return;
+      }
+
+      router.push({
+        pathname: "/gallery-view",
+        params: {
+          images: JSON.stringify(exhibitionImages),
+          initialIndex: index.toString(),
+        },
+      });
+    },
+    [exhibitionImages],
+  );
+
+  const displayExhibitionImages = useMemo(() => {
+    const raw = exhibitionImages.map((image) => ({
+      id: image.id,
+      image: image.uri,
+      isPremium: false,
+    }));
+
+    return shuffleItemsSeeded(raw, shuffleSeed);
+  }, [exhibitionImages, shuffleSeed]);
+
+  const displayArtGroups = useMemo(() => {
+    return shuffleItemsSeeded(artGroups, shuffleSeed);
+  }, [artGroups, shuffleSeed]);
+
   const isExhibitionFilter = selectedFilter === "Exhibition";
+
   const exhibitionEmptyState = (
     <EmptyState
       title="No Saved Media"
       description="Photos and videos saved by ArChitram appear here automatically."
     />
   );
+
   const artEmptyState = (
     <EmptyState
       title="No Art Yet"
@@ -172,8 +198,12 @@ function GalleryScreen() {
   );
 
   return (
-    <View style={commonStyles.container}>
-      <TabsHeader isShuffle onShufflePress={loadGalleryData} />
+    <Animated.View style={commonStyles.container}>
+      <TabsHeader
+        isShuffle
+        screenId="gallery"
+        onShufflePress={handleToggleShuffle}
+      />
       <CategoryChips
         items={[...GALLERY_FILTERS]}
         selected={selectedFilter}
@@ -185,11 +215,7 @@ function GalleryScreen() {
       ) : isExhibitionFilter ? (
         <ImageGrid
           numColumns={2}
-          data={exhibitionImages.map((image) => ({
-            id: image.id,
-            image: image.uri,
-            isPremium: false,
-          }))}
+          data={displayExhibitionImages}
           onPress={(item) => handleExhibitionPress(String(item.id))}
           refreshing={refreshing}
           onRefresh={onRefresh}
@@ -197,14 +223,14 @@ function GalleryScreen() {
         />
       ) : (
         <ArtGalleryGrid
-          data={artGroups}
+          data={displayArtGroups}
           onPress={handleArtGroupPress}
           refreshing={refreshing}
           onRefresh={onRefresh}
           ListEmptyComponent={artEmptyState}
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 

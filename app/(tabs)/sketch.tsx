@@ -68,7 +68,7 @@ export default function Sketch() {
 
   return (
     <View style={commonStyles.container}>
-      <TabsHeader isShuffle onShufflePress={shuffle} />
+      <TabsHeader isShuffle screenId="sketches" onShufflePress={shuffle} />
 
       <CategoryChips
         items={categories}

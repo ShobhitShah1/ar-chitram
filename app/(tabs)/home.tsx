@@ -11,10 +11,12 @@ import { HorizontalGallery } from "@/components/horizontal-gallery";
 import { likeAndDislike } from "@/services/api-service";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
 import {
   fetchLocalUploadTabAssets,
   persistLocalUploadAsset,
 } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import { useShuffleStore } from "@/store/shuffle-store";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { useHomeTabAssets } from "@/hooks/api";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
@@ -24,6 +26,7 @@ import {
   TabAssetItem,
 } from "@/services/api/tab-assets-service";
 import { useAppPermissions } from "@/hooks/use-app-permissions";
+import { storage } from "@/utils/storage";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import React, { memo, useCallback, useEffect, useState } from "react";
@@ -38,6 +41,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
 import { FontFamily } from "@/constants/fonts";
@@ -47,8 +51,23 @@ const WINNER_CARD_HEIGHT = 224;
 const GRID_GAP = 12;
 const GRID_PADDING = 16;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const GRID_CARD_WIDTH = Math.floor((SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2);
-const GRID_THIRD_WIDTH = Math.floor((SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * 2) / 3);
+const GRID_CARD_WIDTH = Math.floor(
+  (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2,
+);
+const GRID_THIRD_WIDTH = Math.floor(
+  (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * 2) / 3,
+);
+const TODAY_WINNER_MODAL_STORAGE_KEY = "@ArChitram/home/today-winner-modal";
+
+const getLocalDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getWinnerModalMarker = (winner: HomeWinnerItem) =>
+  `${getLocalDateKey(new Date())}:${winner.id}`;
 
 interface HomeWinnerCardProps {
   winner: HomeWinnerItem;
@@ -211,12 +230,26 @@ const HomeAssetGrid = memo(
 );
 
 export default function Home() {
+  const resetVirtualCreativity = useVirtualCreativityStore(
+    (state) => state.reset,
+  );
+  const setLayers = useVirtualCreativityStore((state) => state.setLayers);
   const clearPendingUploadUris = useVirtualCreativityStore(
     (state) => state.clearPendingUploadUris,
   );
   const { syncProfile } = useUser();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
+  const router = useRouter();
+  const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
+  const handleToggleShuffle = useCallback(
+    () => toggleShuffle("home"),
+    [toggleShuffle],
+  );
+  const shuffleSeed = useShuffleStore(
+    (state) => (state.shuffleSeeds && state.shuffleSeeds.home) || 0,
+  );
+  const isShuffleActive = shuffleSeed > 0;
 
   const { data, isLoading, isError, refetch } = useHomeTabAssets();
   const homeGridItems = data?.homeGridItems ?? [];
@@ -246,12 +279,19 @@ export default function Home() {
       "Upload one image, preview the background removal, then save it for Virtual Creativity.",
     doneLabel: "Save",
     onComplete: async ({ finalUri }) => {
-      await persistLocalUploadAsset(finalUri);
+      const persistedUpload = await persistLocalUploadAsset(finalUri);
       clearPendingUploadUris();
       queryClient.setQueryData(
         apiQueryKeys.assets.localUploads,
         await fetchLocalUploadTabAssets(),
       );
+
+      resetVirtualCreativity();
+      setLayers([createMainImageLayer(persistedUpload.uri)], null);
+
+      requestAnimationFrame(() => {
+        router.push("/virtual-creativity");
+      });
     },
   });
 
@@ -271,17 +311,24 @@ export default function Home() {
     syncProfile();
   }, []);
 
-  const hasAutoShownWinner = React.useRef(false);
-
   const contestStoryData = data?.stories ?? [];
   const todayWinners = data?.todayWinners ?? [];
   const last7DaysWinners = data?.last7DaysWinners ?? [];
 
   useEffect(() => {
-    if (todayWinners.length > 0 && !hasAutoShownWinner.current) {
-      setSelectedWinner(todayWinners[0]);
-      hasAutoShownWinner.current = true;
+    const todaysWinner = todayWinners[0];
+    if (!todaysWinner) {
+      return;
     }
+
+    const marker = getWinnerModalMarker(todaysWinner);
+    const lastShownMarker = storage.getString(TODAY_WINNER_MODAL_STORAGE_KEY);
+    if (lastShownMarker === marker) {
+      return;
+    }
+
+    storage.setString(TODAY_WINNER_MODAL_STORAGE_KEY, marker);
+    setSelectedWinner(todaysWinner);
   }, [todayWinners]);
 
   const hasHomeContent =
@@ -292,8 +339,12 @@ export default function Home() {
   const isInitialLoading = isLoading && !hasHomeContent;
   const showErrorState = isError && !hasHomeContent;
 
-  const handleUploadPress = React.useCallback(() => {
-    void startUploadFlow();
+  const handleUploadPress = React.useCallback(async () => {
+    try {
+      await startUploadFlow();
+    } catch (error) {
+      console.warn("[HOME] Upload flow error:", error);
+    }
   }, [startUploadFlow]);
 
   const handleWinnerPress = useCallback((winner: HomeWinnerItem) => {
@@ -312,7 +363,12 @@ export default function Home() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <TabsHeader onUploadPress={handleUploadPress} />
+        <TabsHeader
+          onUploadPress={handleUploadPress}
+          // isShuffle
+          screenId="home"
+          // onShufflePress={handleToggleShuffle}
+        />
 
         <Animated.ScrollView
           style={styles.scrollView}
@@ -353,11 +409,6 @@ export default function Home() {
 
               {last7DaysWinners.length > 0 ? (
                 <View style={styles.sectionBlock}>
-                  <Text
-                    style={[styles.sectionTitle, { color: theme.textPrimary }]}
-                  >
-                    Last 7 Days
-                  </Text>
                   <HorizontalGallery
                     images={last7DaysWinners}
                     onImagePress={(img) =>
@@ -371,7 +422,7 @@ export default function Home() {
               ) : null}
 
               {homeGridItems.length > 0 ? (
-                <View style={styles.sectionBlock}>
+                <View style={[styles.sectionBlock, { marginTop: 15 }]}>
                   <HomeAssetGrid
                     items={homeGridItems}
                     onPress={handleAssetPress}
@@ -406,8 +457,12 @@ export default function Home() {
       <WinnerModal
         visible={!!selectedWinner}
         onClose={handleCloseWinnerModal}
+        winnerId={selectedWinner?.id}
         userImage={selectedWinner?.profileImage}
         backgroundImage={selectedWinner?.image}
+        onLikePress={(imageId, liked) => {
+          likeAndDislike(imageId, liked).catch(console.error);
+        }}
       />
 
       <ImageUploadFlowModal {...modalProps} />
@@ -424,7 +479,7 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
   storiesSection: {
-    paddingBottom: 6,
+    // paddingBottom: 5,
   },
   sectionBlock: {
     marginTop: 5,
@@ -515,7 +570,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   assetCardThird: {
-    height: GRID_THIRD_WIDTH,
+    height: GRID_THIRD_WIDTH + 30,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",

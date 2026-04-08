@@ -9,27 +9,27 @@ import {
   ic_sketch_dark,
   ic_sketch_light,
 } from "@/assets/icons";
-import {
-  CreateAssetPickerSheet,
-  type CreateSheetAssetItem,
-} from "@/features/virtual-creativity/components/create-asset-picker-sheet";
 import type { GridAssetItem } from "@/components/image-grid";
-import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { PremiumAssetModal } from "@/components/premium-asset-modal";
 import TabItem from "@/components/tab-item";
 import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
 import { ProfileProvider } from "@/context/profile-context";
 import { useTheme } from "@/context/theme-context";
 import {
+  CreateAssetPickerSheet,
+  type CreateSheetAssetItem,
+} from "@/features/virtual-creativity/components/create-asset-picker-sheet";
+import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
+import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
+import {
   fetchLocalUploadTabAssets,
   persistLocalUploadAsset,
 } from "@/features/virtual-creativity/services/local-upload-asset-service";
-import { useCreateFlowTabAssetsGrid } from "@/hooks/api";
-import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
-import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
 import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
-import { apiQueryKeys } from "@/services/api/query-keys";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { useCreateFlowTabAssetsGrid } from "@/hooks/api";
+import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
+import { apiQueryKeys } from "@/services/api/query-keys";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -91,59 +91,79 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   );
 
   return (
-    <View style={styles.tabContainer}>
-      <LinearGradient
-        colors={theme.tabBarBorderGradient as [string, string, ...string[]]}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 0, y: 0 }}
-        style={styles.gradientBorder}
-      >
+    <>
+      <View style={styles.tabContainer}>
         <LinearGradient
-          colors={theme.tabBarGradient as [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.floatingBar}
+          colors={theme.tabBarBorderGradient as [string, string, ...string[]]}
+          start={{ x: 0, y: 1 }}
+          end={{ x: 0, y: 0 }}
+          style={styles.gradientBorder}
         >
-          <TabItem
-            label="Colors"
-            imageSource={
-              state.index === 0 ? ic_color_pallete_dark : ic_color_pallete_light
-            }
-            isFocused={state.index === 0}
-            onPress={() => handleTabPress("colors")}
-          />
+          <LinearGradient
+            colors={theme.tabBarGradient as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.floatingBar}
+          >
+            <TabItem
+              label="Colors"
+              imageSource={
+                state.index === 0
+                  ? ic_color_pallete_dark
+                  : ic_color_pallete_light
+              }
+              isFocused={state.index === 0}
+              onPress={() => handleTabPress("colors")}
+            />
 
-          <TabItem
-            label="Sketch"
-            imageSource={state.index === 1 ? ic_sketch_dark : ic_sketch_light}
-            isFocused={state.index === 1}
-            onPress={() => handleTabPress("sketch")}
-          />
+            <TabItem
+              label="Sketch"
+              imageSource={state.index === 1 ? ic_sketch_dark : ic_sketch_light}
+              isFocused={state.index === 1}
+              onPress={() => handleTabPress("sketch")}
+            />
 
-          <TabItem
-            label="Create"
-            imageSource={ic_home_light}
-            isFocused={state.index === 2}
-            onPress={() => handleTabPress("home")}
-            isCenter
-          />
+            <TabItem
+              label="Create"
+              imageSource={ic_home_light}
+              isFocused={state.index === 2}
+              onPress={() => handleTabPress("home")}
+              isCenter
+            />
 
-          <TabItem
-            label="Drawing"
-            imageSource={state.index === 3 ? ic_drawing_dark : ic_drawing_light}
-            isFocused={state.index === 3}
-            onPress={() => handleTabPress("drawing")}
-          />
+            <TabItem
+              label="Drawing"
+              imageSource={
+                state.index === 3 ? ic_drawing_dark : ic_drawing_light
+              }
+              isFocused={state.index === 3}
+              onPress={() => handleTabPress("drawing")}
+            />
 
-          <TabItem
-            label="Gallery"
-            imageSource={state.index === 4 ? ic_gallery_dark : ic_gallery_light}
-            isFocused={state.index === 4}
-            onPress={() => handleTabPress("gallery")}
-          />
+            <TabItem
+              label="Gallery"
+              imageSource={
+                state.index === 4 ? ic_gallery_dark : ic_gallery_light
+              }
+              isFocused={state.index === 4}
+              onPress={() => handleTabPress("gallery")}
+            />
+          </LinearGradient>
         </LinearGradient>
-      </LinearGradient>
-    </View>
+      </View>
+
+      <LinearGradient
+        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.5)"]}
+        style={{
+          height: 120,
+          width: "100%",
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+        }}
+      />
+    </>
   );
 };
 
@@ -198,7 +218,7 @@ export default function TabLayout() {
   const openCanvasWithImage = useCallback(
     (uri: string) => {
       resetVirtualCreativity();
-      setLayers([createMainImageLayer(uri)], null);
+      setLayers([createMainImageLayer(uri)], "main-image");
       closeCreateSheet();
 
       requestAnimationFrame(() => {
@@ -290,7 +310,8 @@ export default function TabLayout() {
         return true;
       }
 
-      if (pathname === "/home") {
+      if (pathname === "/home" || pathname === "/(tabs)/home") {
+        BackHandler.exitApp();
         return true;
       }
 

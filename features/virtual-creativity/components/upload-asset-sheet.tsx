@@ -1,4 +1,5 @@
 import { ic_close, ic_suffel } from "@/assets/icons";
+import { useShuffleStore } from "@/store/shuffle-store";
 import { FontFamily } from "@/constants/fonts";
 import { PremiumPickerEntryMode } from "@/constants/premium-config";
 import { ic_pro_icon } from "@/assets/icons";
@@ -89,6 +90,7 @@ interface UploadAssetSheetProps {
   isFreePremiumActionBusy?: boolean;
   isPremiumActionBusy?: boolean;
   premiumPriceLabel?: string;
+  onShufflePress?: () => void;
 }
 
 interface ThumbnailTileProps {
@@ -297,8 +299,13 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   isFreePremiumActionBusy = false,
   isPremiumActionBusy = false,
   premiumPriceLabel,
+  onShufflePress,
 }) => {
   const { theme, isDark } = useTheme();
+  const screenId = "modal";
+  const isShuffleActive = useShuffleStore((state) => 
+    Boolean(state.screenStates && state.screenStates[screenId])
+  );
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const resolvedBottomInset = Math.max(bottomInset, insets.bottom);
@@ -443,22 +450,17 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   );
 
   const handleShuffle = useCallback(() => {
-    if (!assets.length) {
+    if (!assets.length || !onShufflePress) {
       return;
     }
 
-    let next = Math.floor(Math.random() * assets.length);
-    if (assets.length > 1 && next === selectedIndex) {
-      next = (next + 1) % assets.length;
-    }
-
     shuffleRotation.value = withTiming(shuffleRotation.value + 360, {
-      duration: 300,
+      duration: 500,
       easing: Easing.out(Easing.cubic),
     });
 
-    scrollToIndex(next);
-  }, [assets.length, scrollToIndex, selectedIndex, shuffleRotation]);
+    onShufflePress();
+  }, [assets.length, onShufflePress, shuffleRotation]);
 
   const handlePreviewScrollEnd = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number } } }) => {
@@ -710,20 +712,28 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
             onPress={handleShuffle}
             style={[
               styles.iconButton,
-              {
-                backgroundColor: iconButtonBg,
-                borderColor: iconButtonBorder,
+              isShuffleActive && {
+                backgroundColor: theme.accent + "20",
+                borderColor: theme.accent,
               },
-              shuffleIconStyle,
             ]}
             hitSlop={10}
             disabled={!assets.length}
           >
-            <Image
-              source={ic_suffel}
-              style={[styles.headerIcon, { tintColor: textPrimary }]}
-              contentFit="contain"
-            />
+            <Animated.View style={shuffleIconStyle}>
+              <Image
+                source={ic_suffel}
+                style={[
+                  styles.headerIcon,
+                  {
+                    tintColor: isShuffleActive
+                      ? (theme.accent as string)
+                      : textPrimary,
+                  },
+                ]}
+                contentFit="contain"
+              />
+            </Animated.View>
           </AnimatedPressable>
         </View>
 

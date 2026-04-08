@@ -168,14 +168,14 @@ const styles = StyleSheet.create({
   },
   cardPair: {
     height: CARD_WIDTH,
-    borderRadius: 20,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     padding: 10,
   },
   cardThird: {
     height: THIRD_WIDTH + 30,
-    borderRadius: 16,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     padding: 8,

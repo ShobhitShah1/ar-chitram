@@ -26,6 +26,7 @@ import {
   fetchLocalUploadTabAssets,
   clearAllLocalUploads,
 } from "@/features/virtual-creativity/services/local-upload-asset-service";
+import { useShuffleStore } from "@/store/shuffle-store";
 import { FontFamily } from "@/constants/fonts";
 import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
 import { useTheme } from "@/context/theme-context";
@@ -115,6 +116,7 @@ export default function VirtualCreativityScreen() {
     setSelectedCategoryId: setUploadSelectedCategoryId,
     isLoading: isUploadSheetLoading,
     isError: isUploadSheetError,
+    shuffle: onShufflePressSheet,
     refetch: refetchUploadSheetAssets,
   } = useCreateFlowAssetPicker();
 
@@ -382,6 +384,10 @@ export default function VirtualCreativityScreen() {
       });
   }, []);
 
+  /**
+   * DISABLED: Autoloading stored uploads as sub-layers.
+   * This was causing double-imaging when starting from a home upload.
+   * 
   React.useEffect(() => {
     if (storedUploadAssetsData === undefined) {
       return;
@@ -477,10 +483,11 @@ export default function VirtualCreativityScreen() {
     stripLayers.length,
     pendingUploadUris.length,
     setLayers,
-    setViewMode,
+    // setViewMode,
     storedUploadAssetsData,
     warmSmartFillLookup,
   ]);
+  */
 
   const handleUndo = useCallback(() => undo(), [undo]);
   const handleRedo = useCallback(() => redo(), [redo]);
@@ -609,16 +616,22 @@ export default function VirtualCreativityScreen() {
       const uri = await captureCanvasSnapshot(1);
       if (uri) {
         try {
-          const snapshotUris = snapshots.map((snapshot) => snapshot.uri);
-          const persistedUris =
-            snapshotUris.length > 0 &&
-            snapshotUris[snapshotUris.length - 1] === uri
-              ? snapshotUris
-              : [...snapshotUris, uri];
+          const persistedUris = Array.from(
+            new Set(
+              snapshots
+                .map((snapshot) => snapshot.uri?.trim())
+                .filter((snapshotUri): snapshotUri is string =>
+                  Boolean(snapshotUri),
+                ),
+            ),
+          );
 
-          await persistLocalArtCaptures(persistedUris, {
+          await persistLocalArtCaptures(
+            persistedUris.length > 0 ? persistedUris : [uri],
+            {
             originalUri: mainImageUri ?? uri,
-          });
+            },
+          );
         } catch (error) {
           console.warn("Failed to persist virtual creativity capture:", error);
         }
@@ -1003,10 +1016,10 @@ export default function VirtualCreativityScreen() {
     setViewMode("composite");
   }, [setViewMode]);
 
-  const handleDiscardExit = useCallback(() => {
+  const handleDiscardExit = useCallback(async () => {
     reset();
-    void clearAllLocalUploads();
-    void queryClient.invalidateQueries({
+    await clearAllLocalUploads();
+    await queryClient.invalidateQueries({
       queryKey: apiQueryKeys.assets.localUploads,
     });
     router.replace("/(tabs)/home");
@@ -1344,6 +1357,7 @@ export default function VirtualCreativityScreen() {
           categoryOptions={uploadCategoryOptions}
           selectedCategoryId={uploadSelectedCategoryId}
           onSelectCategory={setUploadSelectedCategoryId}
+          onShufflePress={onShufflePressSheet}
           onUploadPress={handleStartUploadFlow}
           isUploadActionBusy={isPickingImage}
           premiumActionMode={PREMIUM_PICKER_ENTRY_MODE}

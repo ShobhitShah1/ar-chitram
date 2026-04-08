@@ -12,9 +12,9 @@ export const StoryRow: React.FC<StoryRowProps> = ({
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
 
-  const onLikePress = (id: string) => {
+  const onLikePress = (id: string, liked: boolean) => {
     try {
-      likeAndDislike(id);
+      likeAndDislike(id, liked);
     } catch (error) {}
   };
 
@@ -48,7 +48,7 @@ export const StoryRow: React.FC<StoryRowProps> = ({
         stories={contestStoryData}
         initialIndex={selectedStoryIndex}
         onClose={() => setShowStoryModal(false)}
-        isLikeEnabled={false}
+        isLikeEnabled={true}
         onLikePress={onLikePress}
       />
     </>
