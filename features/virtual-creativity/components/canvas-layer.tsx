@@ -253,7 +253,9 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
               return;
             }
 
-            runOnJS(onSelectLayer)(isIsolated ? layer.id : isSelected ? null : layer.id);
+            runOnJS(onSelectLayer)(
+              isIsolated ? layer.id : isSelected ? null : layer.id,
+            );
           }),
       [layer.id, onSelectLayer, isSelected, isIsolated],
     );
@@ -746,9 +748,7 @@ export const CanvasLayer = React.memo<CanvasLayerProps>(
       !isTextLayer && isActiveEditable && !gesturesEnabled;
     const showPlacementUI = gesturesEnabled && isSelected;
     const shouldCaptureTouches =
-      shouldShowDrawingCanvas ||
-      gesturesEnabled ||
-      !!onLongPress;
+      shouldShowDrawingCanvas || gesturesEnabled || !!onLongPress;
 
     const renderLayerContent = () => (
       <View style={styles.frame}>

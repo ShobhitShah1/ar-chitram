@@ -8,6 +8,7 @@ import { GalleryItem } from "@/constants/interface";
 import {
   ArtCaptureGroup,
   getLocalArtCaptureGroups,
+  getLocalRecordingReferences,
 } from "@/features/gallery/services/local-gallery-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { useShuffleStore } from "@/store/shuffle-store";
@@ -17,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Animated from "react-native-reanimated";
 import { shuffleItemsSeeded } from "../../utils/shuffle";
 
-const GALLERY_FILTERS = ["Exhibition", "Art"] as const;
+const GALLERY_FILTERS = ["Exhibition", "Art", "Recording"] as const;
 
 type GalleryFilter = (typeof GALLERY_FILTERS)[number];
 
@@ -38,6 +39,7 @@ function GalleryScreen() {
     useState<GalleryFilter>("Exhibition");
   const [exhibitionImages, setExhibitionImages] = useState<GalleryItem[]>([]);
   const [artGroups, setArtGroups] = useState<ArtCaptureGroup[]>([]);
+  const [recordingItems, setRecordingItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -66,7 +68,7 @@ function GalleryScreen() {
 
       const albumAssets = await MediaLibrary.getAssetsAsync({
         album,
-        mediaType: [MediaLibrary.MediaType.photo, MediaLibrary.MediaType.video],
+        mediaType: [MediaLibrary.MediaType.photo],
         sortBy: "modificationTime",
         first: 500,
       });
@@ -100,9 +102,36 @@ function GalleryScreen() {
     }
   }, []);
 
+  const loadRecordingItems = useCallback(async () => {
+    try {
+      const records = await getLocalRecordingReferences();
+      setRecordingItems(
+        records.map((record) => ({
+          id: record.id,
+          _id: record.id,
+          uri: record.localUri,
+          width: 1080,
+          height: 1920,
+          creationTime: record.createdAt,
+          mediaType: "video",
+          fileName: record.fileName,
+          originalUri: record.originalUri,
+          sourceImageName: record.sourceImageName,
+        })),
+      );
+    } catch (error) {
+      console.error("Error loading recordings gallery:", error);
+      setRecordingItems([]);
+    }
+  }, []);
+
   const loadGalleryData = useCallback(async () => {
-    await Promise.all([loadExhibitionImages(), loadArtGroups()]);
-  }, [loadArtGroups, loadExhibitionImages]);
+    await Promise.all([
+      loadExhibitionImages(),
+      loadArtGroups(),
+      loadRecordingItems(),
+    ]);
+  }, [loadArtGroups, loadExhibitionImages, loadRecordingItems]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -149,9 +178,9 @@ function GalleryScreen() {
     [setDrawingHistorySnapshots],
   );
 
-  const handleExhibitionPress = useCallback(
-    (id: string) => {
-      const index = exhibitionImages.findIndex((image) => image.id === id);
+  const handleGalleryItemsPress = useCallback(
+    (items: GalleryItem[], id: string) => {
+      const index = items.findIndex((image) => image.id === id);
       if (index === -1) {
         return;
       }
@@ -159,12 +188,12 @@ function GalleryScreen() {
       router.push({
         pathname: "/gallery-view",
         params: {
-          images: JSON.stringify(exhibitionImages),
+          images: JSON.stringify(items),
           initialIndex: index.toString(),
         },
       });
     },
-    [exhibitionImages],
+    [],
   );
 
   const displayExhibitionImages = useMemo(() => {
@@ -181,7 +210,21 @@ function GalleryScreen() {
     return shuffleItemsSeeded(artGroups, shuffleSeed);
   }, [artGroups, shuffleSeed]);
 
+  const displayRecordingItems = useMemo(
+    () =>
+      shuffleItemsSeeded(
+        recordingItems.map((item) => ({
+          id: item.id,
+          image: item.uri,
+          mediaType: item.mediaType,
+        })),
+        shuffleSeed,
+      ),
+    [recordingItems, shuffleSeed],
+  );
+
   const isExhibitionFilter = selectedFilter === "Exhibition";
+  const isRecordingFilter = selectedFilter === "Recording";
 
   const exhibitionEmptyState = (
     <EmptyState
@@ -194,6 +237,13 @@ function GalleryScreen() {
     <EmptyState
       title="No Art Yet"
       description="Virtual Creativity captures you continue with will appear here."
+    />
+  );
+
+  const recordingEmptyState = (
+    <EmptyState
+      title="No Recordings Yet"
+      description="Drawing screen recordings will appear here automatically."
     />
   );
 
@@ -216,10 +266,24 @@ function GalleryScreen() {
         <ImageGrid
           numColumns={2}
           data={displayExhibitionImages}
-          onPress={(item) => handleExhibitionPress(String(item.id))}
+          onPress={(item) =>
+            handleGalleryItemsPress(exhibitionImages, String(item.id))
+          }
           refreshing={refreshing}
           onRefresh={onRefresh}
           ListEmptyComponent={exhibitionEmptyState}
+        />
+      ) : isRecordingFilter ? (
+        <ImageGrid
+          numColumns={2}
+          data={displayRecordingItems}
+          useStaticVideoPoster={false}
+          onPress={(item) =>
+            handleGalleryItemsPress(recordingItems, String(item.id))
+          }
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          ListEmptyComponent={recordingEmptyState}
         />
       ) : (
         <ArtGalleryGrid

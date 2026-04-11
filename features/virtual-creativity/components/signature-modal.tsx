@@ -23,8 +23,10 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BottomSheetTextInput, BottomSheetView } from "@gorhom/bottom-sheet";
+import Svg, { Text as SvgText } from "react-native-svg";
+import { captureRef } from "react-native-view-shot";
 
-type SignatureTab = "custom" | "artist";
+type SignatureTab = "custom" | "artist" | "text";
 const SHEET_MIN_HEIGHT = 500;
 const SHEET_CUSTOM_PREFERRED_HEIGHT = 800;
 const SHEET_ARTIST_PREFERRED_HEIGHT = 840;
@@ -87,7 +89,34 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     );
   }, [selectedSignatureId, visible]);
 
-  const handleApply = React.useCallback(() => {
+  const textSvgRef = React.useRef<View>(null);
+  const [isCapturing, setIsCapturing] = React.useState(false);
+
+  const handleApply = React.useCallback(async () => {
+    if (tab === "text") {
+      if (!textSvgRef.current || isCapturing) return;
+      setIsCapturing(true);
+      try {
+        const uri = await captureRef(textSvgRef.current, {
+          format: "png",
+          quality: 1,
+        });
+        onApply({
+          id: `text-${Date.now()}`,
+          value: typedName.trim() || defaultName,
+          fontFamily: FontFamily.bold,
+          isArtistPreset: false,
+          isTextAsLayer: true,
+          textLayerUri: uri,
+        });
+      } catch (err) {
+        console.warn("Failed to capture text layer:", err);
+      } finally {
+        setIsCapturing(false);
+      }
+      return;
+    }
+
     if (tab === "artist") {
       const selectedArtist =
         ARTIST_SIGNATURE_PRESETS.find((item) => item.id === selectedArtistId) ??
@@ -118,6 +147,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     selectedCustomFontId,
     tab,
     typedName,
+    isCapturing,
   ]);
 
   const customPreviewName = typedName.trim() || defaultName;
@@ -266,6 +296,26 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                 </View>
               )}
             </Pressable>
+            <Pressable onPress={() => setTab("text")} style={styles.tabButton}>
+              {tab === "text" ? (
+                <LinearGradient
+                  colors={theme.drawingButton as [string, string, ...string[]]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabButtonActive}
+                >
+                  <Text style={[styles.tabLabel, styles.tabLabelActive]}>
+                    Text
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.tabButtonInactive}>
+                  <Text style={[styles.tabLabel, styles.tabLabelInactive]}>
+                    Text
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           </View>
 
           <View style={styles.contentArea}>
@@ -296,7 +346,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   initialNumToRender={4}
                 />
               </View>
-            ) : (
+            ) : tab === "artist" ? (
               <View style={styles.artistWrap}>
                 <FlatList
                   data={ARTIST_SIGNATURE_PRESETS}
@@ -310,6 +360,50 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   nestedScrollEnabled
                   initialNumToRender={8}
                 />
+              </View>
+            ) : (
+              <View style={styles.textWrap}>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    { backgroundColor: isDark ? "#282828" : "#E8E8E8" },
+                  ]}
+                >
+                  <BottomSheetTextInput
+                    value={typedName}
+                    onChangeText={setTypedName}
+                    placeholder={defaultName}
+                    placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
+                    style={[styles.input, { color: "#000" }]}
+                  />
+                </View>
+
+                <View style={styles.textPreviewRegion}>
+                  <View
+                    ref={textSvgRef}
+                    collapsable={false}
+                    style={styles.svgHolder}
+                  >
+                    <Svg
+                      width={Math.max(120, customPreviewName.length * 36)}
+                      height={120}
+                    >
+                      <SvgText
+                        x="50%"
+                        y="50%"
+                        textAnchor="middle"
+                        alignmentBaseline="central"
+                        stroke="#000000"
+                        strokeWidth="3"
+                        fill="transparent"
+                        fontSize="58"
+                        fontFamily={FontFamily.bold}
+                      >
+                        {customPreviewName}
+                      </SvgText>
+                    </Svg>
+                  </View>
+                </View>
               </View>
             )}
           </View>
@@ -353,7 +447,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   tabButton: {
-    width: "48.4%",
+    width: "32%",
     height: 52,
     borderRadius: 26,
     overflow: "hidden",
@@ -448,11 +542,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
+    alignItems: "center",
     justifyContent: "center",
   },
   artistName: {
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 24,
+    lineHeight: 28,
     textAlign: "center",
+  },
+  textWrap: {
+    flex: 1,
+    minHeight: 0,
+    gap: 20,
+  },
+  textPreviewRegion: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  svgHolder: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
 });

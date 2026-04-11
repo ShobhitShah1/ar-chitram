@@ -147,22 +147,22 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
   },
   rightContainer: {
-    gap: 18,
+    gap: 10,
     flexDirection: "row",
     alignItems: "center",
   },
   ArChitramText: {
     fontFamily: FontFamily.galada,
-    fontSize: 23,
+    fontSize: 26,
   },
   iconMedium: {
-    width: 30,
-    height: 30,
+    width: 25,
+    height: 25,
     bottom: 2,
   },
   iconSmall: {
-    width: 23,
-    height: 23,
+    width: 20,
+    height: 20,
   },
   iconButtonWrapper: {
     width: 38,

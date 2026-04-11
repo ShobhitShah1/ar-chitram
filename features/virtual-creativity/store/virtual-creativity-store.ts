@@ -76,9 +76,7 @@ interface VirtualCreativityStore {
   setSnapshots: (snapshots: VirtualCreativitySnapshot[]) => void;
   removeSnapshot: (id: string) => void;
   clearSnapshots: () => void;
-  setDrawingHistorySnapshots: (
-    snapshots: VirtualCreativitySnapshot[],
-  ) => void;
+  setDrawingHistorySnapshots: (snapshots: VirtualCreativitySnapshot[]) => void;
   clearDrawingHistorySnapshots: () => void;
 
   setPendingUploadUris: (uris: string[]) => void;

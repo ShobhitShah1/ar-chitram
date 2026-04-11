@@ -112,15 +112,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
     scheduleNextRefresh();
 
-    const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        refreshTheme();
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (state) => {
+        if (state === "active") {
+          refreshTheme();
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+          scheduleNextRefresh();
         }
-        scheduleNextRefresh();
-      }
-    });
+      },
+    );
 
     return () => {
       if (timeoutId) {

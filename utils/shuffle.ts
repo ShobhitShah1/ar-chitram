@@ -1,7 +1,10 @@
-export const shuffleItemsSeeded = <T>(items: readonly T[], seedValue: number): T[] => {
+export const shuffleItemsSeeded = <T>(
+  items: readonly T[],
+  seedValue: number,
+): T[] => {
   if (seedValue === 0) return [...items];
   const cloned = [...items];
-  
+
   // Use the seedValue to make the shuffle unique per click
   for (let idx = cloned.length - 1; idx > 0; idx -= 1) {
     const seed = (idx * 9301 + 49297 + seedValue) % 233280;

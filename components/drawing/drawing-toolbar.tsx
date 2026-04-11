@@ -4,10 +4,13 @@ import { StyleSheet, View, Text } from "react-native";
 import { Pressable } from "../themed";
 import { Image } from "expo-image";
 import Animated, {
+  cancelAnimation,
+  withRepeat,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import {
   ic_flash,
@@ -21,8 +24,11 @@ interface DrawingToolbarProps {
   onLock?: () => void;
   onFlip?: () => void;
   onRecord?: () => void;
+  onSnapshot?: () => void;
   onFlash?: () => void;
   isLocked?: boolean;
+  isRecording?: boolean;
+  recordingDurationSec?: number;
   snapshotCount?: number;
   snapshotButtonRef?: React.RefObject<View | null>;
   onOpenPreview?: () => void;
@@ -32,13 +38,17 @@ const DrawingToolbar: React.FC<DrawingToolbarProps> = ({
   onLock,
   onFlip,
   onRecord,
+  onSnapshot,
   onFlash,
   isLocked,
+  isRecording = false,
+  recordingDurationSec = 0,
   snapshotCount = 0,
   snapshotButtonRef,
   onOpenPreview,
 }) => {
   const badgeScale = useSharedValue(1);
+  const recordPulse = useSharedValue(1);
   const prevCount = useSharedValue(snapshotCount);
 
   useEffect(() => {
@@ -51,9 +61,40 @@ const DrawingToolbar: React.FC<DrawingToolbarProps> = ({
     prevCount.value = snapshotCount;
   }, [snapshotCount]);
 
+  useEffect(() => {
+    if (isRecording) {
+      recordPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.2, { duration: 700 }),
+          withTiming(1, { duration: 700 }),
+        ),
+        -1,
+        false,
+      );
+      return;
+    }
+
+    cancelAnimation(recordPulse);
+    recordPulse.value = 1;
+  }, [isRecording, recordPulse]);
+
   const badgeAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: badgeScale.value }],
   }));
+  const recordDotStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: recordPulse.value }],
+    opacity: isRecording ? 1 : 0.9,
+  }));
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const secs = Math.floor(seconds % 60)
+      .toString()
+      .padStart(2, "0");
+    return `${mins}:${secs}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -70,8 +111,29 @@ const DrawingToolbar: React.FC<DrawingToolbarProps> = ({
       </Pressable>
 
       <Pressable
-        ref={snapshotButtonRef}
         onPress={onRecord}
+        style={[
+          styles.recordButton,
+          isRecording ? styles.recordButtonActive : null,
+        ]}
+        disabled={isLocked}
+      >
+        <Ionicons
+          name={isRecording ? "stop-circle" : "radio-button-on"}
+          size={22}
+          color="#FFFFFF"
+        />
+        {isRecording ? (
+          <Animated.View style={[styles.recordDot, recordDotStyle]} />
+        ) : null}
+        <Text style={styles.recordLabel}>
+          {isRecording ? formatRecordingTime(recordingDurationSec) : "REC"}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        ref={snapshotButtonRef}
+        onPress={onSnapshot}
         onLongPress={onOpenPreview}
         style={styles.iconButton}
         disabled={isLocked}
@@ -122,9 +184,36 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 8,
   },
+  recordButton: {
+    minWidth: 84,
+    height: 38,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  recordButtonActive: {
+    backgroundColor: "rgba(255, 59, 48, 0.92)",
+  },
   iconStyle: {
     width: 20,
     height: 20,
+  },
+  recordLabel: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontFamily: FontFamily.semibold,
+  },
+  recordDot: {
+    position: "absolute",
+    left: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
   },
   badge: {
     position: "absolute",

@@ -228,7 +228,9 @@ function VisualModeSwitch({
     : {};
 
   return (
-    <Animated.View style={[styles.modeSwitch, { backgroundColor: bg }, containerStyle]}>
+    <Animated.View
+      style={[styles.modeSwitch, { backgroundColor: bg }, containerStyle]}
+    >
       <Animated.View
         style={[
           styles.modeIndicator,

@@ -17,9 +17,7 @@ export const getLikedContestImages = (): LikedContestImagesMap => {
   return {};
 };
 
-export const saveLikedContestImages = (
-  likedImages: LikedContestImagesMap,
-) => {
+export const saveLikedContestImages = (likedImages: LikedContestImagesMap) => {
   try {
     storage.setString(
       LIKED_CONTEST_IMAGES_STORAGE_KEY,

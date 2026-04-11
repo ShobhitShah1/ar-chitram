@@ -339,7 +339,10 @@ export const usePremiumAssetActionFlow = <T extends GridAssetItem>({
 };
 
 export const usePremiumAssetGuideFlow = (
-  options?: Pick<UsePremiumAssetActionFlowOptions<GridAssetItem>, "preloadItems">,
+  options?: Pick<
+    UsePremiumAssetActionFlowOptions<GridAssetItem>,
+    "preloadItems"
+  >,
 ) => {
   const router = useRouter();
 

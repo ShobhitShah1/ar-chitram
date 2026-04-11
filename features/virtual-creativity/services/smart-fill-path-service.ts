@@ -311,7 +311,11 @@ export const resolveSmartFillRegion = async ({
     return null;
   }
 
-  const resolved = resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y);
+  const resolved = resolvePreparedRegionPath(
+    lookup,
+    mappedPoint.x,
+    mappedPoint.y,
+  );
   const preparedPath = sanitizeRegionPath(resolved.path);
   if (preparedPath) {
     return {
@@ -372,7 +376,11 @@ export const resolveCachedSmartFillRegion = ({
     return null;
   }
 
-  const resolved = resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y);
+  const resolved = resolvePreparedRegionPath(
+    lookup,
+    mappedPoint.x,
+    mappedPoint.y,
+  );
   const preparedPath = sanitizeRegionPath(resolved.path);
   if (!preparedPath) {
     return null;
@@ -414,7 +422,11 @@ export const checkPointTouchesEdge = (
     return false;
   }
 
-  const resolved = resolvePreparedRegionPath(lookup, mappedPoint.x, mappedPoint.y);
+  const resolved = resolvePreparedRegionPath(
+    lookup,
+    mappedPoint.x,
+    mappedPoint.y,
+  );
   return resolved.touchesEdge;
 };
 

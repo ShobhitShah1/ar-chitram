@@ -1,7 +1,7 @@
 import { useCameraPermissions } from "expo-camera";
 import { useFocusEffect } from "expo-router";
 import * as MediaLibrary from "expo-media-library";
-import { InteractionManager, Alert, Linking } from "react-native";
+import { InteractionManager, Linking } from "react-native";
 import { useCallback } from "react";
 
 /**
@@ -11,12 +11,31 @@ import { useCallback } from "react";
  */
 export const useAppPermissions = () => {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [mediaPermission, requestMediaPermission] = MediaLibrary.usePermissions();
+
+  const requestMediaPermission = useCallback(async () => {
+    const current = await MediaLibrary.getPermissionsAsync(false, ["photo"]);
+    if (current.granted) {
+      return current;
+    }
+
+    if (!current.canAskAgain) {
+      return current;
+    }
+
+    let requested = await MediaLibrary.requestPermissionsAsync(false, [
+      "photo",
+    ]);
+    if (!requested.granted && requested.canAskAgain) {
+      requested = await MediaLibrary.requestPermissionsAsync(true, ["photo"]);
+    }
+
+    return requested;
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       const task = InteractionManager.runAfterInteractions(() => {
-        if (!cameraPermission || !mediaPermission) {
+        if (!cameraPermission) {
           return;
         }
 
@@ -29,12 +48,7 @@ export const useAppPermissions = () => {
               }
             }
 
-            // Request Media if not granted and can still ask
-            if (!mediaPermission.granted) {
-              if (mediaPermission.canAskAgain) {
-                await requestMediaPermission();
-              }
-            }
+            await requestMediaPermission();
           } catch (error) {
             console.error("Error requesting app permissions:", error);
           }
@@ -44,12 +58,7 @@ export const useAppPermissions = () => {
       return () => {
         task.cancel();
       };
-    }, [
-      cameraPermission,
-      mediaPermission,
-      requestCameraPermission,
-      requestMediaPermission,
-    ]),
+    }, [cameraPermission, requestCameraPermission, requestMediaPermission]),
   );
 
   const openSettings = () => {
@@ -58,7 +67,7 @@ export const useAppPermissions = () => {
 
   return {
     cameraPermission,
-    mediaPermission,
+    requestMediaPermission,
     openSettings,
   };
 };

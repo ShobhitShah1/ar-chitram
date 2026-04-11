@@ -564,14 +564,14 @@ const styles = StyleSheet.create({
   },
   assetCardPair: {
     height: GRID_CARD_WIDTH,
-    borderRadius: 20,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     padding: 10,
   },
   assetCardThird: {
     height: GRID_THIRD_WIDTH + 30,
-    borderRadius: 16,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     padding: 8,

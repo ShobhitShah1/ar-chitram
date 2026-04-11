@@ -28,7 +28,8 @@ export const useShuffleStore = create<ShuffleState>()(
           return {
             shuffleSeeds: {
               ...state.shuffleSeeds,
-              [screenId]: currentSeed === 0 ? Math.floor(Math.random() * 1000000) + 1 : 0,
+              [screenId]:
+                currentSeed === 0 ? Math.floor(Math.random() * 1000000) + 1 : 0,
             },
           };
         }),

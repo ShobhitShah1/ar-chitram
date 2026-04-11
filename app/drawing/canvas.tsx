@@ -2,7 +2,13 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -34,12 +40,15 @@ import {
 } from "@/components/drawing/capture-preview-modal";
 import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-animation";
 import { useTheme } from "@/context/theme-context";
+import { persistLocalRecordingReference } from "@/features/gallery/services/local-gallery-service";
 import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
+import {} from "@/services/media-save-service";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 import { ENABLE_BOUNDARY_OVERFLOW } from "@/features/virtual-creativity/services/virtual-layer-transform";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 const CAMERA_PINCH_SENSITIVITY = 0.35;
@@ -61,10 +70,14 @@ const Canvas = () => {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
+  const [cameraMode, setCameraMode] = useState<"picture" | "video">("picture");
   const [flash, setFlash] = useState<boolean>(false);
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(0);
   const [isZoomBadgeVisible, setIsZoomBadgeVisible] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingBusy, setIsRecordingBusy] = useState(false);
+  const [recordingDurationSec, setRecordingDurationSec] = useState(0);
   const opacity = useSharedValue(0.5);
 
   // Image transformation shared values
@@ -91,6 +104,7 @@ const Canvas = () => {
   const cameraRef = useRef<CameraView>(null);
   const snapshotButtonRef = useRef<View>(null);
   const pinchStartZoomRef = useRef(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const zoomBadgeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -196,6 +210,9 @@ const Canvas = () => {
 
   useEffect(() => {
     return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
       if (zoomBadgeTimeoutRef.current) {
         clearTimeout(zoomBadgeTimeoutRef.current);
       }
@@ -367,6 +384,10 @@ const Canvas = () => {
   );
 
   const handleSnapshot = async () => {
+    if (isRecording || isRecordingBusy) {
+      return;
+    }
+
     let coords = { x: 0, y: 0 };
     if (snapshotButtonRef.current) {
       coords = await new Promise<{ x: number; y: number }>((resolve) => {
@@ -379,6 +400,11 @@ const Canvas = () => {
 
     try {
       if (cameraRef.current) {
+        if (cameraMode !== "picture") {
+          setCameraMode("picture");
+          await new Promise((resolve) => setTimeout(resolve, 180));
+        }
+
         const normalizedUri = await takeNormalizedStoryPicture(
           cameraRef.current,
           {
@@ -406,62 +432,33 @@ const Canvas = () => {
   };
 
   const handleComplete = async () => {
-    if (cameraSnapshots.length > 0) {
-      const lastSnapshot = cameraSnapshots[cameraSnapshots.length - 1];
-      router.push({
-        pathname: "/drawing/preview",
-        params: {
-          imageUri: lastSnapshot.uri,
-          originalImageUri: routeOriginalImageUri ?? routeImageUri,
-          signatureText: routeSignatureText,
-          signatureFont: routeSignatureFont,
-        },
+    if (isRecording || isRecordingBusy) {
+      Toast.show({
+        type: "info",
+        text1: "Stop recording first",
+        text2: "Finish the video recording before continuing.",
       });
-    } else if (cameraRef.current) {
-      try {
-        const normalizedUri = await takeNormalizedStoryPicture(
-          cameraRef.current,
-          {
-            quality: 1,
-            targetWidth: STORY_FRAME_WIDTH,
-            targetHeight: STORY_FRAME_HEIGHT,
-            fit: "contain",
-          },
-        );
-
-        if (normalizedUri) {
-          router.push({
-            pathname: "/drawing/preview",
-            params: {
-              imageUri: normalizedUri,
-              originalImageUri: routeOriginalImageUri ?? routeImageUri,
-              signatureText: routeSignatureText,
-              signatureFont: routeSignatureFont,
-            },
-          });
-        }
-      } catch (e) {
-        console.error("Auto-snapshot failed", e);
-        // Fallback
-        router.push({
-          pathname: "/drawing/preview",
-          params: {
-            originalImageUri: routeOriginalImageUri ?? routeImageUri,
-            signatureText: routeSignatureText,
-            signatureFont: routeSignatureFont,
-          },
-        });
-      }
-    } else {
-      router.push({
-        pathname: "/drawing/preview",
-        params: {
-          originalImageUri: routeOriginalImageUri ?? routeImageUri,
-          signatureText: routeSignatureText,
-          signatureFont: routeSignatureFont,
-        },
-      });
+      return;
     }
+
+    const overlayImageUri =
+      activeVirtualSnapshot?.uri ??
+      (typeof routeImageUri === "string" ? routeImageUri : undefined);
+
+    router.push({
+      pathname: "/drawing/contest-camera",
+      params: {
+        imageUri: overlayImageUri,
+        originalImageUri: routeOriginalImageUri ?? routeImageUri,
+        signatureText: routeSignatureText,
+        signatureFont: routeSignatureFont,
+        overlayOpacity: String(opacity.value),
+        imageScale: String(imageScale.value),
+        imageTranslateX: String(imageTranslateX.value),
+        imageTranslateY: String(imageTranslateY.value),
+        imageRotation: String(imageRotation.value),
+      },
+    });
   };
 
   const handlePrevSnapshot = () => {
@@ -475,6 +472,109 @@ const Canvas = () => {
       Math.min(currentIndex + 1, virtualSnapshots.length - 1),
     );
   };
+
+  const startRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+    }
+
+    setRecordingDurationSec(0);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingDurationSec((current) => current + 1);
+    }, 1000);
+  }, []);
+
+  const stopRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  const persistRecordedVideo = useCallback(
+    async (videoUri: string) => {
+      const originalReferenceUri =
+        routeOriginalImageUri ??
+        activeVirtualSnapshot?.uri ??
+        (typeof routeImageUri === "string" ? routeImageUri : null);
+
+      await persistLocalRecordingReference({
+        assetId: `local-recording-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`,
+        assetUri: videoUri,
+        sourceUri: videoUri,
+        originalUri: originalReferenceUri,
+      });
+
+      Toast.show({
+        type: "success",
+        text1: "Recording saved",
+        text2: "Saved in the Recording tab.",
+      });
+    },
+    [activeVirtualSnapshot?.uri, routeImageUri, routeOriginalImageUri],
+  );
+
+  const handleToggleRecording = useCallback(async () => {
+    if (!permission?.granted) {
+      const nextPermission = await requestPermission();
+      if (nextPermission.status !== "granted") {
+        return;
+      }
+    }
+
+    if (isRecording) {
+      cameraRef.current?.stopRecording();
+      return;
+    }
+
+    if (isRecordingBusy) {
+      return;
+    }
+
+    if (!cameraRef.current) {
+      return;
+    }
+
+    try {
+      setIsRecordingBusy(true);
+      if (cameraMode !== "video") {
+        setCameraMode("video");
+        await new Promise((resolve) => setTimeout(resolve, 180));
+      }
+      startRecordingTimer();
+      setIsRecording(true);
+      setIsRecordingBusy(false);
+
+      const recordingResult = await cameraRef.current.recordAsync();
+      if (recordingResult?.uri) {
+        setIsRecordingBusy(true);
+        await persistRecordedVideo(recordingResult.uri);
+      }
+    } catch (error) {
+      console.error("Video recording failed", error);
+      Toast.show({
+        type: "error",
+        text1: "Recording failed",
+        text2: "Please try again.",
+      });
+    } finally {
+      stopRecordingTimer();
+      setIsRecording(false);
+      setRecordingDurationSec(0);
+      setIsRecordingBusy(false);
+    }
+  }, [
+    cameraMode,
+    isRecording,
+    isRecordingBusy,
+    permission?.granted,
+    persistRecordedVideo,
+    requestPermission,
+    startRecordingTimer,
+    stopRecordingTimer,
+  ]);
 
   if (!permission) {
     return (
@@ -498,7 +598,9 @@ const Canvas = () => {
   }
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <GestureHandlerRootView
+      style={[styles.container, { paddingBottom: insets.bottom + 10 }]}
+    >
       <View style={StyleSheet.absoluteFill}>
         <GestureDetector gesture={zoomGesture}>
           <View style={StyleSheet.absoluteFill}>
@@ -507,6 +609,9 @@ const Canvas = () => {
               style={StyleSheet.absoluteFill}
               facing={facing}
               enableTorch={flash}
+              mode={cameraMode}
+              mute
+              animateShutter={false}
               ratio="16:9"
               zoom={zoom}
             />
@@ -579,8 +684,11 @@ const Canvas = () => {
             onLock={toggleLock}
             onFlip={toggleCameraFacing}
             onFlash={toggleFlash}
-            onRecord={handleSnapshot}
+            onRecord={handleToggleRecording}
+            onSnapshot={handleSnapshot}
             isLocked={isLocked}
+            isRecording={isRecording}
+            recordingDurationSec={recordingDurationSec}
             snapshotCount={cameraSnapshots.length}
             snapshotButtonRef={snapshotButtonRef}
             onOpenPreview={() => setShowPreview(true)}

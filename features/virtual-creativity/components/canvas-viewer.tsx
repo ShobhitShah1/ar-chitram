@@ -268,7 +268,6 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
     translateY,
   ]);
 
-
   const panGesture = Gesture.Pan()
     .enabled(isZoomMode)
     .onStart(() => {
@@ -751,18 +750,16 @@ export const CanvasViewer: React.FC<CanvasViewerProps> = ({
                           : undefined
                       }
                       gesturesEnabled={
-                        !isZoomMode && (
-                          layer.type === "text"
-                            ? selectedLayerId === layer.id
-                            : !!handModeLayerIds?.has(layer.id)
-                        )
+                        !isZoomMode &&
+                        (layer.type === "text"
+                          ? selectedLayerId === layer.id
+                          : !!handModeLayerIds?.has(layer.id))
                       }
                       enablePinchResize={
-                        !isZoomMode && (
-                          layer.type === "text"
-                            ? selectedLayerId === layer.id
-                            : !!handModeLayerIds?.has(layer.id)
-                        )
+                        !isZoomMode &&
+                        (layer.type === "text"
+                          ? selectedLayerId === layer.id
+                          : !!handModeLayerIds?.has(layer.id))
                       }
                       isSelected={selectedLayerId === layer.id}
                       zoomScale={scale}

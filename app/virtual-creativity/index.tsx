@@ -86,7 +86,7 @@ const HORIZONTAL_GUTTER = 16;
 const WORKSPACE_GAP = 6;
 const WORKSPACE_BOTTOM_PADDING = 8;
 
-const getInitialLayers = (): VirtualLayer[] => [];
+const getInitialLayers = (): VirtualLayer[] => [createMainImageLayer("")];
 
 export default function VirtualCreativityScreen() {
   const { theme, isDark } = useTheme();
@@ -119,6 +119,18 @@ export default function VirtualCreativityScreen() {
     shuffle: onShufflePressSheet,
     refetch: refetchUploadSheetAssets,
   } = useCreateFlowAssetPicker();
+
+  const finalUploadSheetAssets = useMemo(() => {
+    const blankAsset = {
+      id: "blank",
+      image: "",
+      isPremium: false,
+      sku: "",
+      sourceLabel: "Canvas",
+      categoryName: "Blank",
+    } as CreateFlowPickerAssetItem;
+    return [blankAsset, ...uploadSheetAssets];
+  }, [uploadSheetAssets]);
 
   const {
     layers,
@@ -629,7 +641,7 @@ export default function VirtualCreativityScreen() {
           await persistLocalArtCaptures(
             persistedUris.length > 0 ? persistedUris : [uri],
             {
-            originalUri: mainImageUri ?? uri,
+              originalUri: mainImageUri ?? uri,
             },
           );
         } catch (error) {
@@ -743,6 +755,14 @@ export default function VirtualCreativityScreen() {
   const handleApplyUploadAsset = useCallback(
     async (item: CreateFlowPickerAssetItem) => {
       try {
+        if (item.id === "blank") {
+          dismissAssetPicker();
+          setSelectedTool("palette");
+          setIsFocusPlacementActive(false);
+          setViewMode("composite");
+          return true;
+        }
+
         await applyImageToCanvas(item.image);
         dismissAssetPicker();
         return true;
@@ -751,7 +771,7 @@ export default function VirtualCreativityScreen() {
         return false;
       }
     },
-    [applyImageToCanvas, dismissAssetPicker],
+    [applyImageToCanvas, dismissAssetPicker, setViewMode],
   );
 
   const {
@@ -768,7 +788,7 @@ export default function VirtualCreativityScreen() {
     handlePremiumAsset,
   } = usePremiumAssetActionFlow<CreateFlowPickerAssetItem>({
     onUnlockedAction: handleApplyUploadAsset,
-    preloadItems: uploadSheetAssets,
+    preloadItems: finalUploadSheetAssets,
   });
 
   const { startUploadFlow, isPickingImage, modalProps } = useImageUploadFlow({
@@ -1188,7 +1208,41 @@ export default function VirtualCreativityScreen() {
   );
 
   const handleApplySignature = useCallback(
-    (selection: SignatureSelection) => {
+    async (selection: SignatureSelection) => {
+      setSelectedSignatureId(selection.id);
+      setSignatureModalVisible(false);
+
+      if (selection.isTextAsLayer && selection.textLayerUri) {
+        if (!hasMainLayer) {
+          const overlayLayers = allLayersSorted.filter(
+            (layer) => layer.id !== "main-image",
+          );
+          setLayers(
+            [createMainImageLayer(selection.textLayerUri), ...overlayLayers],
+            selectedLayerId,
+          );
+          setSelectedTool("gallery");
+          setIsFocusPlacementActive(false);
+          warmSmartFillLookup(selection.textLayerUri);
+          setViewMode("composite");
+          return;
+        }
+
+        try {
+          const subLayer = await createSubImageLayer(
+            selection.textLayerUri,
+            allLayersSorted.length + 1,
+            layers,
+          );
+          addLayer(subLayer);
+          selectLayerForPlacement(subLayer.id);
+          warmSmartFillLookup(subLayer.uri);
+        } catch (error) {
+          console.error("Failed to create sub image from text layer:", error);
+        }
+        return;
+      }
+
       const existingSignatureLayer = allLayersSorted.find(
         (layer) => layer.type === "text",
       );
@@ -1224,10 +1278,19 @@ export default function VirtualCreativityScreen() {
         addLayer(signatureLayer);
         selectLayerForPlacement(signatureLayer.id);
       }
-
-      setSignatureModalVisible(false);
     },
-    [addLayer, allLayersSorted, selectLayerForPlacement, updateLayer],
+    [
+      addLayer,
+      allLayersSorted,
+      selectLayerForPlacement,
+      updateLayer,
+      hasMainLayer,
+      setLayers,
+      selectedLayerId,
+      setViewMode,
+      warmSmartFillLookup,
+      layers,
+    ],
   );
 
   const handleSnapshotAnimDone = useCallback(() => {
@@ -1340,7 +1403,7 @@ export default function VirtualCreativityScreen() {
 
         <UploadAssetSheet
           modalRef={assetPickerModalRef}
-          assets={uploadSheetAssets}
+          assets={finalUploadSheetAssets}
           isLoading={isUploadSheetLoading}
           isError={isUploadSheetError}
           bottomInset={bottomInset}

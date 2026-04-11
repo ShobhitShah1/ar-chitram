@@ -1,7 +1,8 @@
 import { GalleryItem } from "@/constants/interface";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
-import React, { memo, useEffect, useRef } from "react";
+import { useVideoPlayer, VideoView } from "expo-video";
+import React, { memo, useEffect } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 
 const { width, height } = Dimensions.get("screen");
@@ -24,6 +25,26 @@ const GalleryViewItem: React.FC<GalleryViewItemProps> = ({
   contentHeight,
 }) => {
   const { theme } = useTheme();
+  const player = useVideoPlayer(item.uri, (nextPlayer) => {
+    nextPlayer.loop = true;
+    nextPlayer.volume = 1;
+    if (isActive && item.mediaType === "video") {
+      nextPlayer.play();
+    }
+  });
+
+  useEffect(() => {
+    if (item.mediaType !== "video") {
+      return;
+    }
+
+    if (isActive) {
+      player.play();
+      return;
+    }
+
+    player.pause();
+  }, [isActive, item.mediaType, player]);
 
   return (
     <View
@@ -36,14 +57,25 @@ const GalleryViewItem: React.FC<GalleryViewItemProps> = ({
         },
       ]}
     >
-      <Image
-        source={{ uri: item.uri }}
-        style={[styles.image, { width, height: contentHeight }]}
-        contentFit="contain"
-        cachePolicy="memory-disk"
-        recyclingKey={item.id}
-        priority="high"
-      />
+      {item.mediaType === "video" ? (
+        <VideoView
+          player={player}
+          style={[styles.video, { width, height: contentHeight }]}
+          contentFit="contain"
+          nativeControls={true}
+          allowsFullscreen
+          surfaceType="textureView"
+        />
+      ) : (
+        <Image
+          source={{ uri: item.uri }}
+          style={[styles.image, { width, height: contentHeight }]}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          recyclingKey={item.id}
+          priority="high"
+        />
+      )}
     </View>
   );
 };

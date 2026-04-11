@@ -9,9 +9,19 @@ import * as MediaLibrary from "expo-media-library";
 import * as FileSystem from "expo-file-system";
 
 const ALBUM_NAME = "ArChitram";
+const PHOTO_MEDIA_PERMISSIONS: MediaLibrary.GranularPermission[] = ["photo"];
+const PHOTO_VIDEO_MEDIA_PERMISSIONS: MediaLibrary.GranularPermission[] = [
+  "photo",
+  "video",
+];
 
-const ensureMediaLibraryPermission = async (): Promise<boolean> => {
-  const currentPermission = await MediaLibrary.getPermissionsAsync();
+const ensureMediaLibraryPermission = async (
+  granularPermissions: MediaLibrary.GranularPermission[] = PHOTO_MEDIA_PERMISSIONS,
+): Promise<boolean> => {
+  const currentPermission = await MediaLibrary.getPermissionsAsync(
+    false,
+    granularPermissions,
+  );
   if (currentPermission.granted) {
     return true;
   }
@@ -20,7 +30,16 @@ const ensureMediaLibraryPermission = async (): Promise<boolean> => {
     return false;
   }
 
-  const requestedPermission = await MediaLibrary.requestPermissionsAsync();
+  let requestedPermission = await MediaLibrary.requestPermissionsAsync(
+    false,
+    granularPermissions,
+  );
+  if (!requestedPermission.granted && requestedPermission.canAskAgain) {
+    requestedPermission = await MediaLibrary.requestPermissionsAsync(
+      true,
+      granularPermissions,
+    );
+  }
   return requestedPermission.granted;
 };
 
@@ -38,6 +57,7 @@ const ensureMediaLibraryPermission = async (): Promise<boolean> => {
  */
 export async function saveToArChitramAlbum(
   assetUri: string,
+  granularPermissions: MediaLibrary.GranularPermission[] = PHOTO_MEDIA_PERMISSIONS,
 ): Promise<MediaLibrary.Asset> {
   console.log(`[MediaSaveService] Starting save for: ${assetUri}`);
 
@@ -48,10 +68,12 @@ export async function saveToArChitramAlbum(
 
   // Ensure it's a local file (expo-media-library requires local files)
   if (!assetUri.startsWith("file://") && !assetUri.startsWith("/")) {
-    console.warn(`[MediaSaveService] URI might not be a local file: ${assetUri}. Attempting to save anyway.`);
+    console.warn(
+      `[MediaSaveService] URI might not be a local file: ${assetUri}. Attempting to save anyway.`,
+    );
   }
 
-  const hasPermission = await ensureMediaLibraryPermission();
+  const hasPermission = await ensureMediaLibraryPermission(granularPermissions);
   if (!hasPermission) {
     console.error("[MediaSaveService] Storage permission not granted");
     throw new Error("Storage permission not granted");
@@ -91,7 +113,9 @@ export async function saveToArChitramAlbum(
         console.log(`[MediaSaveService] Album created successfully`);
       } else {
         // Album exists - add asset to it (copy, not move, to be safe with permissions)
-        console.log(`[MediaSaveService] Adding asset to existing album: ${ALBUM_NAME}`);
+        console.log(
+          `[MediaSaveService] Adding asset to existing album: ${ALBUM_NAME}`,
+        );
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
         console.log(`[MediaSaveService] Asset added to album successfully`);
       }
@@ -114,7 +138,11 @@ export async function saveToArChitramAlbum(
  * Request media library permissions
  */
 export async function requestMediaPermissions(): Promise<boolean> {
-  return ensureMediaLibraryPermission();
+  return ensureMediaLibraryPermission(PHOTO_MEDIA_PERMISSIONS);
+}
+
+export async function requestVideoMediaPermissions(): Promise<boolean> {
+  return ensureMediaLibraryPermission(PHOTO_VIDEO_MEDIA_PERMISSIONS);
 }
 
 /**

@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   carouselContainer: {
-    borderRadius: 16,
+    borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#1a1a1a",
     shadowColor: "#000",

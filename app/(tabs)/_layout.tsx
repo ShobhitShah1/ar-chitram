@@ -51,7 +51,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
   navigation,
   onCreatePress,
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const handleTabPress = useCallback(
     (routeName: string) => {
@@ -153,7 +153,25 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
       </View>
 
       <LinearGradient
-        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.5)"]}
+        colors={
+          isDark
+            ? [
+                "rgba(0,0,0,0.95)",
+                "rgba(0,0,0,0.7)",
+                "rgba(0,0,0,0.4)",
+                "rgba(0,0,0,0.15)",
+                "rgba(0,0,0,0)",
+              ]
+            : [
+                "rgba(255,255,255,0.95)",
+                "rgba(255,255,255,0.7)",
+                "rgba(255,255,255,0.4)",
+                "rgba(255,255,255,0.15)",
+                "rgba(255,255,255,0)",
+              ]
+        }
+        start={{ x: 0, y: 1 }}
+        end={{ x: 0, y: 0 }}
         style={{
           height: 120,
           width: "100%",

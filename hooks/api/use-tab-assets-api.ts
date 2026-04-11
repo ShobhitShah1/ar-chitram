@@ -37,8 +37,8 @@ const useHasAuthSession = () =>
 
 export const useHomeTabAssets = () => {
   const isAuthenticated = useHasAuthSession();
-  const shuffleSeed = useShuffleStore((state) =>
-    (state.shuffleSeeds && state.shuffleSeeds.home) || 0,
+  const shuffleSeed = useShuffleStore(
+    (state) => (state.shuffleSeeds && state.shuffleSeeds.home) || 0,
   );
   const isShuffleActive = shuffleSeed > 0;
 
@@ -130,8 +130,8 @@ const useTabGridController = (
   const [selectedCategory, setSelectedCategory] = useState("All");
   const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
   const refreshShuffle = useShuffleStore((state) => state.refreshShuffle);
-  const shuffleSeed = useShuffleStore((state) =>
-    (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
+  const shuffleSeed = useShuffleStore(
+    (state) => (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
   );
 
   const handleToggleShuffle = useCallback(
@@ -359,8 +359,8 @@ const useCreateFlowAssetPickerController = (
   const [selectedSourceId, setSelectedSourceId] = useState(ALL_FILTER_ID);
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_FILTER_ID);
   const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
-  const shuffleSeed = useShuffleStore((state) =>
-    (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
+  const shuffleSeed = useShuffleStore(
+    (state) => (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
   );
   const isShuffleActive = shuffleSeed > 0;
 

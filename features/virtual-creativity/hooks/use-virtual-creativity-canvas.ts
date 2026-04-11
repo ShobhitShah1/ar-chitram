@@ -57,10 +57,21 @@ export function useCanvasInitialization(
           return;
         }
 
+        const validUris = pendingUploadUris.filter((uri) =>
+          Boolean(uri?.trim()),
+        );
+
+        if (validUris.length === 0) {
+          if (!cancelled) {
+            setLayers(getInitialLayers(), null);
+            setViewMode("composite");
+            clearPendingUploadUris();
+          }
+          return;
+        }
+
         const uploadLayers = await Promise.all(
-          pendingUploadUris.map((uri, index) =>
-            createSubImageLayer(uri, index + 1),
-          ),
+          validUris.map((uri, index) => createSubImageLayer(uri, index + 1)),
         );
 
         if (cancelled) {
@@ -117,12 +128,9 @@ export function useBrush(initialColor: string) {
     });
   }, [initialColor]);
 
-  const setBrushForActiveLayer = useCallback(
-    (nextBrush: BrushState) => {
-      setBrush(nextBrush);
-    },
-    [],
-  );
+  const setBrushForActiveLayer = useCallback((nextBrush: BrushState) => {
+    setBrush(nextBrush);
+  }, []);
 
   const onSelectColor = useCallback(
     (color: string, solidMode: SolidDrawMode = brush.solidMode) => {

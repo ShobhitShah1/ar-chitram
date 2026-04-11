@@ -131,13 +131,19 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
         ]}
       >
         <View style={styles.thumbImageWrap}>
-          <Image
-            source={{ uri: item.image }}
-            style={styles.thumbImage}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-            transition={120}
-          />
+          {item.id === "blank" ? (
+            <View style={styles.blankThumbContainer}>
+              <Text style={styles.blankThumbText}>Blank</Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: item.image }}
+              style={styles.thumbImage}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={120}
+            />
+          )}
         </View>
         {item.isPremium && !isUnlocked ? (
           <View pointerEvents="none" style={styles.thumbBadgeWrap}>
@@ -181,7 +187,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
   const previewListRef = useRef<FlatList<CreateSheetAssetItem> | null>(null);
   const thumbnailsListRef = useRef<FlatList<CreateSheetAssetItem> | null>(null);
 
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(1);
 
   // Prevents the viewability callback from fighting with programmatic scrolls
   const isProgrammaticScroll = useRef(false);
@@ -238,15 +244,17 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
     ? "rgba(0,0,0,0.05)"
     : "rgba(28,28,30,0.04)";
 
-  useEffect(() => {
-    if (assets.length === 0) {
-      setSelectedIndex(0);
-      return;
-    }
-    if (selectedIndex >= assets.length) {
-      setSelectedIndex(0);
-    }
-  }, [assets.length, selectedIndex]);
+  const displayAssets = useMemo(() => {
+    const blankAsset = {
+      id: "blank",
+      image: "",
+      isPremium: false,
+      sku: "",
+      sourceLabel: "Canvas",
+      categoryName: "Blank",
+    } as any;
+    return [blankAsset, ...assets];
+  }, [assets]);
 
   const syncThumbnailToIndex = useCallback((index: number, animated = true) => {
     thumbnailsListRef.current?.scrollToIndex({
@@ -258,9 +266,9 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
 
   const scrollToIndex = useCallback(
     (index: number, animated = true) => {
-      if (!assets.length) return;
+      if (!displayAssets.length) return;
 
-      const safeIndex = Math.max(0, Math.min(index, assets.length - 1));
+      const safeIndex = Math.max(0, Math.min(index, displayAssets.length - 1));
 
       // Lock out viewability callback to prevent feedback loop
       if (programmaticScrollTimer.current) {
@@ -283,7 +291,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
       });
       syncThumbnailToIndex(safeIndex, animated);
     },
-    [assets.length, previewWidth, syncThumbnailToIndex],
+    [displayAssets.length, previewWidth, syncThumbnailToIndex],
   );
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 });
@@ -302,11 +310,11 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
   );
 
   const handleShuffle = useCallback(() => {
-    if (!assets.length) return;
+    if (!displayAssets.length) return;
 
-    let next = Math.floor(Math.random() * assets.length);
-    if (assets.length > 1 && next === selectedIndex) {
-      next = (next + 1) % assets.length;
+    let next = Math.floor(Math.random() * displayAssets.length);
+    if (displayAssets.length > 1 && next === selectedIndex) {
+      next = (next + 1) % displayAssets.length;
     }
 
     shuffleRotation.value = withTiming(shuffleRotation.value + 360, {
@@ -315,13 +323,13 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
     });
 
     scrollToIndex(next);
-  }, [assets.length, selectedIndex, scrollToIndex, shuffleRotation]);
+  }, [displayAssets.length, selectedIndex, scrollToIndex, shuffleRotation]);
 
   const handleDone = useCallback(() => {
-    const selectedAsset = assets[selectedIndex];
+    const selectedAsset = displayAssets[selectedIndex];
     if (!selectedAsset) return;
     onDone(selectedAsset);
-  }, [assets, onDone, selectedIndex]);
+  }, [displayAssets, onDone, selectedIndex]);
 
   const previewItemLayout = useCallback(
     (_: ArrayLike<CreateSheetAssetItem> | null | undefined, index: number) => ({
@@ -346,25 +354,26 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
       requestAnimationFrame(() => {
         previewListRef.current?.scrollToOffset({
           offset:
-            Math.max(0, Math.min(info.index, assets.length - 1)) * previewWidth,
+            Math.max(0, Math.min(info.index, displayAssets.length - 1)) *
+            previewWidth,
           animated: true,
         });
       });
     },
-    [assets.length, previewWidth],
+    [displayAssets.length, previewWidth],
   );
 
   const handleThumbScrollFailed = useCallback(
     (info: { index: number }) => {
       requestAnimationFrame(() => {
         thumbnailsListRef.current?.scrollToIndex({
-          index: Math.max(0, Math.min(info.index, assets.length - 1)),
+          index: Math.max(0, Math.min(info.index, displayAssets.length - 1)),
           animated: true,
           viewPosition: 0.5,
         });
       });
     },
-    [assets.length],
+    [displayAssets.length],
   );
 
   const renderPreviewItem = useCallback(
@@ -388,13 +397,21 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
               },
             ]}
           >
-            <Image
-              source={{ uri: item.image }}
-              style={styles.previewImage}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={140}
-            />
+            {item.id === "blank" ? (
+              <View style={styles.blankPreviewContainer}>
+                <Text style={[styles.blankPreviewText, { color: textPrimary }]}>
+                  Blank Canvas
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: item.image }}
+                style={styles.previewImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={140}
+              />
+            )}
             {item.isPremium && !isUnlocked ? (
               <View pointerEvents="none" style={styles.previewBadgeWrap}>
                 <Image
@@ -442,7 +459,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
     ],
   );
 
-  const selectedAsset = assets[selectedIndex] ?? null;
+  const selectedAsset = displayAssets[selectedIndex] ?? null;
   const selectedAssetHasAccess = selectedAsset
     ? (isPremiumAssetUnlocked?.(selectedAsset) ?? false)
     : false;
@@ -531,7 +548,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
               shuffleIconStyle,
             ]}
             hitSlop={10}
-            disabled={!assets.length}
+            disabled={!displayAssets.length}
           >
             <Image
               source={ic_suffel}
@@ -560,7 +577,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
                 Loading images...
               </Text>
             </View>
-          ) : isError && assets.length === 0 ? (
+          ) : isError && displayAssets.length === 0 ? (
             <View style={styles.stateWrap}>
               <Text style={[styles.stateText, { color: textPrimary }]}>
                 Unable to load images.
@@ -579,7 +596,7 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
                 </Pressable>
               ) : null}
             </View>
-          ) : assets.length === 0 ? (
+          ) : displayAssets.length === 0 ? (
             <View style={styles.stateWrap}>
               <Text style={[styles.stateText, { color: textPrimary }]}>
                 No images available.
@@ -587,8 +604,10 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
             </View>
           ) : (
             <AnimatedFlatList
+              key={displayAssets.length > 1 ? "ready" : "empty"}
               ref={previewListRef}
-              data={assets}
+              data={displayAssets}
+              initialScrollIndex={displayAssets.length > 1 ? 1 : 0}
               horizontal
               pagingEnabled
               bounces={false}
@@ -611,8 +630,10 @@ export const CreateAssetPickerSheet: React.FC<CreateAssetPickerSheetProps> = ({
 
         <View style={styles.thumbsSection}>
           <FlatList
+            key={displayAssets.length > 1 ? "ready" : "empty"}
             ref={thumbnailsListRef}
-            data={assets}
+            data={displayAssets}
+            initialScrollIndex={displayAssets.length > 1 ? 1 : 0}
             horizontal
             bounces={false}
             showsHorizontalScrollIndicator={false}
@@ -799,5 +820,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: ACTION_BOTTOM_PADDING,
     paddingHorizontal: SHEET_HORIZONTAL_PADDING,
+  },
+  blankThumbContainer: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(150,150,150,0.1)",
+    borderRadius: 8,
+  },
+  blankThumbText: {
+    fontFamily: FontFamily.semibold,
+    fontSize: 10,
+    color: "#888",
+  },
+  blankPreviewContainer: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  blankPreviewText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 24,
+    opacity: 0.3,
   },
 });

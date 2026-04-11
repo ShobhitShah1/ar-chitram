@@ -131,7 +131,7 @@ const Guide = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Header title="Guide" />
+      <Header title="How to sketch" />
 
       <View style={styles.flexContent}>
         <View style={styles.carouselContainer}>

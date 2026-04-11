@@ -163,13 +163,19 @@ const ThumbnailTile: React.FC<ThumbnailTileProps> = memo(
         ]}
       >
         <View style={styles.thumbImageWrap}>
-          <Image
-            source={{ uri: item.image }}
-            style={styles.thumbImage}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-            transition={120}
-          />
+          {item.id === "blank" ? (
+            <View style={styles.blankThumbContainer}>
+              <Text style={styles.blankThumbText}>Blank</Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: item.image }}
+              style={styles.thumbImage}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={120}
+            />
+          )}
         </View>
         {item.isPremium && !isUnlocked ? (
           <View pointerEvents="none" style={styles.thumbBadgeWrap}>
@@ -303,8 +309,8 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
 }) => {
   const { theme, isDark } = useTheme();
   const screenId = "modal";
-  const isShuffleActive = useShuffleStore((state) => 
-    Boolean(state.screenStates && state.screenStates[screenId])
+  const isShuffleActive = useShuffleStore((state) =>
+    Boolean(state.shuffleSeeds && state.shuffleSeeds[screenId]),
   );
   const insets = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -553,13 +559,21 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
               },
             ]}
           >
-            <Image
-              source={{ uri: item.image }}
-              style={styles.previewImage}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={140}
-            />
+            {item.id === "blank" ? (
+              <View style={styles.blankPreviewContainer}>
+                <Text style={[styles.blankPreviewText, { color: textPrimary }]}>
+                  Blank Canvas
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: item.image }}
+                style={styles.previewImage}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={140}
+              />
+            )}
             {item.isPremium && !isUnlocked ? (
               <View pointerEvents="none" style={styles.previewBadgeWrap}>
                 <Image
@@ -1165,5 +1179,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: ACTION_BOTTOM_PADDING,
     paddingHorizontal: SHEET_HORIZONTAL_PADDING,
+  },
+  blankThumbContainer: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(150,150,150,0.1)",
+    borderRadius: 8,
+  },
+  blankThumbText: {
+    fontFamily: FontFamily.semibold,
+    fontSize: 10,
+    color: "#888",
+  },
+  blankPreviewContainer: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  blankPreviewText: {
+    fontFamily: FontFamily.bold,
+    fontSize: 24,
+    opacity: 0.3,
   },
 });

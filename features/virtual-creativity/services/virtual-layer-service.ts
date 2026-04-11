@@ -220,13 +220,13 @@ export const findNonOverlappingPosition = (
   // 2. Comprehensive Grid Search (Checking the WHOLE View)
   const gridPoints: { x: number; y: number }[] = [];
   const gridCount = 10; // 10x10 Grid = 100 potential spots across whole screen
-  
+
   for (let r = 0; r < gridCount; r++) {
     for (let c = 0; c < gridCount; c++) {
       // Calculate coord relative to center
       const tx = (canvasWidth / gridCount) * (c + 0.5) - canvasWidth / 2;
       const ty = (canvasHeight / gridCount) * (r + 0.5) - canvasHeight / 2;
-      
+
       // Check if this box physically fits inside the screen first
       const maxX = (canvasWidth - width - 10) / 2;
       const maxY = (canvasHeight - height - 10) / 2;

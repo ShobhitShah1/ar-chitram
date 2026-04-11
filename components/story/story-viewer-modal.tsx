@@ -816,13 +816,18 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
           {isLikeEnabled && (
             <View style={styles.overlay}>
-              <Pressable onPress={handleLike} style={styles.likeButtonContainer}>
+              <Pressable
+                onPress={handleLike}
+                style={styles.likeButtonContainer}
+              >
                 <Animated.View
                   style={[styles.likeButton, likeButtonAnimatedStyle]}
                 >
                   <Ionicons
                     name={
-                      liked[stories[currentIndex]?._id] ? "heart" : "heart-outline"
+                      liked[stories[currentIndex]?._id]
+                        ? "heart"
+                        : "heart-outline"
                     }
                     size={22}
                     color={

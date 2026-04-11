@@ -240,7 +240,5 @@ export const deleteLocalUploadAsset = async (id: string) => {
 export const clearAllLocalUploads = async () => {
   const uploads = await getLocalUploadAssets();
   writeStoredLocalUploads([]);
-  await Promise.all(
-    uploads.map((upload) => deleteLocalUploadFile(upload.uri)),
-  );
+  await Promise.all(uploads.map((upload) => deleteLocalUploadFile(upload.uri)));
 };

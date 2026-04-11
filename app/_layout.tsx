@@ -23,7 +23,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import { LogBox, StatusBar } from "react-native";
+import { StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
@@ -41,8 +41,6 @@ configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
 });
-
-LogBox.ignoreAllLogs();
 
 export { ErrorBoundary } from "expo-router";
 

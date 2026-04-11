@@ -23,6 +23,8 @@ export interface SignatureSelection {
   value: string;
   fontFamily: string;
   isArtistPreset: boolean;
+  isTextAsLayer?: boolean;
+  textLayerUri?: string;
 }
 
 export const PATTERN_PRESETS: PatternPreset[] = PATTERN_TEXTURES.map(

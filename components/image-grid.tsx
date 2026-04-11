@@ -7,19 +7,51 @@ import Animated, {
   FadeOut,
   LinearTransition,
 } from "react-native-reanimated";
+import { useVideoPlayer, VideoView } from "expo-video";
 
 import { Pressable } from "./themed";
 import { useTheme } from "@/context/theme-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const { width } = Dimensions.get("window");
 
 export interface GridAssetItem {
   id: string | number;
   image?: string | number | { uri: string };
+  uri?: string;
+  mediaType?: "photo" | "video" | "audio" | "unknown";
   color?: string;
   isPremium?: boolean;
   sku?: string | null;
 }
+
+const VideoPreview = React.memo(({ uri }: { uri: string }) => {
+  const player = useVideoPlayer(uri, (nextPlayer) => {
+    nextPlayer.loop = true;
+    nextPlayer.volume = 0;
+    nextPlayer.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.video}
+      contentFit="cover"
+      nativeControls={false}
+      surfaceType="textureView"
+    />
+  );
+});
+
+const VideoPoster = React.memo(() => {
+  return (
+    <View style={styles.videoPoster}>
+      <View style={styles.videoPosterBadge}>
+        <Ionicons name="play" size={22} color="#FFFFFF" />
+      </View>
+    </View>
+  );
+});
 
 interface ImageGridProps {
   data: GridAssetItem[];
@@ -30,6 +62,7 @@ interface ImageGridProps {
   refreshing?: boolean;
   onRefresh?: () => void;
   numColumns?: 2 | 3; // 3 for staggered, 2 for uniform
+  useStaticVideoPoster?: boolean;
 }
 
 const GAP = 12;
@@ -47,6 +80,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   refreshing = false,
   onRefresh,
   numColumns = 3,
+  useStaticVideoPoster = false,
 }) => {
   const { theme, isDark } = useTheme();
   const isEmpty = data.length === 0;
@@ -117,16 +151,25 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                   onPress={() => onPress(item)}
                 >
                   {item.image ? (
-                    <Image
-                      source={
-                        typeof item.image === "string"
-                          ? { uri: item.image }
-                          : item.image
-                      }
-                      contentFit="contain"
-                      style={imageStyle}
-                      transition={200}
-                    />
+                    item.mediaType === "video" &&
+                    typeof item.image === "string" ? (
+                      useStaticVideoPoster ? (
+                        <VideoPoster />
+                      ) : (
+                        <VideoPreview uri={item.image} />
+                      )
+                    ) : (
+                      <Image
+                        source={
+                          typeof item.image === "string"
+                            ? { uri: item.image }
+                            : item.image
+                        }
+                        contentFit="contain"
+                        style={imageStyle}
+                        transition={200}
+                      />
+                    )
                   ) : item.color ? null : null}
 
                   {item.isPremium ? (
@@ -187,6 +230,26 @@ const styles = StyleSheet.create({
   imageThird: {
     width: "100%",
     height: "100%",
+  },
+  video: {
+    width: "100%",
+    height: "100%",
+  },
+  videoPoster: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+    backgroundColor: "#161616",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoPosterBadge: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   premiumBadgeWrap: {
     position: "absolute",

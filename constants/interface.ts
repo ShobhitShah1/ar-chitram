@@ -231,6 +231,9 @@ export interface GalleryItem extends Story {
   height: number;
   creationTime: number;
   mediaType: "photo" | "video" | "audio" | "unknown";
+  fileName?: string;
+  originalUri?: string | null;
+  sourceImageName?: string | null;
 }
 
 export interface Story {

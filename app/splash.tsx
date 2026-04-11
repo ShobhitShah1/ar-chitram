@@ -51,13 +51,7 @@ export default function SplashScreen() {
     };
 
     void navigateFromSplash();
-  }, [
-    hydrated,
-    isAnimationDone,
-    isAuthenticated,
-    userName,
-    router,
-  ]);
+  }, [hydrated, isAnimationDone, isAuthenticated, userName, router]);
 
   return (
     <View style={styles.container}>
