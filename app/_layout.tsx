@@ -161,7 +161,7 @@ function RootLayoutNav() {
                 <KeyboardProvider>
                   <BottomSheetModalProvider>
                     <ThemedNavigator />
-                    <Toast config={toastConfig} position="bottom" />
+                    <Toast config={toastConfig} position="top" />
                   </BottomSheetModalProvider>
                 </KeyboardProvider>
               </ProfileProvider>

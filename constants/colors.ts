@@ -63,7 +63,7 @@ export const lightTheme: Theme = {
   modalBorder: "#E5E5EA",
 
   // Component colors
-  accent: "1C1C1E",
+  accent: "#1C1C1E",
   secondary: "#FF3B30",
   error: "#FF3B30",
   success: "#34C759",

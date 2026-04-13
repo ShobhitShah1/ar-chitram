@@ -279,29 +279,6 @@ const ContestCamera = () => {
             style={StyleSheet.absoluteFill}
             facing="back"
           />
-
-          {overlayImageUri ? (
-            <View style={styles.overlayStage} pointerEvents="none">
-              <Image
-                source={{ uri: overlayImageUri }}
-                style={[
-                  styles.overlayImage,
-                  {
-                    width: overlayFrame.width,
-                    height: overlayFrame.height,
-                    opacity: overlayOpacity,
-                    transform: [
-                      { translateX: imageTranslateX },
-                      { translateY: imageTranslateY },
-                      { scale: imageScale },
-                      { rotate: `${imageRotation}rad` },
-                    ],
-                  },
-                ]}
-                contentFit="contain"
-              />
-            </View>
-          ) : null}
         </>
       ) : (
         <Image

@@ -14,6 +14,7 @@ import React, {
   ReactNode,
   useEffect,
 } from "react";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 interface UserContextType {
   userName: string;
@@ -156,6 +157,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setPhoneNumber(null);
     setProfileImage(null);
     setPurchasedSkus([]);
+
+    try {
+      GoogleSignin.signOut();
+    } catch (error) {}
 
     useAuthStore.getState().clearAuthSession();
     clearApiAuthToken();

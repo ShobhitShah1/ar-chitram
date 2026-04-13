@@ -9,6 +9,7 @@ import {
 import { FontFamily } from "@/constants/fonts";
 import { FACEBOOK_LINK, INSTAGRAM_LINK } from "@/constants/server";
 import { useTheme } from "@/context/theme-context";
+import { useUser } from "@/context/user-context";
 import { openAppForRating, shareAppWithFriends } from "@/utils/app-utilities";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -101,7 +102,24 @@ const NewSetting = () => {
     setAutoThemeEnabled,
   } = useTheme();
 
-  const commonStyles = useCommonThemedStyles();
+  const { logout } = useUser();
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/(auth)/login");
+        },
+      },
+    ]);
+  };
 
   const openInstagram = () => {
     Linking.openURL(INSTAGRAM_LINK);
@@ -159,6 +177,10 @@ const NewSetting = () => {
           <SettingsItem
             title="My Uploads"
             onPress={() => router.push("/other/my-uploads")}
+          />
+          <SettingsItem
+            title="Image Search"
+            onPress={() => router.push("/other/image-search")}
           />
         </View>
 
@@ -271,7 +293,7 @@ const NewSetting = () => {
           />
         </View>
 
-        <RNPressable onLongPress={handleClearCache}>
+        <RNPressable onPress={handleClearCache} onLongPress={handleLogout}>
           <Text style={[styles.versionText, { color: theme.textSecondary }]}>
             Version {DeviceInfo.getVersion()}
           </Text>

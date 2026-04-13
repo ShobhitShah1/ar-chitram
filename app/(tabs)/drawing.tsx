@@ -31,6 +31,7 @@ const Drawing = () => {
     handleClosePremiumAsset,
     handleFreePremiumAsset,
     handlePremiumAsset,
+    isPremiumAssetUnlocked,
   } = usePremiumAssetGuideFlow({
     preloadItems: gridItems,
   });
@@ -77,6 +78,7 @@ const Drawing = () => {
       <ImageGrid
         data={emptyState ? [] : gridItems}
         onPress={handleAssetPress}
+        isUnlocked={isPremiumAssetUnlocked}
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={emptyState}

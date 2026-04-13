@@ -63,6 +63,17 @@ const dataApi = createDataClient();
 const uploadApi = createUploadClient();
 const legacyApi = createLegacyClient();
 
+// const createSketchClient = (): AxiosInstance =>
+//   axios.create({
+//     baseURL: "http://192.168.29.87:3000/data",
+//     timeout: 30000,
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//   });
+
+// const sketchApi = createSketchClient();
+
 const shouldRequireAuth = (requestData?: unknown): boolean => {
   if (!requestData || typeof requestData !== "object") {
     return false;
@@ -375,9 +386,6 @@ export async function makeApiRequest<TEvent extends ApiEventName>(
 ): Promise<ApiResponse<ApiDataFor<TEvent>>>;
 export async function makeApiRequest(
   request: AnyApiRequest,
-): Promise<UnknownApiResponse>;
-export async function makeApiRequest(
-  request: AnyApiRequest,
 ): Promise<UnknownApiResponse> {
   try {
     const response = await dataApi.post<unknown>("", request);
@@ -390,6 +398,23 @@ export async function makeApiRequest(
     throw toApiError(error as AxiosError, request.eventName);
   }
 }
+
+// export async function makeSketchRequest<TEvent extends ApiEventName>(
+//   request: ApiRequestFor<TEvent>,
+// ): Promise<ApiResponse<ApiDataFor<TEvent>>>;
+// export async function makeSketchRequest(
+//   request: AnyApiRequest,
+// ): Promise<UnknownApiResponse>;
+// export async function makeSketchRequest(
+//   request: AnyApiRequest,
+// ): Promise<UnknownApiResponse> {
+//   try {
+//     const response = await sketchApi.post<unknown>("", request);
+//     return normalizeApiResponse(response.data);
+//   } catch (error) {
+//     throw toApiError(error as AxiosError, request.eventName);
+//   }
+// }
 
 export const fetchAccounts = async (
   mobile: string,

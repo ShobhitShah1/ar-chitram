@@ -456,8 +456,13 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
   );
 
   const handleShuffle = useCallback(() => {
-    if (!assets.length || !onShufflePress) {
+    if (!assets.length) {
       return;
+    }
+
+    let next = Math.floor(Math.random() * assets.length);
+    if (assets.length > 1 && next === selectedIndex) {
+      next = (next + 1) % assets.length;
     }
 
     shuffleRotation.value = withTiming(shuffleRotation.value + 360, {
@@ -465,8 +470,8 @@ export const UploadAssetSheet: React.FC<UploadAssetSheetProps> = ({
       easing: Easing.out(Easing.cubic),
     });
 
-    onShufflePress();
-  }, [assets.length, onShufflePress, shuffleRotation]);
+    scrollToIndex(next);
+  }, [assets.length, selectedIndex, scrollToIndex, shuffleRotation]);
 
   const handlePreviewScrollEnd = useCallback(
     (event: { nativeEvent: { contentOffset: { x: number } } }) => {
