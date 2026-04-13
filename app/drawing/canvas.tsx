@@ -42,7 +42,10 @@ import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-
 import { useTheme } from "@/context/theme-context";
 import { persistLocalRecordingReference } from "@/features/gallery/services/local-gallery-service";
 import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
-import {} from "@/services/media-save-service";
+import {
+  requestVideoMediaPermissions,
+  saveToArChitramAlbum,
+} from "@/services/media-save-service";
 import { takeNormalizedStoryPicture } from "@/services/story-media-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
@@ -70,7 +73,7 @@ const Canvas = () => {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<"back" | "front">("back");
-  const [cameraMode, setCameraMode] = useState<"picture" | "video">("picture");
+  const [cameraMode, setCameraMode] = useState<"picture" | "video">("video");
   const [flash, setFlash] = useState<boolean>(false);
   const [isLocked, setIsLocked] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(0);
@@ -400,11 +403,6 @@ const Canvas = () => {
 
     try {
       if (cameraRef.current) {
-        if (cameraMode !== "picture") {
-          setCameraMode("picture");
-          await new Promise((resolve) => setTimeout(resolve, 180));
-        }
-
         const normalizedUri = await takeNormalizedStoryPicture(
           cameraRef.current,
           {
@@ -507,6 +505,12 @@ const Canvas = () => {
         originalUri: originalReferenceUri,
       });
 
+      try {
+        await saveToArChitramAlbum(videoUri, ["photo", "video"]);
+      } catch (galleryError) {
+        console.warn("[Canvas] Failed to save video to system gallery", galleryError);
+      }
+
       Toast.show({
         type: "success",
         text1: "Recording saved",
@@ -524,6 +528,16 @@ const Canvas = () => {
       }
     }
 
+    const hasGalleryPermission = await requestVideoMediaPermissions();
+    if (!hasGalleryPermission) {
+      Toast.show({
+        type: "error",
+        text1: "Permission denied",
+        text2: "Gallery access is required to save recordings.",
+      });
+      return;
+    }
+
     if (isRecording) {
       cameraRef.current?.stopRecording();
       return;
@@ -539,10 +553,6 @@ const Canvas = () => {
 
     try {
       setIsRecordingBusy(true);
-      if (cameraMode !== "video") {
-        setCameraMode("video");
-        await new Promise((resolve) => setTimeout(resolve, 180));
-      }
       startRecordingTimer();
       setIsRecording(true);
       setIsRecordingBusy(false);

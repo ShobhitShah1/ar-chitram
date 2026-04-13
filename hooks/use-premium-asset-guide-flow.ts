@@ -218,6 +218,15 @@ export const usePremiumAssetActionFlow = <T extends GridAssetItem>({
     lastPurchaseErrorRef.current = purchaseError;
     pendingPurchaseAssetRef.current = null;
 
+    const lowerError = purchaseError.toLowerCase();
+    if (
+      lowerError.includes("cancel") ||
+      lowerError.includes("canceled") ||
+      lowerError.includes("cancelled")
+    ) {
+      return;
+    }
+
     Toast.show({
       type: "error",
       text1: "Purchase failed",

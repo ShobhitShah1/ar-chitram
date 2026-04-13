@@ -18,9 +18,9 @@ const Preview = () => {
     useLocalSearchParams();
 
   const handleContinue = () => {
-    // Navigate to Contest Camera step
+    // Navigate to Guide step
     router.push({
-      pathname: "/drawing/contest-camera",
+      pathname: "/drawing/guide",
       params: {
         imageUri,
         originalImageUri: originalImageUri ?? imageUri,

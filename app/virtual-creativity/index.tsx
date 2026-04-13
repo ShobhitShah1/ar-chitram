@@ -1,51 +1,43 @@
-import { ColorPickerModal } from "@/features/virtual-creativity/components/color-picker-modal";
-import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
-import type { GridAssetItem } from "@/components/image-grid";
-import { PremiumAssetModal } from "@/components/premium-asset-modal";
-import { UploadAssetSheet } from "@/features/virtual-creativity/components/upload-asset-sheet";
 import {
   CapturePreviewModal,
   Snapshot,
 } from "@/components/drawing/capture-preview-modal";
 import ScreenshotCaptureAnimation from "@/components/drawing/screenshot-capture-animation";
+import type { GridAssetItem } from "@/components/image-grid";
+import { PremiumAssetModal } from "@/components/premium-asset-modal";
+import { FontFamily } from "@/constants/fonts";
+import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
+import { useTheme } from "@/context/theme-context";
+import { persistLocalArtCaptures } from "@/features/gallery/services/local-gallery-service";
 import {
   BottomBar,
   ToolType,
 } from "@/features/virtual-creativity/components/bottom-bar";
 import { CanvasViewer } from "@/features/virtual-creativity/components/canvas-viewer";
-import {
-  type PatternPreset,
-  type SignatureSelection,
-} from "@/features/virtual-creativity/constants/editor-presets";
+import { ColorPickerModal } from "@/features/virtual-creativity/components/color-picker-modal";
+import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { LayerStrip } from "@/features/virtual-creativity/components/layer-strip";
 import { PatternModal } from "@/features/virtual-creativity/components/pattern-modal";
 import { SignatureModal } from "@/features/virtual-creativity/components/signature-modal";
 import { TopBar } from "@/features/virtual-creativity/components/top-bar";
-import { persistLocalArtCaptures } from "@/features/gallery/services/local-gallery-service";
+import { UploadAssetSheet } from "@/features/virtual-creativity/components/upload-asset-sheet";
 import {
-  fetchLocalUploadTabAssets,
-  clearAllLocalUploads,
-} from "@/features/virtual-creativity/services/local-upload-asset-service";
-import { useShuffleStore } from "@/store/shuffle-store";
-import { FontFamily } from "@/constants/fonts";
-import { PREMIUM_PICKER_ENTRY_MODE } from "@/constants/premium-config";
-import { useTheme } from "@/context/theme-context";
-import {
-  type CreateFlowPickerAssetItem,
-  useCreateFlowAssetPicker,
-} from "@/hooks/api/use-tab-assets-api";
-import { apiQueryKeys } from "@/services/api/query-keys";
+  type PatternPreset,
+  type SignatureSelection,
+} from "@/features/virtual-creativity/constants/editor-presets";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
-import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
 import {
   useBrush,
   useCanvasInitialization,
 } from "@/features/virtual-creativity/hooks/use-virtual-creativity-canvas";
 import {
+  clearAllLocalUploads,
+  fetchLocalUploadTabAssets,
+} from "@/features/virtual-creativity/services/local-upload-asset-service";
+import {
   primeSmartFillLookup,
   type SmartFillSpace,
 } from "@/features/virtual-creativity/services/smart-fill-path-service";
-import { normalizeStoryImageUri } from "@/services/story-media-service";
 import {
   createMainImageLayer,
   createSignatureTextLayer,
@@ -55,19 +47,25 @@ import {
   VirtualLayer,
   useVirtualCreativityStore,
 } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import {
+  useCreateFlowAssetPicker,
+  type CreateFlowPickerAssetItem,
+} from "@/hooks/api/use-tab-assets-api";
+import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
+import { apiQueryKeys } from "@/services/api/query-keys";
+import { normalizeStoryImageUri } from "@/services/story-media-service";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
-import * as ImageManipulator from "expo-image-manipulator";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  ActivityIndicator,
   BackHandler,
   Dimensions,
-  Image as RNImage,
   Platform,
+  Image as RNImage,
   StatusBar,
   StyleSheet,
   Text,
@@ -119,18 +117,6 @@ export default function VirtualCreativityScreen() {
     shuffle: onShufflePressSheet,
     refetch: refetchUploadSheetAssets,
   } = useCreateFlowAssetPicker();
-
-  const finalUploadSheetAssets = useMemo(() => {
-    const blankAsset = {
-      id: "blank",
-      image: "",
-      isPremium: false,
-      sku: "",
-      sourceLabel: "Canvas",
-      categoryName: "Blank",
-    } as CreateFlowPickerAssetItem;
-    return [blankAsset, ...uploadSheetAssets];
-  }, [uploadSheetAssets]);
 
   const {
     layers,
@@ -638,12 +624,11 @@ export default function VirtualCreativityScreen() {
             ),
           );
 
-          await persistLocalArtCaptures(
-            persistedUris.length > 0 ? persistedUris : [uri],
-            {
+          if (persistedUris.length > 0) {
+            await persistLocalArtCaptures(persistedUris, {
               originalUri: mainImageUri ?? uri,
-            },
-          );
+            });
+          }
         } catch (error) {
           console.warn("Failed to persist virtual creativity capture:", error);
         }
@@ -788,7 +773,7 @@ export default function VirtualCreativityScreen() {
     handlePremiumAsset,
   } = usePremiumAssetActionFlow<CreateFlowPickerAssetItem>({
     onUnlockedAction: handleApplyUploadAsset,
-    preloadItems: finalUploadSheetAssets,
+    preloadItems: uploadSheetAssets,
   });
 
   const { startUploadFlow, isPickingImage, modalProps } = useImageUploadFlow({
@@ -892,6 +877,9 @@ export default function VirtualCreativityScreen() {
       }
     } catch (error) {
       console.error("Snapshot failed:", error);
+    } finally {
+      // Restore the drawing tool so user can continue editing immediately
+      restoreDrawingTool();
     }
   }, [
     addSnapshot,
@@ -900,6 +888,7 @@ export default function VirtualCreativityScreen() {
     setHandModeLayerIds,
     setIsZoomMode,
     setIsFocusPlacementActive,
+    restoreDrawingTool,
   ]);
 
   const handlePreviewLongPress = useCallback(() => {
@@ -1403,7 +1392,7 @@ export default function VirtualCreativityScreen() {
 
         <UploadAssetSheet
           modalRef={assetPickerModalRef}
-          assets={finalUploadSheetAssets}
+          assets={uploadSheetAssets}
           isLoading={isUploadSheetLoading}
           isError={isUploadSheetError}
           bottomInset={bottomInset}

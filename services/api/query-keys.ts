@@ -22,4 +22,9 @@ export const apiQueryKeys = {
   profile: {
     me: ["profile", "me"] as const,
   },
+  search: {
+    images: (query: string, page: number) =>
+      ["search", "images", query, page] as const,
+    popular: (page: number) => ["search", "popular", page] as const,
+  },
 } as const;

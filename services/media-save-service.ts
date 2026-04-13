@@ -6,7 +6,7 @@
  */
 
 import * as MediaLibrary from "expo-media-library";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 const ALBUM_NAME = "ArChitram";
 const PHOTO_MEDIA_PERMISSIONS: MediaLibrary.GranularPermission[] = ["photo"];
@@ -107,16 +107,16 @@ export async function saveToArChitramAlbum(
 
       if (!album) {
         // No album exists - create it with this asset
-        // copyAsset=true ensures it goes to Pictures/ArChitram and creates the folder if needed
+        // copyAsset=false ensures it moves to Pictures/ArChitram or created album folder
         console.log(`[MediaSaveService] Creating new album: ${ALBUM_NAME}`);
-        album = await MediaLibrary.createAlbumAsync(ALBUM_NAME, asset, true);
+        album = await MediaLibrary.createAlbumAsync(ALBUM_NAME, asset, false);
         console.log(`[MediaSaveService] Album created successfully`);
       } else {
-        // Album exists - add asset to it (copy, not move, to be safe with permissions)
+        // Album exists - add asset to it (move, not copy)
         console.log(
           `[MediaSaveService] Adding asset to existing album: ${ALBUM_NAME}`,
         );
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
         console.log(`[MediaSaveService] Asset added to album successfully`);
       }
     } catch (albumError) {

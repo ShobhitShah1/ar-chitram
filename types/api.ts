@@ -108,6 +108,14 @@ export interface ApiEventRequestMap {
   colors_assets: Record<never, never>;
   drawings_assets: Record<never, never>;
   sketches_assets: Record<never, never>;
+  // generate_sketch: {
+  //   base64: string;
+  // };
+  install: {
+    version_name: string;
+    old_version_code: string;
+    new_version_code: string;
+  };
 }
 
 export interface ApiEventResponseMap {
@@ -129,6 +137,10 @@ export interface ApiEventResponseMap {
   colors_assets: CategorizedAssetsResponseData;
   drawings_assets: CategorizedAssetsResponseData;
   sketches_assets: CategorizedAssetsResponseData;
+  // generate_sketch: {
+  //   output: string;
+  // };
+  install: Record<string, unknown> | string;
 }
 
 export type ApiEventName = keyof ApiEventRequestMap;

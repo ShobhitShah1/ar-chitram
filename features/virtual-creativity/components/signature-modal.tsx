@@ -52,7 +52,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   const insets = useSafeAreaInsets();
   const screenHeight = Dimensions.get("window").height;
 
-  const [tab, setTab] = React.useState<SignatureTab>("custom");
+  const [tab, setTab] = React.useState<SignatureTab>("artist");
   const [typedName, setTypedName] = React.useState("");
   const [selectedCustomFontId, setSelectedCustomFontId] = React.useState(
     SIGNATURE_FONT_PRESETS[0].id,
@@ -217,7 +217,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   );
 
   const snapPoints = React.useMemo(
-    () => (isKeyboardVisible ? ["90%"] : ["55%"]),
+    () => (isKeyboardVisible ? ["55%"] : ["55%"]),
     [isKeyboardVisible, sheetPreferredHeight],
   );
 
@@ -250,29 +250,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           />
 
           <View style={styles.tabsRow}>
-            <Pressable
-              onPress={() => setTab("custom")}
-              style={styles.tabButton}
-            >
-              {tab === "custom" ? (
-                <LinearGradient
-                  colors={theme.drawingButton as [string, string, ...string[]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.tabButtonActive}
-                >
-                  <Text style={[styles.tabLabel, styles.tabLabelActive]}>
-                    Custom
-                  </Text>
-                </LinearGradient>
-              ) : (
-                <View style={styles.tabButtonInactive}>
-                  <Text style={[styles.tabLabel, styles.tabLabelInactive]}>
-                    Custom
-                  </Text>
-                </View>
-              )}
-            </Pressable>
+            {/* Artist */}
             <Pressable
               onPress={() => setTab("artist")}
               style={styles.tabButton}
@@ -296,6 +274,33 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                 </View>
               )}
             </Pressable>
+
+            {/* Custom */}
+            <Pressable
+              onPress={() => setTab("custom")}
+              style={styles.tabButton}
+            >
+              {tab === "custom" ? (
+                <LinearGradient
+                  colors={theme.drawingButton as [string, string, ...string[]]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabButtonActive}
+                >
+                  <Text style={[styles.tabLabel, styles.tabLabelActive]}>
+                    Custom
+                  </Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.tabButtonInactive}>
+                  <Text style={[styles.tabLabel, styles.tabLabelInactive]}>
+                    Custom
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+
+            {/* Text */}
             <Pressable onPress={() => setTab("text")} style={styles.tabButton}>
               {tab === "text" ? (
                 <LinearGradient
@@ -324,7 +329,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                 <View
                   style={[styles.inputWrap, { backgroundColor: "#EAEAEA" }]}
                 >
-                  <TextInput
+                  <BottomSheetTextInput
                     value={typedName}
                     onChangeText={setTypedName}
                     placeholder={defaultName}
@@ -423,7 +428,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
   },
   sheetContent: {
-    flex: 0,
+    // flex: 0,
   },
   keyboardWrap: {
     width: "100%",

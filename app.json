@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Ar-Chitram",
+    "name": "Ar Chitram",
     "slug": "architram",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,9 +16,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Ar-Chitram needs access to your photo library so you can share images with friends in collaborative rooms.",
-        "NSCameraUsageDescription": "Ar-Chitram needs camera access to let you take and share photos directly in your rooms.",
-        "NSContactsUsageDescription": "Ar-Chitram needs access to your contacts so you can easily invite friends to collaborative rooms by phone number.",
+        "NSPhotoLibraryUsageDescription": "Ar Chitram needs access to your photo library so you can share images with friends in collaborative rooms.",
+        "NSCameraUsageDescription": "Ar Chitram needs camera access to let you take and share photos directly in your rooms.",
+        "NSContactsUsageDescription": "Ar Chitram needs access to your contacts so you can easily invite friends to collaborative rooms by phone number.",
         "NSUserTrackingUsageDescription": "This helps us provide you with a personalized experience and relevant content.",
         "LSApplicationQueriesSchemes": ["fb", "instagram", "whatsapp"]
       },
@@ -61,15 +61,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Ar-Chitram needs access to your photo library so you can share images with friends in collaborative rooms and add fun emojis together.",
-          "cameraPermission": "Ar-Chitram needs camera access to let you take and share photos directly in your rooms."
+          "photosPermission": "Ar Chitram needs access to your photo library so you can share images with friends in collaborative rooms and add fun emojis together.",
+          "cameraPermission": "Ar Chitram needs camera access to let you take and share photos directly in your rooms."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Ar-Chitram needs access to your photos so you can share them in collaborative rooms with friends.",
-          "savePhotosPermission": "Ar-Chitram needs permission to save photos so you can keep the fun images you create with friends.",
+          "photosPermission": "Ar Chitram needs access to your photos so you can share them in collaborative rooms with friends.",
+          "savePhotosPermission": "Ar Chitram needs permission to save photos so you can keep the fun images you create with friends.",
           "isAccessMediaLocationEnabled": true,
           "granularPermissions": ["photo"]
         }
@@ -112,7 +112,7 @@
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-9745099446260761~8787673854",
-          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
+          "iosAppId": "ca-app-pub-9745099446260761~8787673854"
         }
       ],
       "expo-iap",
@@ -134,8 +134,9 @@
     },
     "extra": {
       "googleWebClientId": "919012592510-g5j1tfvkk5qfi2b2ftrm8s07q5reuguv.apps.googleusercontent.com",
-      "rewardedAdUnitIdAndroid": "ca-app-pub-9745099446260761~8787673854",
-      "rewardedAdUnitIdIos": "ca-app-pub-9745099446260761~8787673854"
+      "firebaseWebApiKey": "AIzaSyC1qcRSixjbp6jpD2e-Uvj93euuswzafBA",
+      "rewardedAdUnitIdAndroid": "ca-app-pub-9745099446260761/8069433021",
+      "rewardedAdUnitIdIos": "ca-app-pub-9745099446260761/8069433021"
     }
   }
 }

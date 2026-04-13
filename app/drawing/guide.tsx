@@ -104,6 +104,11 @@ const Guide = () => {
       signatureFont,
     };
 
+    if (params.fromEdit === "true") {
+      router.back();
+      return;
+    }
+
     if (params.imageUri) {
       router.replace({
         pathname: "/drawing/canvas",
@@ -125,6 +130,7 @@ const Guide = () => {
     restoredSnapshots,
     signatureFont,
     signatureText,
+    params.fromEdit,
   ]);
 
   const isLastPage = activeIndex === DATA.length - 1;

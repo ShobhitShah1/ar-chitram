@@ -1,7 +1,7 @@
 import { ic_back, ic_guide } from "@/assets/icons";
 import { FontFamily } from "@/constants/fonts";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,6 +13,7 @@ interface DrawingHeaderProps {
 
 const DrawingHeader: React.FC<DrawingHeaderProps> = ({ onComplete }) => {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 5 }]}>
@@ -31,7 +32,7 @@ const DrawingHeader: React.FC<DrawingHeaderProps> = ({ onComplete }) => {
           onPress={() =>
             router.push({
               pathname: "/drawing/guide",
-              params: { fromEdit: "true" },
+              params: { ...params, fromEdit: "true" },
             })
           }
         >

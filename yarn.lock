@@ -3163,6 +3163,7 @@ __metadata:
     expo-store-review: "npm:~9.0.9"
     expo-system-ui: "npm:~6.0.9"
     expo-video: "npm:~3.0.16"
+    expo-video-thumbnails: "npm:~10.0.8"
     jest: "npm:^29.2.1"
     jest-expo: "npm:~54.0.17"
     lottie-react-native: "npm:^7.3.4"
@@ -5021,6 +5022,15 @@ __metadata:
     react-native-web:
       optional: true
   checksum: 10c0/316882a2fd55c63d46d1c05b15b13764c001c10cd283ae96b7e2dce735a31f21c984fd5a4c01b6bb5fe8588c4acd27709c7b31a57fcd45b6b9b0dac1be9e86c6
+  languageName: node
+  linkType: hard
+
+"expo-video-thumbnails@npm:~10.0.8":
+  version: 10.0.8
+  resolution: "expo-video-thumbnails@npm:10.0.8"
+  peerDependencies:
+    expo: "*"
+  checksum: 10c0/3738a784a770891148135b079408c2475a880947e866a267b18721fac653ea02d907c0d4805bdf2fb676004a4c01fe86fc55f077fb9aaa733b6b1af155e2b5a9
   languageName: node
   linkType: hard
 

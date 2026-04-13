@@ -157,18 +157,21 @@ function GalleryScreen() {
 
   const handleArtGroupPress = useCallback(
     (group: ArtCaptureGroup) => {
+      // Sort captures DESCENDING to show newest first
       const orderedSnapshots = [...group.captures]
-        .sort((left, right) => left.createdAt - right.createdAt)
+        .sort((left, right) => right.createdAt - left.createdAt)
         .map((capture) => ({
           id: capture.id,
           uri: capture.uri,
           timestamp: capture.createdAt,
         }));
+
       const imageUri = orderedSnapshots[0]?.uri ?? group.coverUri;
 
       setDrawingHistorySnapshots(orderedSnapshots);
+
       router.push({
-        pathname: "/drawing/guide",
+        pathname: "/drawing/preview",
         params: {
           imageUri,
           originalImageUri: group.originalUri ?? imageUri,
@@ -207,7 +210,10 @@ function GalleryScreen() {
   }, [exhibitionImages, shuffleSeed]);
 
   const displayArtGroups = useMemo(() => {
-    return shuffleItemsSeeded(artGroups, shuffleSeed);
+    // Ensure newest captures are first in the list
+    const sorted = [...artGroups].sort((a, b) => b.createdAt - a.createdAt);
+    if (shuffleSeed === 0) return sorted;
+    return shuffleItemsSeeded(sorted, shuffleSeed);
   }, [artGroups, shuffleSeed]);
 
   const displayRecordingItems = useMemo(
@@ -277,7 +283,6 @@ function GalleryScreen() {
         <ImageGrid
           numColumns={2}
           data={displayRecordingItems}
-          useStaticVideoPoster={false}
           onPress={(item) =>
             handleGalleryItemsPress(recordingItems, String(item.id))
           }

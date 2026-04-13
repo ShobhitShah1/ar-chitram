@@ -1,7 +1,14 @@
 import { ic_pro_icon } from "@/assets/icons";
 import { Image } from "expo-image";
-import React from "react";
-import { Dimensions, RefreshControl, StyleSheet, View } from "react-native";
+import React, { useMemo } from "react";
+import {
+  Dimensions,
+  RefreshControl,
+  StyleSheet,
+  View,
+  Text,
+  FlatList,
+} from "react-native";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -12,6 +19,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { Pressable } from "./themed";
 import { useTheme } from "@/context/theme-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { FontFamily } from "@/constants/fonts";
 
 const { width } = Dimensions.get("window");
 
@@ -23,31 +31,55 @@ export interface GridAssetItem {
   color?: string;
   isPremium?: boolean;
   sku?: string | null;
+  source?: string;
 }
 
-const VideoPreview = React.memo(({ uri }: { uri: string }) => {
-  const player = useVideoPlayer(uri, (nextPlayer) => {
-    nextPlayer.loop = true;
-    nextPlayer.volume = 0;
-    nextPlayer.play();
-  });
+import * as VideoThumbnails from "expo-video-thumbnails";
 
-  return (
-    <VideoView
-      player={player}
-      style={styles.video}
-      contentFit="cover"
-      nativeControls={false}
-      surfaceType="textureView"
-    />
-  );
-});
+const VideoThumbnail = React.memo(
+  ({ uri, imageStyle }: { uri: string; imageStyle: any }) => {
+    const [thumbnail, setThumbnail] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+      let isMounted = true;
+      const generateThumbnail = async () => {
+        try {
+          const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(
+            uri,
+            {
+              time: 0,
+            },
+          );
+          if (isMounted) {
+            setThumbnail(thumbUri);
+          }
+        } catch (e) {
+          // Fallback or ignore
+        }
+      };
+
+      generateThumbnail();
+      return () => {
+        isMounted = false;
+      };
+    }, [uri]);
+
+    return (
+      <Image
+        source={thumbnail ? { uri: thumbnail } : undefined}
+        contentFit="cover"
+        style={imageStyle}
+        transition={200}
+      />
+    );
+  },
+);
 
 const VideoPoster = React.memo(() => {
   return (
     <View style={styles.videoPoster}>
       <View style={styles.videoPosterBadge}>
-        <Ionicons name="play" size={22} color="#FFFFFF" />
+        <Ionicons name="videocam" size={14} color="#FFFFFF" />
       </View>
     </View>
   );
@@ -56,43 +88,193 @@ const VideoPoster = React.memo(() => {
 interface ImageGridProps {
   data: GridAssetItem[];
   onPress: (item: GridAssetItem) => void;
+  isUnlocked?: (item: GridAssetItem) => boolean;
   ListHeaderComponent?: React.ReactNode;
   ListEmptyComponent?: React.ReactNode;
   contentContainerStyle?: any;
   refreshing?: boolean;
   onRefresh?: () => void;
-  numColumns?: 2 | 3; // 3 for staggered, 2 for uniform
+  numColumns?: 2 | 3;
   useStaticVideoPoster?: boolean;
+  ListFooterComponent?: React.ReactNode;
 }
 
 const GAP = 12;
 const PADDING = 16;
 const CARD_WIDTH = Math.floor((width - PADDING * 2 - GAP) / 2);
 const THIRD_WIDTH = Math.floor((width - PADDING * 2 - GAP * 2) / 3);
-const FULL_WIDTH = width - PADDING * 2;
+
+const ImageGridItem = React.memo(
+  ({
+    item,
+    onPress,
+    isUnlocked,
+    theme,
+    isDark,
+    itemWidth,
+    cardStyle,
+    imageStyle,
+  }: {
+    item: GridAssetItem;
+    onPress: (item: GridAssetItem) => void;
+    isUnlocked?: (item: GridAssetItem) => boolean;
+    theme: any;
+    isDark: boolean;
+    itemWidth: number;
+    cardStyle: any;
+    imageStyle: any;
+  }) => {
+    return (
+      <Animated.View
+        layout={LinearTransition.springify().mass(1).damping(20).stiffness(100)}
+        entering={FadeIn.duration(300)}
+        exiting={FadeOut.duration(200)}
+        style={{ width: itemWidth }}
+      >
+        <Pressable
+          style={[
+            cardStyle,
+            {
+              width: "100%",
+              backgroundColor: item.color || theme.drawingCardBackground,
+              ...(!isDark ? { boxShadow: theme.drawingCardShadow } : {}),
+            } as any,
+          ]}
+          onPress={() => onPress(item)}
+        >
+          {item.image ? (
+            <View style={{ width: "100%", height: "100%" }}>
+              {item.mediaType === "video" && typeof item.image === "string" ? (
+                <VideoThumbnail uri={item.image} imageStyle={imageStyle} />
+              ) : (
+                <Image
+                  source={
+                    typeof item.image === "string"
+                      ? { uri: item.image }
+                      : item.image
+                  }
+                  contentFit="contain"
+                  style={imageStyle}
+                  transition={200}
+                />
+              )}
+              {item.mediaType === "video" && <VideoPoster />}
+            </View>
+          ) : null}
+
+          {item.isPremium && !isUnlocked?.(item) ? (
+            <View pointerEvents="none" style={styles.premiumBadgeWrap}>
+              <Image
+                source={ic_pro_icon}
+                style={styles.premiumBadge}
+                contentFit="contain"
+                transition={0}
+              />
+            </View>
+          ) : null}
+        </Pressable>
+
+        {item.source ? (
+          <View pointerEvents="none" style={styles.sourceTagWrap}>
+            <Text style={styles.sourceTagText}>{item.source}</Text>
+          </View>
+        ) : null}
+      </Animated.View>
+    );
+  },
+);
+
+type GridRow = {
+  id: string;
+  items: GridAssetItem[];
+  type: "pair" | "third";
+};
 
 const ImageGrid: React.FC<ImageGridProps> = ({
   data,
   onPress,
+  isUnlocked,
   ListHeaderComponent,
   ListEmptyComponent,
   contentContainerStyle,
   refreshing = false,
   onRefresh,
   numColumns = 3,
-  useStaticVideoPoster = false,
+  ListFooterComponent,
 }) => {
   const { theme, isDark } = useTheme();
-  const isEmpty = data.length === 0;
+
+  const rows = useMemo(() => {
+    const result: GridRow[] = [];
+    if (numColumns === 2) {
+      for (let i = 0; i < data.length; i += 2) {
+        result.push({
+          id: `row-${i}`,
+          items: data.slice(i, i + 2),
+          type: "pair",
+        });
+      }
+    } else {
+      let i = 0;
+      while (i < data.length) {
+        // Pattern: [2 items], [3 items]
+        const isPairRow = result.length % 2 === 0;
+        if (isPairRow) {
+          result.push({
+            id: `row-${i}`,
+            items: data.slice(i, i + 2),
+            type: "pair",
+          });
+          i += 2;
+        } else {
+          result.push({
+            id: `row-${i}`,
+            items: data.slice(i, i + 3),
+            type: "third",
+          });
+          i += 3;
+        }
+      }
+    }
+    return result;
+  }, [data, numColumns]);
+
+  const renderRow = ({ item: row }: { item: GridRow }) => {
+    return (
+      <View style={styles.row}>
+        {row.items.map((item) => (
+          <ImageGridItem
+            key={String(item.id)}
+            item={item}
+            onPress={onPress}
+            isUnlocked={isUnlocked}
+            theme={theme}
+            isDark={isDark}
+            itemWidth={row.type === "pair" ? CARD_WIDTH : THIRD_WIDTH}
+            cardStyle={row.type === "pair" ? styles.cardPair : styles.cardThird}
+            imageStyle={
+              row.type === "pair" ? styles.imagePair : styles.imageThird
+            }
+          />
+        ))}
+      </View>
+    );
+  };
 
   return (
-    <Animated.ScrollView
-      showsVerticalScrollIndicator={false}
+    <FlatList
+      data={rows}
+      keyExtractor={(item) => item.id}
+      renderItem={renderRow}
+      ListHeaderComponent={<>{ListHeaderComponent}</>}
+      ListEmptyComponent={<>{ListEmptyComponent}</>}
+      ListFooterComponent={<>{ListFooterComponent}</>}
       contentContainerStyle={[
         styles.container,
-        isEmpty ? styles.emptyContainer : null,
+        data.length === 0 ? styles.emptyContainer : null,
         contentContainerStyle,
       ]}
+      showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (
           <RefreshControl
@@ -103,92 +285,11 @@ const ImageGrid: React.FC<ImageGridProps> = ({
           />
         ) : undefined
       }
-    >
-      {ListHeaderComponent}
-
-      {isEmpty ? (
-        (ListEmptyComponent ?? null)
-      ) : (
-        <View style={styles.grid}>
-          {data.map((item, index) => {
-            // Pattern requested:
-            // 1 1     (2 items)
-            // 1 1 1   (3 items)
-            let itemWidth = CARD_WIDTH;
-            let cardStyle = styles.cardPair;
-            let imageStyle = styles.imagePair;
-
-            if (numColumns === 3) {
-              const isThird = index % 5 >= 2;
-              itemWidth = isThird ? THIRD_WIDTH : CARD_WIDTH;
-              cardStyle = isThird ? styles.cardThird : styles.cardPair;
-              imageStyle = isThird ? styles.imageThird : styles.imagePair;
-            }
-
-            return (
-              <Animated.View
-                key={String(item.id)}
-                layout={LinearTransition.springify()
-                  .mass(1)
-                  .damping(20)
-                  .stiffness(100)}
-                entering={FadeIn.duration(300)}
-                exiting={FadeOut.duration(200)}
-                style={{ width: itemWidth }}
-              >
-                <Pressable
-                  style={[
-                    cardStyle,
-                    {
-                      width: "100%", // Fill wrapper
-                      backgroundColor:
-                        item.color || theme.drawingCardBackground,
-                      ...(!isDark
-                        ? { boxShadow: theme.drawingCardShadow }
-                        : {}),
-                    } as any,
-                  ]}
-                  onPress={() => onPress(item)}
-                >
-                  {item.image ? (
-                    item.mediaType === "video" &&
-                    typeof item.image === "string" ? (
-                      useStaticVideoPoster ? (
-                        <VideoPoster />
-                      ) : (
-                        <VideoPreview uri={item.image} />
-                      )
-                    ) : (
-                      <Image
-                        source={
-                          typeof item.image === "string"
-                            ? { uri: item.image }
-                            : item.image
-                        }
-                        contentFit="contain"
-                        style={imageStyle}
-                        transition={200}
-                      />
-                    )
-                  ) : item.color ? null : null}
-
-                  {item.isPremium ? (
-                    <View pointerEvents="none" style={styles.premiumBadgeWrap}>
-                      <Image
-                        source={ic_pro_icon}
-                        style={styles.premiumBadge}
-                        contentFit="contain"
-                        transition={0}
-                      />
-                    </View>
-                  ) : null}
-                </Pressable>
-              </Animated.View>
-            );
-          })}
-        </View>
-      )}
-    </Animated.ScrollView>
+      removeClippedSubviews={true} // Performance optimization for large lists
+      initialNumToRender={5}
+      maxToRenderPerBatch={5}
+      windowSize={5}
+    />
   );
 };
 
@@ -204,10 +305,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
   },
-  grid: {
+  row: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: GAP,
+    marginBottom: GAP,
   },
   cardPair: {
     height: CARD_WIDTH,
@@ -215,6 +316,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 10,
+    overflow: "hidden",
   },
   cardThird: {
     height: THIRD_WIDTH + 30,
@@ -222,6 +324,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 8,
+    overflow: "hidden",
   },
   imagePair: {
     width: "100%",
@@ -236,18 +339,20 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   videoPoster: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 8,
-    backgroundColor: "#161616",
-    alignItems: "center",
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    zIndex: 10,
   },
   videoPosterBadge: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: "rgba(255,255,255,0.14)",
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -266,5 +371,21 @@ const styles = StyleSheet.create({
   premiumBadge: {
     width: "100%",
     height: "100%",
+  },
+  sourceTagWrap: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  sourceTagText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontFamily: FontFamily.bold,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 });

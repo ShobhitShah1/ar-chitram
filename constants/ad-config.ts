@@ -1,19 +1,10 @@
-import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { TestIds } from "react-native-google-mobile-ads";
 
-type AdConfigExtra = {
-  rewardedAdUnitIdAndroid?: string;
-  rewardedAdUnitIdIos?: string;
-};
-
-const extra = (Constants.expoConfig?.extra ?? {}) as AdConfigExtra;
+const PRODUCTIONKEY = "ca-app-pub-9745099446260761/8069433021";
 
 const productionRewardedAdId =
-  Platform.select({
-    android: extra.rewardedAdUnitIdAndroid,
-    ios: extra.rewardedAdUnitIdIos,
-  }) || "";
+  Platform.select({ android: PRODUCTIONKEY, ios: PRODUCTIONKEY }) || "";
 
 const normalizeId = (id?: string | null) => id?.trim() ?? "";
 

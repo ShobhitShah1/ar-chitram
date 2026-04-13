@@ -1,6 +1,6 @@
 // Debug configuration
 export const DEBUG_MODE = __DEV__; // Automatically enabled in development
-export const ENABLE_API_LOGGING = false; // Can be toggled independently
+export const ENABLE_API_LOGGING = true; // Can be toggled independently
 export const BYPASS_OTP = true; // Temporarily bypass OTP for testing
 
 // Debug levels
