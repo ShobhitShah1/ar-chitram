@@ -170,7 +170,7 @@ const NewSetting = () => {
         contentContainerStyle={{ paddingBottom: 100 }}
         style={styles.content}
       >
-        <SectionHeader title="Media" style={{ marginTop: 0 }} />
+        {/* <SectionHeader title="Media" style={{ marginTop: 0 }} />
         <View
           style={[styles.section, { backgroundColor: theme.cardBackground }]}
         >
@@ -182,7 +182,7 @@ const NewSetting = () => {
             title="Image Search"
             onPress={() => router.push("/other/image-search")}
           />
-        </View>
+        </View> */}
 
         <SectionHeader title="Preference" />
         <View style={styles.section}>

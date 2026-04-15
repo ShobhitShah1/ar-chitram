@@ -1,4 +1,5 @@
 import type { GridAssetItem } from "@/components/image-grid";
+import { GLOBAL_PREMIUM_UNLOCK_SKU } from "@/constants/subscription-config";
 import { useGigglamIAPContext } from "@/context/iap-context";
 import { useOptimizedRewardedAd } from "@/hooks/use-rewarded-ad";
 import { useRouter } from "expo-router";
@@ -64,6 +65,10 @@ export const usePremiumAssetActionFlow = <T extends GridAssetItem>({
   const isPremiumAssetUnlocked = useCallback(
     (item?: T | null) => {
       if (!item?.isPremium) {
+        return true;
+      }
+
+      if (isPurchased(GLOBAL_PREMIUM_UNLOCK_SKU)) {
         return true;
       }
 

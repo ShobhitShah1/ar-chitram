@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import React, { useEffect } from "react";
 import { Pressable } from "./themed";
 import { Image } from "expo-image";
-import { ic_setting, ic_suffel, ic_upload_home } from "@/assets/icons";
+import { ic_pro, ic_search, ic_setting, ic_suffel, ic_upload_home } from "@/assets/icons";
 import { router } from "expo-router";
 import { useTheme } from "@/context/theme-context";
 import { FontFamily } from "@/constants/fonts";
@@ -23,6 +23,8 @@ interface Props {
   screenId?: string;
   onUploadPress?: () => void;
   onShufflePress?: () => void;
+  onSearchPress?: () => void;
+  onProPress?: () => void;
 }
 
 const TabsHeader = ({
@@ -30,6 +32,8 @@ const TabsHeader = ({
   isShuffle = false,
   screenId = "default",
   onShufflePress,
+  onSearchPress,
+  onProPress,
 }: Props) => {
   const { theme } = useTheme();
   const shuffleSeed = useShuffleStore(
@@ -100,6 +104,17 @@ const TabsHeader = ({
       </Text>
 
       <View style={styles.rightContainer}>
+        {screenId === "home" && (
+          <>
+            <Pressable onPress={onSearchPress} style={styles.iconButton}>
+              <Image source={ic_search} style={styles.iconSmall} contentFit="contain" />
+            </Pressable>
+            <Pressable onPress={onProPress} style={styles.iconButton}>
+              <Image source={ic_pro} style={styles.iconPro} contentFit="contain" />
+            </Pressable>
+          </>
+        )}
+
         {renderShuffleButton()}
 
         {onUploadPress && (
@@ -155,14 +170,21 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.galada,
     fontSize: 26,
   },
+  iconButton: {
+    padding: 2,
+  },
+  iconPro: {
+    width: 28,
+    height: 28,
+  },
   iconMedium: {
-    width: 25,
-    height: 25,
+    width: 28,
+    height: 28,
     bottom: 2,
   },
   iconSmall: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
   },
   iconButtonWrapper: {
     width: 38,

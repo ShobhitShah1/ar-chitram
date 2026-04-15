@@ -31,6 +31,7 @@ export default function Colors() {
     handleClosePremiumAsset,
     handleFreePremiumAsset,
     handlePremiumAsset,
+    isPremiumAssetUnlocked,
   } = usePremiumAssetGuideFlow({
     preloadItems: gridItems,
   });
@@ -77,6 +78,7 @@ export default function Colors() {
       <ImageGrid
         data={emptyState ? [] : gridItems}
         onPress={handleAssetPress}
+        isUnlocked={isPremiumAssetUnlocked}
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={emptyState}

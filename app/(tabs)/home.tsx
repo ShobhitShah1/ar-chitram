@@ -1,6 +1,7 @@
 import { ic_pro_icon } from "@/assets/icons";
 import { EmptyState } from "@/components/empty-state";
 import { PremiumAssetModal } from "@/components/premium-asset-modal";
+import SubscriptionModal from "@/components/subscription-modal";
 import { StoryRow } from "@/components/story/story-row";
 import TabsHeader from "@/components/tabs-header";
 import { View as ThemedView } from "@/components/themed";
@@ -259,6 +260,7 @@ export default function Home() {
   const [selectedWinner, setSelectedWinner] = useState<HomeWinnerItem | null>(
     null,
   );
+  const [showSubscription, setShowSubscription] = useState(false);
   const {
     selectedPremiumAsset,
     premiumPriceLabel,
@@ -368,6 +370,8 @@ export default function Home() {
           // isShuffle
           screenId="home"
           // onShufflePress={handleToggleShuffle}
+          onSearchPress={() => router.push("/other/image-search")}
+          onProPress={() => setShowSubscription(true)}
         />
 
         <Animated.ScrollView
@@ -466,6 +470,11 @@ export default function Home() {
       />
 
       <ImageUploadFlowModal {...modalProps} />
+
+      <SubscriptionModal
+        visible={showSubscription}
+        onClose={() => setShowSubscription(false)}
+      />
     </ThemedView>
   );
 }

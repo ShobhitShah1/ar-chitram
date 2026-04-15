@@ -256,9 +256,7 @@ function GalleryScreen() {
   return (
     <Animated.View style={commonStyles.container}>
       <TabsHeader
-        isShuffle
         screenId="gallery"
-        onShufflePress={handleToggleShuffle}
       />
       <CategoryChips
         items={[...GALLERY_FILTERS]}

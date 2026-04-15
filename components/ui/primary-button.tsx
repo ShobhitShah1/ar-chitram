@@ -30,7 +30,9 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 }) => {
   const content = (
     <View style={[styles.buttonContent, disabled && styles.disabledContent]}>
-      <Text style={[styles.text, textStyle]}>{title}</Text>
+      <Text style={[styles.text, textStyle]} allowFontScaling={false}>
+        {title}
+      </Text>
     </View>
   );
 
@@ -86,8 +88,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   buttonContent: {
-    paddingHorizontal: 30,
-    paddingVertical: 12,
+    width: "100%",
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -95,9 +97,10 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   text: {
-    fontFamily: FontFamily.bold, // Assuming bold font exists based on user's previous code
     fontSize: 16,
     color: "#FFFFFF",
     textAlign: "center",
+    includeFontPadding: false,
+    fontFamily: FontFamily.bold,
   },
 });
