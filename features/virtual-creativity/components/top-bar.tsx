@@ -220,9 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  activeBtn: {
-    // Style handled inline via backgroundColor for now
-  },
+  activeBtn: {},
   pressed: {
     opacity: 0.7,
   },
@@ -234,12 +232,14 @@ const styles = StyleSheet.create({
     height: 20,
   },
   nextBtn: {
-    height: 40,
-    minWidth: 70,
+    height: 38,
+    minWidth: 65,
     borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   nextText: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: FontFamily.bold,
   },
 });

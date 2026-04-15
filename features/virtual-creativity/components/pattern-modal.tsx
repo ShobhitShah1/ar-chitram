@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 
 interface PatternModalProps {
   visible: boolean;
@@ -74,13 +75,13 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
   );
 
   const sheetBottomPadding = Math.max(insets.bottom - bottomInset, 12);
-  const sheetHeight = Math.min(screenHeight - 12, 320 + sheetBottomPadding);
+  const sheetHeight = Math.min(screenHeight - 12, 800 + sheetBottomPadding);
 
   return (
     <ControlledBottomSheet
       visible={visible}
       onClose={onClose}
-      snapPoints={[sheetHeight]}
+      snapPoints={["93%"]}
       bottomInset={bottomInset}
       showHandle={false}
       backgroundStyle={styles.sheetBackground}
@@ -91,8 +92,8 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
           styles.card,
           {
             backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
-            minHeight: sheetHeight,
-            paddingBottom: sheetBottomPadding,
+            // minHeight: sheetHeight,
+            // paddingBottom: sheetBottomPadding,
           },
         ]}
       >
@@ -102,18 +103,14 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
           onConfirm={handleApply}
         />
 
-        <FlatList
+        <BottomSheetFlatList
           data={PATTERN_PRESETS}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: any) => item.id}
           numColumns={6}
           renderItem={renderPatternItem}
           columnWrapperStyle={styles.column}
           contentContainerStyle={styles.gridContent}
           showsVerticalScrollIndicator={false}
-          removeClippedSubviews
-          initialNumToRender={12}
-          maxToRenderPerBatch={18}
-          windowSize={3}
         />
       </View>
     </ControlledBottomSheet>
@@ -130,13 +127,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
   },
   sheetContent: {
-    flex: 0,
+    flex: 1,
   },
   card: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 4,
     paddingHorizontal: 20,
+    flex: 1,
+    paddingBottom: 100,
   },
   gridContent: {
     paddingTop: 10,

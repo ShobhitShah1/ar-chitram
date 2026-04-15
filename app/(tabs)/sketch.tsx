@@ -33,6 +33,7 @@ export default function Sketch() {
     handleClosePremiumAsset,
     handleFreePremiumAsset,
     handlePremiumAsset,
+    isPremiumAssetUnlocked,
   } = usePremiumAssetGuideFlow({
     preloadItems: gridItems,
   });
@@ -79,6 +80,7 @@ export default function Sketch() {
       <ImageGrid
         data={emptyState ? [] : gridItems}
         onPress={handleAssetPress}
+        isUnlocked={isPremiumAssetUnlocked}
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={emptyState}

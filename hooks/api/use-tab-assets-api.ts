@@ -280,12 +280,6 @@ const getCategoryFilterId = (
 // Add new asset servers here for create/upload picker flows.
 export const CREATE_FLOW_ASSET_SOURCES: readonly TabAssetSourceConfig[] = [
   {
-    sourceId: "color",
-    label: "Color",
-    queryKey: apiQueryKeys.assets.colors,
-    queryFn: fetchColorsTabAssets,
-  },
-  {
     sourceId: "drawing",
     label: "Draw",
     queryKey: apiQueryKeys.assets.drawings,
@@ -296,6 +290,12 @@ export const CREATE_FLOW_ASSET_SOURCES: readonly TabAssetSourceConfig[] = [
     label: "Sketch",
     queryKey: apiQueryKeys.assets.sketches,
     queryFn: fetchSketchesTabAssets,
+  },
+  {
+    sourceId: "color",
+    label: "Color",
+    queryKey: apiQueryKeys.assets.colors,
+    queryFn: fetchColorsTabAssets,
   },
 ];
 

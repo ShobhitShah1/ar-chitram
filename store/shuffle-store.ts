@@ -8,6 +8,8 @@ interface ShuffleState {
   refreshShuffle: (screenId: string) => void;
 }
 
+const SYNCED_SCREEN_IDS = ["colors", "sketches", "drawings"];
+
 const zustandMMKVStorage = {
   setItem: (name: string, value: string) => {
     storage.setString(name, value);
@@ -25,13 +27,19 @@ export const useShuffleStore = create<ShuffleState>()(
       toggleShuffle: (screenId: string) =>
         set((state) => {
           const currentSeed = state.shuffleSeeds[screenId] || 0;
-          return {
-            shuffleSeeds: {
-              ...state.shuffleSeeds,
-              [screenId]:
-                currentSeed === 0 ? Math.floor(Math.random() * 1000000) + 1 : 0,
-            },
-          };
+          const newSeed =
+            currentSeed === 0 ? Math.floor(Math.random() * 1000000) + 1 : 0;
+
+          const updatedSeeds = { ...state.shuffleSeeds, [screenId]: newSeed };
+
+          // Sync other screens if this is one of the synchronized screens
+          if (SYNCED_SCREEN_IDS.includes(screenId)) {
+            SYNCED_SCREEN_IDS.forEach((id) => {
+              updatedSeeds[id] = newSeed;
+            });
+          }
+
+          return { shuffleSeeds: updatedSeeds };
         }),
       refreshShuffle: (screenId: string) =>
         set((state) => {
@@ -40,12 +48,17 @@ export const useShuffleStore = create<ShuffleState>()(
             return state;
           }
 
-          return {
-            shuffleSeeds: {
-              ...state.shuffleSeeds,
-              [screenId]: Math.floor(Math.random() * 1000000) + 1,
-            },
-          };
+          const newSeed = Math.floor(Math.random() * 1000000) + 1;
+          const updatedSeeds = { ...state.shuffleSeeds, [screenId]: newSeed };
+
+          // Sync other screens if this is one of the synchronized screens
+          if (SYNCED_SCREEN_IDS.includes(screenId)) {
+            SYNCED_SCREEN_IDS.forEach((id) => {
+              updatedSeeds[id] = newSeed;
+            });
+          }
+
+          return { shuffleSeeds: updatedSeeds };
         }),
     }),
     {

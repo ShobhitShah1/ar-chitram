@@ -18,6 +18,9 @@ export const test_deer = require("./animal/test_deer.png");
 export const assets_bg = require("./assets_bg.png");
 export const ic_contest_winner = require("./ic_contest_winner.png");
 export const ic_contest_winner_crown = require("./contest_winner_crown.png");
+export const ic_pro_image = require("./ic_pro_image.png");
+export const ic_pro_modal_background = require("./ic_pro_modal_background.png");
+export const ic_pro_title_glow = require("./ic_pro_title_glow.png");
 
 export const Images = {
   JoinContest: join_contest,

@@ -307,7 +307,7 @@ const ContestCamera = () => {
               onPress={handleCapture}
               style={styles.primaryButton}
               colors={["#fff", "#fff"]}
-              textStyle={{ color: "#000" }}
+              textStyle={{ color: "#000", fontSize: 13 }}
               disabled={processing}
             />
           </>
@@ -323,13 +323,14 @@ const ContestCamera = () => {
                 style={styles.secondaryButton}
                 colors={["rgba(255,255,255,0.18)", "rgba(255,255,255,0.18)"]}
                 disabled={processing}
+                textStyle={{ color: "#fff", fontSize: 13 }}
               />
               <PrimaryButton
                 title={processing ? "Processing..." : "Join Contest"}
                 onPress={handleJoinContest}
                 style={styles.primaryButton}
                 colors={["#fff", "#fff"]}
-                textStyle={{ color: "#000" }}
+                textStyle={{ color: "#000", fontSize: 13 }}
                 disabled={processing}
               />
             </View>
@@ -399,13 +400,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    width: 135,
-    height: 50,
-    borderRadius: 25,
+    width: 140,
+    height: 46,
+    borderRadius: 23,
   },
   secondaryButton: {
-    width: 135,
-    height: 50,
-    borderRadius: 25,
+    width: 130,
+    height: 46,
+    borderRadius: 23,
   },
 });

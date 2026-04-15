@@ -508,7 +508,10 @@ const Canvas = () => {
       try {
         await saveToArChitramAlbum(videoUri, ["photo", "video"]);
       } catch (galleryError) {
-        console.warn("[Canvas] Failed to save video to system gallery", galleryError);
+        console.warn(
+          "[Canvas] Failed to save video to system gallery",
+          galleryError,
+        );
       }
 
       Toast.show({
@@ -695,13 +698,13 @@ const Canvas = () => {
             onFlip={toggleCameraFacing}
             onFlash={toggleFlash}
             onRecord={handleToggleRecording}
-            onSnapshot={handleSnapshot}
+            // onSnapshot={handleSnapshot}
             isLocked={isLocked}
             isRecording={isRecording}
             recordingDurationSec={recordingDurationSec}
-            snapshotCount={cameraSnapshots.length}
-            snapshotButtonRef={snapshotButtonRef}
-            onOpenPreview={() => setShowPreview(true)}
+            // snapshotCount={cameraSnapshots.length}
+            // snapshotButtonRef={snapshotButtonRef}
+            // onOpenPreview={() => setShowPreview(true)}
           />
         </View>
       </View>
