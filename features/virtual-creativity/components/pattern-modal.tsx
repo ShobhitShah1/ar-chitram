@@ -96,7 +96,7 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
       snapPoints={["70%"]}
       onDismiss={onClose}
       backdropComponent={renderBackdrop}
-      enablePanDownToClose
+      enablePanDownToClose={false}
       enableDynamicSizing={false}
       handleComponent={null}
       backgroundStyle={styles.sheetBackground}

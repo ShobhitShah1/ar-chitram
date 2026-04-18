@@ -12,7 +12,6 @@ import {
   BottomSheetFlatList,
   BottomSheetModal,
   BottomSheetTextInput,
-  BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,14 +24,11 @@ import {
   Text,
   View,
 } from "react-native";
-import { captureRef } from "react-native-view-shot";
-import Svg, { Text as SvgText } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Text as SvgText } from "react-native-svg";
+import { captureRef } from "react-native-view-shot";
 
 type SignatureTab = "artist" | "custom" | "text";
-const SHEET_MIN_HEIGHT = 500;
-const SHEET_CUSTOM_PREFERRED_HEIGHT = 800;
-const SHEET_ARTIST_PREFERRED_HEIGHT = 840;
 
 interface SignatureModalProps {
   visible: boolean;
@@ -266,10 +262,11 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
       onDismiss={onClose}
-      enablePanDownToClose={true}
+      enablePanDownToClose={false}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       enableDynamicSizing={false}
+      handleComponent={null}
     >
       <View style={styles.sheetContent}>
         <View
@@ -411,10 +408,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             ) : (
               <View style={styles.textWrap}>
                 <View
-                  style={[
-                    styles.inputWrap,
-                    { backgroundColor: isDark ? "#282828" : "#E8E8E8" },
-                  ]}
+                  style={[styles.inputWrap, { backgroundColor: "#EAEAEA" }]}
                 >
                   <BottomSheetTextInput
                     value={typedName}

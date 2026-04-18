@@ -93,17 +93,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     width: "100%",
+    justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   buttonRow: {
     flexDirection: "row",
     gap: 16,
     justifyContent: "center",
     alignItems: "center",
+    width: "100%",
   },
   button: {
-    width: 140,
+    flex: 1,
+    maxWidth: 160,
     borderRadius: 100,
-    height: 50,
+    height: 54,
   },
 });

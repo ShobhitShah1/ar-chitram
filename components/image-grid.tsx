@@ -90,11 +90,13 @@ interface ImageGridProps {
   data: GridAssetItem[];
   onPress: (item: GridAssetItem) => void;
   isUnlocked?: (item: GridAssetItem) => boolean;
+  isUnlocked?: (item: GridAssetItem) => boolean;
   ListHeaderComponent?: React.ReactNode;
   ListEmptyComponent?: React.ReactNode;
   contentContainerStyle?: any;
   refreshing?: boolean;
   onRefresh?: () => void;
+  numColumns?: 2 | 3;
   numColumns?: 2 | 3;
   useStaticVideoPoster?: boolean;
   ListFooterComponent?: React.ReactNode;

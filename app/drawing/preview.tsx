@@ -28,6 +28,18 @@ const Preview = () => {
     });
   };
 
+  const handleTrace = () => {
+    router.push({
+      pathname: "/drawing/trace-canvas" as any,
+      params: {
+        imageUri,
+        originalImageUri: originalImageUri ?? imageUri,
+        signatureText,
+        signatureFont,
+      },
+    });
+  };
+
   const displayImage = imageUri ? { uri: imageUri as string } : preview_1;
 
   return (
@@ -52,12 +64,20 @@ const Preview = () => {
       <View
         style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 40) }]}
       >
-        <PrimaryButton
-          title="Continue"
-          onPress={handleContinue}
-          style={styles.button}
-          colors={theme.drawingButton as any}
-        />
+        <View style={styles.buttonRow}>
+          <PrimaryButton
+            title="Trace"
+            onPress={handleTrace}
+            style={styles.button}
+            colors={theme.drawingButton as any}
+          />
+          <PrimaryButton
+            title="Draw"
+            onPress={handleContinue}
+            style={styles.button}
+            colors={theme.drawingButton as any}
+          />
+        </View>
       </View>
     </View>
   );
@@ -93,11 +113,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     width: "100%",
+    justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
   },
   button: {
-    width: 160,
+    flex: 1,
+    maxWidth: 160,
     borderRadius: 100,
-    height: 50,
+    height: 54,
   },
 });
