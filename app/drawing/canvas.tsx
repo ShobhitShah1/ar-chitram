@@ -187,8 +187,8 @@ const Canvas = () => {
     setActiveVirtualSnapshotIndex((currentIndex) => {
       if (!hasInitializedSnapshotIndex.current) {
         hasInitializedSnapshotIndex.current = true;
-        // Always start from the first snapshot.
-        return 0;
+        // Default to the last snapshot (most recent work)
+        return virtualSnapshots.length - 1;
       }
 
       return Math.min(currentIndex, virtualSnapshots.length - 1);

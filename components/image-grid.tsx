@@ -32,6 +32,7 @@ export interface GridAssetItem {
   isPremium?: boolean;
   sku?: string | null;
   source?: string;
+  placeholder?: string;
 }
 
 import * as VideoThumbnails from "expo-video-thumbnails";
@@ -153,6 +154,7 @@ const ImageGridItem = React.memo(
                       ? { uri: item.image }
                       : item.image
                   }
+                  placeholder={item.placeholder}
                   contentFit="contain"
                   style={imageStyle}
                   transition={200}

@@ -59,6 +59,7 @@ import {
 import { apiQueryKeys } from "@/services/api/query-keys";
 import { normalizeStoryImageUri } from "@/services/story-media-service";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
+import { useSignatureStore } from "@/store/signature-store";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -144,6 +145,44 @@ export default function VirtualCreativityScreen() {
     reset,
   } = useVirtualCreativityStore();
 
+  const { lastSignature, setLastSignature } = useSignatureStore();
+  const hasAutoAppliedSignatureRef = useRef(false);
+
+  // "Linked" Signature Persistence: Automically apply the last used signature
+  // when starting a session or switching images, if no signature is present.
+  React.useEffect(() => {
+    if (!lastSignature || layers.length === 0 || hasAutoAppliedSignatureRef.current) return;
+
+    const hasSignature = layers.some(
+      (l) => l.type === "text" || l.id.startsWith("text-"),
+    );
+
+    if (!hasSignature) {
+      hasAutoAppliedSignatureRef.current = true;
+      if (lastSignature.isTextAsLayer && lastSignature.textLayerUri) {
+        // Apply as image layer
+        createSubImageLayer(lastSignature.textLayerUri, layers.length + 1, layers)
+          .then((subLayer) => {
+            // Position it bottom-right by default for a professional look
+            subLayer.x = (STORY_FRAME_WIDTH - subLayer.width) / 2 - 20;
+            subLayer.y = (STORY_FRAME_HEIGHT - subLayer.height) / 2 - 40;
+            addLayer(subLayer);
+          })
+          .catch(console.error);
+      } else {
+        // Apply as text layer
+        const signatureLayer = createSignatureTextLayer(
+          lastSignature,
+          layers.length + 1,
+          layers,
+        );
+        addLayer(signatureLayer);
+      }
+    } else {
+      hasAutoAppliedSignatureRef.current = true;
+    }
+  }, [layers, lastSignature]);
+
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [pickerMode, setPickerMode] = useState<"color" | "gradient">("color");
   const [selectedTool, setSelectedTool] = useState<ToolType>(() =>
@@ -155,7 +194,7 @@ export default function VirtualCreativityScreen() {
     null,
   );
   const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(
-    null,
+    () => lastSignature?.id ?? null,
   );
   const [isFocusPlacementActive, setIsFocusPlacementActive] = useState(false);
 
@@ -626,6 +665,15 @@ export default function VirtualCreativityScreen() {
     try {
       const uri = await captureCanvasSnapshot(1);
       if (uri) {
+        // Add the final composite with all additions (like signatures) as a snapshot
+        // so it's available in the drawing history on the next screen.
+        const finalSnapshot: Snapshot = {
+          id: "final-" + Date.now(),
+          uri,
+          timestamp: Date.now(),
+        };
+        addSnapshot(finalSnapshot);
+
         logDrawingCompleted("virtual");
         try {
           const persistedUris = Array.from(
@@ -1212,6 +1260,7 @@ export default function VirtualCreativityScreen() {
 
   const handleApplySignature = useCallback(
     async (selection: SignatureSelection) => {
+      setLastSignature(selection);
       setSelectedSignatureId(selection.id);
       setSignatureModalVisible(false);
 
@@ -1478,7 +1527,7 @@ export default function VirtualCreativityScreen() {
         <SignatureModal
           visible={signatureModalVisible}
           selectedSignatureId={selectedSignatureId}
-          defaultName="AR Chitram"
+          defaultName={lastSignature?.value || "AR Chitram"}
           onClose={handleCloseSignatureModal}
           onApply={handleApplySignature}
         />

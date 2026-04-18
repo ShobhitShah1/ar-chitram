@@ -57,7 +57,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   const bottomSheetModalRef = React.useRef<BottomSheetModal>(null);
 
   const [tab, setTab] = React.useState<SignatureTab>("artist");
-  const [typedName, setTypedName] = React.useState("");
+  const [typedName, setTypedName] = React.useState(defaultName);
   const [selectedCustomFontId, setSelectedCustomFontId] = React.useState(
     SIGNATURE_FONT_PRESETS[0].id,
   );
@@ -97,13 +97,14 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     if (selectedSignatureId?.startsWith("artist-")) {
       setTab("artist");
       setSelectedArtistId(selectedSignatureId);
-      return;
+    } else if (selectedSignatureId?.startsWith("font-")) {
+      setTab("custom");
+      setSelectedCustomFontId(selectedSignatureId);
+    } else if (selectedSignatureId?.startsWith("text-")) {
+      setTab("text");
     }
-    setTab("artist");
-    setSelectedCustomFontId(
-      selectedSignatureId ?? SIGNATURE_FONT_PRESETS[0].id,
-    );
-  }, [selectedSignatureId, visible]);
+    setTypedName(defaultName);
+  }, [selectedSignatureId, visible, defaultName]);
 
   const textSvgRef = React.useRef<View>(null);
   const [isCapturing, setIsCapturing] = React.useState(false);
