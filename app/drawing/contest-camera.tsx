@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Image } from "expo-image";
+import * as StoreReview from "expo-store-review";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -235,6 +236,15 @@ const ContestCamera = () => {
         queryKey: apiQueryKeys.assets.localUploads,
       });
       resetStore();
+
+      try {
+        const canPromptReview = await StoreReview.hasAction();
+        if (canPromptReview) {
+          await StoreReview.requestReview();
+        }
+      } catch (error) {
+        console.warn("Store review prompt failed", error);
+      }
 
       router.push({
         pathname: "/drawing/share",

@@ -21,6 +21,7 @@ import {
 } from "@/assets/images";
 import { FontFamily } from "@/constants/fonts";
 import { useGigglamIAPContext } from "@/context/iap-context";
+import { logPremiumClicked } from "@/services/analytics-service";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -80,6 +81,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       return;
     }
 
+    logPremiumClicked("subscription_modal_purchase_tap");
     const didPurchase = await purchaseProduct(GLOBAL_PREMIUM_UNLOCK_SKU);
     if (didPurchase) {
       onClose();

@@ -116,3 +116,20 @@ export const ic_gold = require("@/assets/icons/ic_gold.webp");
 export const ic_search = require("@/assets/icons/ic_search.png");
 export const ic_pro = require("@/assets/icons/ic_pro.png");
 export const ic_glow_star = require("@/assets/icons/ic_glow_star.png");
+
+export const ARTIST_SIGN_ICONS = [
+  require("@/assets/icons/signature/Sign_1.png"),
+  require("@/assets/icons/signature/Sign_2.png"),
+  require("@/assets/icons/signature/Sign_3.png"),
+  require("@/assets/icons/signature/Sign_4.png"),
+  require("@/assets/icons/signature/Sign_5.png"),
+  require("@/assets/icons/signature/Sign_6.png"),
+  require("@/assets/icons/signature/Sign_7.png"),
+  require("@/assets/icons/signature/Sign_8.png"),
+  require("@/assets/icons/signature/Sign_9.png"),
+  require("@/assets/icons/signature/Sign_10.png"),
+  require("@/assets/icons/signature/Sign_11.png"),
+  require("@/assets/icons/signature/Sign_12.png"),
+  require("@/assets/icons/signature/Sign_13.png"),
+  require("@/assets/icons/signature/Sign_14.png"),
+] as const;

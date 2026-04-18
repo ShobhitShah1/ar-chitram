@@ -19,6 +19,9 @@ import {
 } from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { useShuffleStore } from "@/store/shuffle-store";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { logPremiumClicked } from "@/services/analytics-service";
+import { useGigglamIAPContext } from "@/context/iap-context";
+import { GLOBAL_PREMIUM_UNLOCK_SKU } from "@/constants/subscription-config";
 import { useHomeTabAssets } from "@/hooks/api";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
 import { apiQueryKeys } from "@/services/api/query-keys";
@@ -59,6 +62,7 @@ const GRID_THIRD_WIDTH = Math.floor(
   (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * 2) / 3,
 );
 const TODAY_WINNER_MODAL_STORAGE_KEY = "@ArChitram/home/today-winner-modal";
+const AUTO_SUB_MODAL_KEY = "@home/last_sub_modal_date";
 
 const getLocalDateKey = (date: Date) => {
   const year = date.getFullYear();
@@ -333,6 +337,40 @@ export default function Home() {
     setSelectedWinner(todaysWinner);
   }, [todayWinners]);
 
+  const { isPurchased } = useGigglamIAPContext();
+  const isPremium = isPurchased(GLOBAL_PREMIUM_UNLOCK_SKU);
+
+  useEffect(() => {
+    // Only automatically show for non-premium users
+    if (isPremium) {
+      return;
+    }
+
+    const today = getLocalDateKey(new Date());
+    const lastAutoShowDate = storage.getString(AUTO_SUB_MODAL_KEY);
+
+    // Only show once per day
+    if (lastAutoShowDate === today) {
+      return;
+    }
+
+    // 50% random chance to show the modal on the first open of the day
+    const shouldShow = Math.random() < 0.5;
+
+    if (shouldShow) {
+      // Delay slightly so the UI doesn't pop immediately
+      const timer = setTimeout(() => {
+        setShowSubscription(true);
+      }, 1500);
+
+      storage.setString(AUTO_SUB_MODAL_KEY, today);
+      return () => clearTimeout(timer);
+    } else {
+      // Mark as checked for today even if we didn't show it (to respect the "per day" rule)
+      storage.setString(AUTO_SUB_MODAL_KEY, today);
+    }
+  }, [isPremium]);
+
   const hasHomeContent =
     contestStoryData.length > 0 ||
     todayWinners.length > 0 ||
@@ -371,7 +409,10 @@ export default function Home() {
           screenId="home"
           // onShufflePress={handleToggleShuffle}
           onSearchPress={() => router.push("/other/image-search")}
-          onProPress={() => setShowSubscription(true)}
+          onProPress={() => {
+            logPremiumClicked("home_pro_badge");
+            setShowSubscription(true);
+          }}
         />
 
         <Animated.ScrollView
@@ -429,7 +470,12 @@ export default function Home() {
                 <View style={[styles.sectionBlock, { marginTop: 15 }]}>
                   <HomeAssetGrid
                     items={homeGridItems}
-                    onPress={handleAssetPress}
+                    onPress={(item) => {
+                      if (item.isPremium && !isPremiumAssetUnlocked(item)) {
+                        logPremiumClicked("home_premium_asset");
+                      }
+                      handleAssetPress(item);
+                    }}
                     isPremiumAssetUnlocked={isPremiumAssetUnlocked}
                   />
                 </View>

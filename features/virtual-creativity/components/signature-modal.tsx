@@ -1,32 +1,35 @@
+import { FontFamily } from "@/constants/fonts";
+import { useTheme } from "@/context/theme-context";
+import { SheetHeader } from "@/features/virtual-creativity/components/sheet-header";
+import type { SignatureSelection } from "@/features/virtual-creativity/constants/editor-presets";
 import {
   ARTIST_SIGNATURE_PRESETS,
   SIGNATURE_FONT_PRESETS,
+  SIGNATURE_OUTLINE_FONT_PRESETS,
 } from "@/features/virtual-creativity/constants/editor-presets";
-import type { SignatureSelection } from "@/features/virtual-creativity/constants/editor-presets";
-import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
-import { SheetHeader } from "@/features/virtual-creativity/components/sheet-header";
-import { FontFamily } from "@/constants/fonts";
-import { useTheme } from "@/context/theme-context";
+import {
+  BottomSheetBackdrop,
+  BottomSheetFlatList,
+  BottomSheetModal,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from "@gorhom/bottom-sheet";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
   Dimensions,
-  FlatList,
   Keyboard,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
-  useWindowDimensions,
   View,
 } from "react-native";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomSheetTextInput, BottomSheetView } from "@gorhom/bottom-sheet";
-import Svg, { Text as SvgText } from "react-native-svg";
 import { captureRef } from "react-native-view-shot";
+import Svg, { Text as SvgText } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type SignatureTab = "custom" | "artist" | "text";
+type SignatureTab = "artist" | "custom" | "text";
 const SHEET_MIN_HEIGHT = 500;
 const SHEET_CUSTOM_PREFERRED_HEIGHT = 800;
 const SHEET_ARTIST_PREFERRED_HEIGHT = 840;
@@ -51,6 +54,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const screenHeight = Dimensions.get("window").height;
+  const bottomSheetModalRef = React.useRef<BottomSheetModal>(null);
 
   const [tab, setTab] = React.useState<SignatureTab>("artist");
   const [typedName, setTypedName] = React.useState("");
@@ -60,6 +64,9 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   const [selectedArtistId, setSelectedArtistId] = React.useState(
     ARTIST_SIGNATURE_PRESETS[0].id,
   );
+  const [selectedOutlineFontId, setSelectedOutlineFontId] = React.useState(
+    SIGNATURE_OUTLINE_FONT_PRESETS[0].id,
+  );
 
   const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
 
@@ -67,14 +74,23 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     const showSub = Keyboard.addListener("keyboardDidShow", () =>
       setIsKeyboardVisible(true),
     );
-    const hideSub = Keyboard.addListener("keyboardDidHide", () =>
-      setIsKeyboardVisible(false),
-    );
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setIsKeyboardVisible(false);
+      bottomSheetModalRef.current?.snapToIndex(0);
+    });
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, []);
+
+  React.useEffect(() => {
+    if (visible) {
+      bottomSheetModalRef.current?.present();
+    } else {
+      bottomSheetModalRef.current?.dismiss();
+    }
+  }, [visible]);
 
   React.useEffect(() => {
     if (!visible) return;
@@ -83,7 +99,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
       setSelectedArtistId(selectedSignatureId);
       return;
     }
-    setTab("custom");
+    setTab("artist");
     setSelectedCustomFontId(
       selectedSignatureId ?? SIGNATURE_FONT_PRESETS[0].id,
     );
@@ -91,6 +107,14 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
 
   const textSvgRef = React.useRef<View>(null);
   const [isCapturing, setIsCapturing] = React.useState(false);
+
+  const selectedOutlineFont = React.useMemo(
+    () =>
+      SIGNATURE_OUTLINE_FONT_PRESETS.find(
+        (f) => f.id === selectedOutlineFontId,
+      ) ?? SIGNATURE_OUTLINE_FONT_PRESETS[0],
+    [selectedOutlineFontId],
+  );
 
   const handleApply = React.useCallback(async () => {
     if (tab === "text") {
@@ -102,9 +126,9 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           quality: 1,
         });
         onApply({
-          id: `text-${Date.now()}`,
-          value: typedName.trim() || defaultName,
-          fontFamily: FontFamily.bold,
+          id: "text-" + Date.now(),
+          value: customPreviewName,
+          fontFamily: selectedOutlineFont.fontFamily,
           isArtistPreset: false,
           isTextAsLayer: true,
           textLayerUri: uri,
@@ -168,6 +192,9 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
               styles.signatureText,
               { color: "#000", fontFamily: item.fontFamily },
             ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            selectable={false}
           >
             {customPreviewName}
           </Text>
@@ -191,14 +218,13 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             },
           ]}
         >
-          <Text
-            style={[
-              styles.artistName,
-              { fontFamily: item.fontFamily, color: "#000" },
-            ]}
-          >
-            {item.name}
-          </Text>
+          {item.icon && (
+            <Image
+              source={item.icon}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="contain"
+            />
+          )}
         </Pressable>
       );
     },
@@ -206,40 +232,39 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   );
 
   const sheetMaxHeight = Math.min(screenHeight, screenHeight * 0.97);
-  const sheetPreferredHeight = Math.min(
-    sheetMaxHeight,
-    Math.max(
-      SHEET_MIN_HEIGHT,
-      tab === "custom"
-        ? SHEET_CUSTOM_PREFERRED_HEIGHT
-        : SHEET_ARTIST_PREFERRED_HEIGHT,
-    ),
-  );
 
-  const snapPoints = React.useMemo(
-    () => (isKeyboardVisible ? ["55%"] : ["55%"]),
-    [isKeyboardVisible, sheetPreferredHeight],
+  const snapPoints = React.useMemo(() => ["80%"], []);
+  const listBottomPadding = insets.bottom + 14;
+
+  const renderBackdrop = React.useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.5}
+      />
+    ),
+    [],
   );
 
   return (
-    <ControlledBottomSheet
-      visible={visible}
-      onClose={onClose}
+    <BottomSheetModal
+      ref={bottomSheetModalRef}
       snapPoints={snapPoints}
-      bottomInset={bottomInset}
+      backdropComponent={renderBackdrop}
+      onDismiss={onClose}
+      enablePanDownToClose={true}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
       enableDynamicSizing={false}
-      showHandle={false}
-      backgroundStyle={styles.sheetBackground}
-      contentContainerStyle={styles.sheetContent}
     >
-      <View style={styles.keyboardWrap}>
+      <View style={styles.sheetContent}>
         <View
           style={[
             styles.card,
             {
               backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
-              maxHeight: sheetMaxHeight,
-              paddingBottom: Math.max(insets.bottom - bottomInset, 0) + 12,
             },
           ]}
         >
@@ -248,7 +273,6 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             onClose={onClose}
             onConfirm={handleApply}
           />
-
           <View style={styles.tabsRow}>
             {/* Artist */}
             <Pressable
@@ -323,7 +347,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
             </Pressable>
           </View>
 
-          <View style={styles.contentArea}>
+          <View style={[styles.contentArea, { flex: 1, minHeight: 0 }]}>
             {tab === "custom" ? (
               <View style={styles.customWrap}>
                 <View
@@ -332,38 +356,44 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   <BottomSheetTextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder={defaultName}
+                    placeholder="Type here..."
                     placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
                     style={[styles.input, { color: "#000" }]}
                   />
                 </View>
 
-                <FlatList
+                <BottomSheetFlatList
                   data={SIGNATURE_FONT_PRESETS}
-                  keyExtractor={(item) => item.id}
+                  keyExtractor={(item: any) => item.id}
                   renderItem={renderCustomFont}
-                  style={styles.list}
-                  contentContainerStyle={styles.signatureList}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={[
+                    styles.signatureList,
+                    { paddingBottom: listBottomPadding },
+                  ]}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                   keyboardDismissMode="on-drag"
                   nestedScrollEnabled
-                  initialNumToRender={4}
+                  initialNumToRender={10}
                 />
               </View>
             ) : tab === "artist" ? (
               <View style={styles.artistWrap}>
-                <FlatList
+                <BottomSheetFlatList
                   data={ARTIST_SIGNATURE_PRESETS}
-                  keyExtractor={(item) => item.id}
+                  keyExtractor={(item: any) => item.id}
                   renderItem={renderArtistItem}
                   numColumns={2}
-                  style={styles.list}
                   columnWrapperStyle={styles.artistRow}
-                  contentContainerStyle={styles.artistList}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={[
+                    styles.artistList,
+                    { paddingBottom: listBottomPadding },
+                  ]}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled
-                  initialNumToRender={8}
+                  initialNumToRender={12}
                 />
               </View>
             ) : (
@@ -377,69 +407,111 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   <BottomSheetTextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder={defaultName}
+                    placeholder="Type here..."
                     placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
                     style={[styles.input, { color: "#000" }]}
                   />
                 </View>
 
-                <View style={styles.textPreviewRegion}>
+                {/* Hidden region for capturing text as image layer */}
+                <View
+                  style={{
+                    position: "absolute",
+                    left: -1000,
+                    top: 0,
+                    opacity: 0,
+                  }}
+                >
                   <View
                     ref={textSvgRef}
                     collapsable={false}
                     style={styles.svgHolder}
                   >
                     <Svg
-                      width={Math.max(120, customPreviewName.length * 36)}
-                      height={120}
+                      width={Math.max(400, customPreviewName.length * 90)}
+                      height={250}
                     >
                       <SvgText
                         x="50%"
                         y="50%"
                         textAnchor="middle"
                         alignmentBaseline="central"
-                        stroke="#000000"
-                        strokeWidth="3"
-                        fill="transparent"
-                        fontSize="58"
-                        fontFamily={FontFamily.bold}
+                        fill="#000000"
+                        fontSize="150"
+                        fontFamily={selectedOutlineFont.fontFamily}
                       >
                         {customPreviewName}
                       </SvgText>
                     </Svg>
                   </View>
                 </View>
+
+                <View style={styles.outlineFontWrap}>
+                  <BottomSheetFlatList
+                    data={SIGNATURE_OUTLINE_FONT_PRESETS}
+                    keyExtractor={(item: any) => item.id}
+                    numColumns={2}
+                    showsVerticalScrollIndicator={false}
+                    columnWrapperStyle={styles.artistRow}
+                    style={{ flex: 1 }}
+                    renderItem={({ item }: any) => {
+                      const selected = selectedOutlineFontId === item.id;
+                      return (
+                        <Pressable
+                          onPress={() => setSelectedOutlineFontId(item.id)}
+                          style={[
+                            styles.artistTile,
+                            {
+                              borderColor: selected
+                                ? "#1D1D1D"
+                                : "rgba(20,20,20,0.06)",
+                              backgroundColor: "#F2F2F2",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.outlineFontTileText,
+                              { fontFamily: item.fontFamily },
+                              selected && { color: "#1D1D1D" },
+                            ]}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                          >
+                            {customPreviewName}
+                          </Text>
+                        </Pressable>
+                      );
+                    }}
+                    contentContainerStyle={[
+                      styles.outlineFontList,
+                      { paddingBottom: listBottomPadding },
+                    ]}
+                  />
+                </View>
               </View>
             )}
           </View>
         </View>
       </View>
-    </ControlledBottomSheet>
+    </BottomSheetModal>
   );
 };
 
 export const SignatureModal = React.memo(SignatureModalComponent);
 
 const styles = StyleSheet.create({
-  sheetBackground: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
   sheetContent: {
-    // flex: 0,
-  },
-  keyboardWrap: {
-    width: "100%",
+    flex: 1,
   },
   card: {
     width: "100%",
+    flex: 1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 4,
     paddingHorizontal: 16,
-    minHeight: SHEET_MIN_HEIGHT,
+    paddingBottom: 12,
   },
   tabsRow: {
     flexDirection: "row",
@@ -449,7 +521,9 @@ const styles = StyleSheet.create({
   },
   contentArea: {
     flex: 1,
+    flexGrow: 1,
     minHeight: 0,
+    marginTop: 16,
   },
   tabButton: {
     width: "32%",
@@ -502,10 +576,6 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 10,
   },
-  list: {
-    flex: 1,
-    minHeight: 0,
-  },
   artistWrap: {
     flex: 1,
     minHeight: 0,
@@ -542,18 +612,13 @@ const styles = StyleSheet.create({
   },
   artistTile: {
     width: "48.4%",
-    minHeight: 76,
+    height: 70,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-  },
-  artistName: {
-    fontSize: 24,
-    lineHeight: 28,
-    textAlign: "center",
   },
   textWrap: {
     flex: 1,
@@ -566,7 +631,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   svgHolder: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingVertical: 10,
+  },
+  outlineFontWrap: {
+    flex: 1,
+    minHeight: 0,
+  },
+  outlineFontList: {
+    paddingBottom: 20,
+  },
+  outlineFontTileText: {
+    fontSize: 28,
+    color: "#000",
+    textAlign: "center",
+    width: "90%",
   },
 });

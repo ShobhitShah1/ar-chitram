@@ -174,13 +174,26 @@ const useTabGridController = (
   }, [categories, selectedCategory]);
 
   const displayItems = useMemo(() => {
+    if (selectedCategory !== "All") {
+      return rawItems;
+    }
     return shuffleItemsSeeded(rawItems, shuffleSeed);
-  }, [rawItems, shuffleSeed]);
+  }, [rawItems, shuffleSeed, selectedCategory]);
+
+  const handleSetSelectedCategory = useCallback(
+    (category: string) => {
+      if (category === "All") {
+        refreshShuffle(screenId);
+      }
+      setSelectedCategory(category);
+    },
+    [refreshShuffle, screenId],
+  );
 
   return {
     categories,
     selectedCategory,
-    setSelectedCategory,
+    setSelectedCategory: handleSetSelectedCategory,
     gridItems: displayItems,
     shuffle: handleToggleShuffle,
   };
@@ -369,6 +382,28 @@ const useCreateFlowAssetPickerController = (
     [toggleShuffle, screenId],
   );
 
+  const refreshShuffle = useShuffleStore((state) => state.refreshShuffle);
+
+  const handleSetSelectedSourceId = useCallback(
+    (sourceId: string) => {
+      if (sourceId === ALL_FILTER_ID) {
+        refreshShuffle(screenId);
+      }
+      setSelectedSourceId(sourceId);
+    },
+    [refreshShuffle, screenId],
+  );
+
+  const handleSetSelectedCategoryId = useCallback(
+    (categoryId: string) => {
+      if (categoryId === ALL_FILTER_ID) {
+        refreshShuffle(screenId);
+      }
+      setSelectedCategoryId(categoryId);
+    },
+    [refreshShuffle, screenId],
+  );
+
   const sourceQueries = useQueries({
     queries: sourceConfigs.map((source) => ({
       queryKey: source.queryKey,
@@ -467,8 +502,14 @@ const useCreateFlowAssetPickerController = (
   }, [categoryOptions, selectedCategoryId]);
 
   const displayAssets = useMemo(() => {
+    if (
+      selectedSourceId !== ALL_FILTER_ID ||
+      selectedCategoryId !== ALL_FILTER_ID
+    ) {
+      return filteredAssets;
+    }
     return shuffleItemsSeeded(filteredAssets, shuffleSeed);
-  }, [filteredAssets, shuffleSeed]);
+  }, [filteredAssets, shuffleSeed, selectedSourceId, selectedCategoryId]);
 
   const refetch = useCallback(async () => {
     await Promise.allSettled(sourceQueries.map((query) => query.refetch()));
@@ -489,10 +530,10 @@ const useCreateFlowAssetPickerController = (
     allAssets,
     sourceOptions,
     selectedSourceId,
-    setSelectedSourceId,
+    setSelectedSourceId: handleSetSelectedSourceId,
     categoryOptions,
     selectedCategoryId,
-    setSelectedCategoryId,
+    setSelectedCategoryId: handleSetSelectedCategoryId,
     shuffle: handleToggleShuffle,
     isLoading,
     isFetching,

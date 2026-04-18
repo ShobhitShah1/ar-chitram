@@ -19,6 +19,7 @@ import {
 } from "react-native";
 
 import type { GridAssetItem } from "./image-grid";
+import { logPremiumClicked } from "@/services/analytics-service";
 
 interface PremiumAssetModalProps {
   asset: GridAssetItem | null;
@@ -91,6 +92,7 @@ export const PremiumAssetModal: React.FC<PremiumAssetModalProps> = memo(
         return;
       }
 
+      logPremiumClicked("premium_asset_modal_purchase_tap");
       (onPremiumPress ?? onFreePress)(asset);
     }, [asset, onFreePress, onPremiumPress]);
 
