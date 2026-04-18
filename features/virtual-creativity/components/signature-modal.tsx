@@ -93,7 +93,15 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   }, [visible]);
 
   React.useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      // Reset to defaults when modal is closed
+      setTab("artist");
+      setSelectedArtistId(ARTIST_SIGNATURE_PRESETS[0].id);
+      setSelectedCustomFontId(SIGNATURE_FONT_PRESETS[0].id);
+      setSelectedOutlineFontId(SIGNATURE_OUTLINE_FONT_PRESETS[0].id);
+      return;
+    }
+
     if (selectedSignatureId?.startsWith("artist-")) {
       setTab("artist");
       setSelectedArtistId(selectedSignatureId);
@@ -108,6 +116,8 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
 
   const textSvgRef = React.useRef<View>(null);
   const [isCapturing, setIsCapturing] = React.useState(false);
+
+  const customPreviewName = typedName.trim() || defaultName;
 
   const selectedOutlineFont = React.useMemo(
     () =>
@@ -148,7 +158,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
         ARTIST_SIGNATURE_PRESETS[0];
       onApply({
         id: selectedArtist.id,
-        value: selectedArtist.name,
+        value: customPreviewName,
         fontFamily: selectedArtist.fontFamily,
         isArtistPreset: true,
       });
@@ -173,9 +183,9 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     tab,
     typedName,
     isCapturing,
+    customPreviewName,
+    selectedOutlineFont.fontFamily,
   ]);
-
-  const customPreviewName = typedName.trim() || defaultName;
 
   const renderCustomFont = React.useCallback(
     ({ item }: { item: (typeof SIGNATURE_FONT_PRESETS)[number] }) => {
@@ -191,10 +201,11 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           <Text
             style={[
               styles.signatureText,
-              { color: "#000", fontFamily: item.fontFamily },
+              { color: "#000", fontFamily: item.fontFamily, width: "100%" },
             ]}
             numberOfLines={1}
             adjustsFontSizeToFit={true}
+            minimumFontScale={0.1}
             selectable={false}
           >
             {customPreviewName}
@@ -473,11 +484,15 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                           <Text
                             style={[
                               styles.outlineFontTileText,
-                              { fontFamily: item.fontFamily },
+                              {
+                                fontFamily: item.fontFamily,
+                                width: "100%",
+                              },
                               selected && { color: "#1D1D1D" },
                             ]}
                             numberOfLines={1}
                             adjustsFontSizeToFit
+                            minimumFontScale={0.1}
                           >
                             {customPreviewName}
                           </Text>
@@ -584,8 +599,8 @@ const styles = StyleSheet.create({
   signatureRow: {
     minHeight: 54,
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderWidth: 1,
     borderColor: "transparent",
     justifyContent: "center",
@@ -601,7 +616,7 @@ const styles = StyleSheet.create({
   },
   signatureText: {
     fontSize: 34,
-    lineHeight: 38,
+    lineHeight: 48,
     textAlign: "center",
   },
   artistList: {

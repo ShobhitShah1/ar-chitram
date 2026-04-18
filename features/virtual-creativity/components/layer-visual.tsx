@@ -15,16 +15,13 @@ const VirtualLayerVisualComponent: React.FC<VirtualLayerVisualProps> = ({
 }) => {
   if (layer.type === "text") {
     const text = layer.text?.trim() || FALLBACK_SIGNATURE_TEXT;
-    const fontSize = Math.max(
-      18,
-      Math.max(layer.fontSize ?? 0, Math.min(layer.height * 0.76, 72)),
-    );
+    const fontSize = layer.fontSize ?? 56;
 
     return (
       <View style={styles.textWrap} pointerEvents="none">
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.2}
+          minimumFontScale={0.1}
           numberOfLines={1}
           style={[
             styles.text,
@@ -66,12 +63,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 15,
+    paddingVertical: 2,
   },
   text: {
     width: "100%",
     textAlign: "center",
-    includeFontPadding: false,
   },
 });

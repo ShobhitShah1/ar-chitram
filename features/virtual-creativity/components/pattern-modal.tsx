@@ -1,19 +1,16 @@
 import { PATTERN_PRESETS } from "@/features/virtual-creativity/constants/editor-presets";
 import type { PatternPreset } from "@/features/virtual-creativity/constants/editor-presets";
 import { SheetHeader } from "@/features/virtual-creativity/components/sheet-header";
-import { ControlledBottomSheet } from "@/components/controlled-bottom-sheet";
 import { useTheme } from "@/context/theme-context";
 import { Image } from "expo-image";
 import React from "react";
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
+import {
+  BottomSheetFlatList,
+  BottomSheetModal,
+  BottomSheetBackdrop,
+} from "@gorhom/bottom-sheet";
 
 interface PatternModalProps {
   visible: boolean;
@@ -32,7 +29,8 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
 }) => {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const bottomSheetModalRef = React.useRef<BottomSheetModal>(null);
+
   const [pendingId, setPendingId] = React.useState<string | null>(
     selectedPatternId ?? null,
   );
@@ -40,6 +38,9 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
   React.useEffect(() => {
     if (visible) {
       setPendingId(selectedPatternId ?? null);
+      bottomSheetModalRef.current?.present();
+    } else {
+      bottomSheetModalRef.current?.dismiss();
     }
   }, [selectedPatternId, visible]);
 
@@ -74,46 +75,62 @@ const PatternModalComponent: React.FC<PatternModalProps> = ({
     [pendingId],
   );
 
-  const sheetBottomPadding = Math.max(insets.bottom - bottomInset, 12);
-  const sheetHeight = Math.min(screenHeight - 12, 800 + sheetBottomPadding);
+  const renderBackdrop = React.useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.5}
+      />
+    ),
+    [],
+  );
+
+  const sheetBottomPadding = Math.max(insets.bottom - bottomInset, 0);
 
   return (
-    <ControlledBottomSheet
-      visible={visible}
-      onClose={onClose}
-      snapPoints={["93%"]}
-      bottomInset={bottomInset}
-      showHandle={false}
+    <BottomSheetModal
+      ref={bottomSheetModalRef}
+      index={0}
+      snapPoints={["70%"]}
+      onDismiss={onClose}
+      backdropComponent={renderBackdrop}
+      enablePanDownToClose
+      enableDynamicSizing={false}
+      handleComponent={null}
       backgroundStyle={styles.sheetBackground}
-      contentContainerStyle={styles.sheetContent}
     >
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
-            // minHeight: sheetHeight,
-            // paddingBottom: sheetBottomPadding,
-          },
-        ]}
-      >
-        <SheetHeader
-          title="Pattern"
-          onClose={onClose}
-          onConfirm={handleApply}
-        />
+      <View style={styles.sheetContent}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? "#F5F5F5" : "#FFFFFF",
+            },
+          ]}
+        >
+          <SheetHeader
+            title="Pattern"
+            onClose={onClose}
+            onConfirm={handleApply}
+          />
 
-        <BottomSheetFlatList
-          data={PATTERN_PRESETS}
-          keyExtractor={(item: any) => item.id}
-          numColumns={6}
-          renderItem={renderPatternItem}
-          columnWrapperStyle={styles.column}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-        />
+          <BottomSheetFlatList
+            data={PATTERN_PRESETS}
+            keyExtractor={(item: any) => item.id}
+            numColumns={6}
+            renderItem={renderPatternItem}
+            columnWrapperStyle={styles.column}
+            contentContainerStyle={[
+              styles.gridContent,
+              { paddingBottom: sheetBottomPadding + 40 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
       </View>
-    </ControlledBottomSheet>
+    </BottomSheetModal>
   );
 };
 
@@ -123,23 +140,19 @@ const styles = StyleSheet.create({
   sheetBackground: {
     backgroundColor: "transparent",
     borderWidth: 0,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
   },
   sheetContent: {
     flex: 1,
   },
   card: {
+    flex: 1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingTop: 4,
     paddingHorizontal: 20,
-    flex: 1,
-    paddingBottom: 100,
+    paddingTop: 8,
   },
   gridContent: {
     paddingTop: 10,
-    paddingBottom: 14,
   },
   column: {
     justifyContent: "space-between",

@@ -184,7 +184,7 @@ const NewSetting = () => {
           />
         </View> */}
 
-        <SectionHeader title="Preference" />
+        <SectionHeader title="Preference" style={{ marginTop: 15 }} />
         <View style={styles.section}>
           <View
             style={[
@@ -257,11 +257,13 @@ const NewSetting = () => {
                 color="#E4405F"
                 onPress={openInstagram}
               />
-              <SocialIcon
-                name="logo-facebook"
-                color="#1877F2"
-                onPress={openFacebook}
-              />
+              {FACEBOOK_LINK?.length > 0 && (
+                <SocialIcon
+                  name="logo-facebook"
+                  color="#1877F2"
+                  onPress={openFacebook}
+                />
+              )}
             </View>
           </View>
         </View>
@@ -312,7 +314,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingVertical: 15,
   },
   sectionHeader: {
     fontSize: 16,

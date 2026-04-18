@@ -27,10 +27,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ImageSearchScreen() {
   const { theme, isDark } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const [selectedImage, setSelectedImage] = useState<SearchImageItem | null>(
     null,
@@ -158,7 +160,7 @@ export default function ImageSearchScreen() {
     if (!hasMore || images.length === 0) return <View style={{ height: 40 }} />;
 
     return (
-      <View style={styles.footerWrap}>
+      <View style={[styles.footerWrap, { paddingBottom: insets.bottom + 20 }]}>
         <ThemedPressable
           onPress={loadMore}
           disabled={isFetching}
@@ -173,7 +175,7 @@ export default function ImageSearchScreen() {
             {isFetching ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
-              <Text style={styles.loadMoreText}>Load More Results</Text>
+              <Text style={styles.loadMoreText}>Load More</Text>
             )}
           </LinearGradient>
         </ThemedPressable>
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 40,
-    marginTop: -40,
+    marginTop: -20,
   },
   emptyTitle: {
     fontFamily: FontFamily.semibold,
@@ -416,14 +418,12 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.regular,
     fontSize: 14,
     textAlign: "center",
-    marginTop: 8,
+    marginTop: 2,
     lineHeight: 20,
   },
   footerWrap: {
     paddingTop: 10,
-    paddingBottom: 40,
     alignItems: "center",
-    paddingHorizontal: 20,
   },
   loadMorePressable: {
     width: "100%",
