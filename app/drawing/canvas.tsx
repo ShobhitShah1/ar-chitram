@@ -52,6 +52,10 @@ import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
 import { ENABLE_BOUNDARY_OVERFLOW } from "@/features/virtual-creativity/services/virtual-layer-transform";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import {
+  logDrawingStarted,
+  logDrawingCompleted,
+} from "@/services/analytics-service";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 const CAMERA_PINCH_SENSITIVITY = 0.35;
@@ -111,6 +115,7 @@ const Canvas = () => {
   const zoomBadgeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const drawingStartedLoggedRef = useRef(false);
 
   const routeImageUri = Array.isArray(params.imageUri)
     ? params.imageUri[0]
@@ -207,6 +212,11 @@ const Canvas = () => {
 
       if (!permission?.granted) {
         void checkAndRequest();
+      }
+
+      if (!drawingStartedLoggedRef.current) {
+        logDrawingStarted("ar");
+        drawingStartedLoggedRef.current = true;
       }
     }, [permission?.granted, requestPermission]),
   );
@@ -442,6 +452,8 @@ const Canvas = () => {
     const overlayImageUri =
       activeVirtualSnapshot?.uri ??
       (typeof routeImageUri === "string" ? routeImageUri : undefined);
+
+    logDrawingCompleted("ar");
 
     router.push({
       pathname: "/drawing/contest-camera",

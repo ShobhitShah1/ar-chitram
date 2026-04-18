@@ -2,7 +2,13 @@ import { StyleSheet, Text, View } from "react-native";
 import React, { useEffect } from "react";
 import { Pressable } from "./themed";
 import { Image } from "expo-image";
-import { ic_pro, ic_search, ic_setting, ic_suffel, ic_upload_home } from "@/assets/icons";
+import {
+  ic_pro,
+  ic_search,
+  ic_setting,
+  ic_suffel,
+  ic_upload_home,
+} from "@/assets/icons";
 import { router } from "expo-router";
 import { useTheme } from "@/context/theme-context";
 import { FontFamily } from "@/constants/fonts";
@@ -107,10 +113,18 @@ const TabsHeader = ({
         {screenId === "home" && (
           <>
             <Pressable onPress={onSearchPress} style={styles.iconButton}>
-              <Image source={ic_search} style={styles.iconSmall} contentFit="contain" />
+              <Image
+                source={ic_search}
+                style={styles.iconSmall}
+                contentFit="contain"
+              />
             </Pressable>
             <Pressable onPress={onProPress} style={styles.iconButton}>
-              <Image source={ic_pro} style={styles.iconPro} contentFit="contain" />
+              <Image
+                source={ic_pro}
+                style={styles.iconPro}
+                contentFit="contain"
+              />
             </Pressable>
           </>
         )}

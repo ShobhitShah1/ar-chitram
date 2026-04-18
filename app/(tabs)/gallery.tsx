@@ -255,9 +255,7 @@ function GalleryScreen() {
 
   return (
     <Animated.View style={commonStyles.container}>
-      <TabsHeader
-        screenId="gallery"
-      />
+      <TabsHeader screenId="gallery" />
       <CategoryChips
         items={[...GALLERY_FILTERS]}
         selected={selectedFilter}

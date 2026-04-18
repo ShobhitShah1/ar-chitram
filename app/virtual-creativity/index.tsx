@@ -52,6 +52,10 @@ import {
   type CreateFlowPickerAssetItem,
 } from "@/hooks/api/use-tab-assets-api";
 import { usePremiumAssetActionFlow } from "@/hooks/use-premium-asset-guide-flow";
+import {
+  logDrawingCompleted,
+  logDrawingStarted,
+} from "@/services/analytics-service";
 import { apiQueryKeys } from "@/services/api/query-keys";
 import { normalizeStoryImageUri } from "@/services/story-media-service";
 import { STORY_FRAME_HEIGHT, STORY_FRAME_WIDTH } from "@/utils/story-frame";
@@ -311,6 +315,15 @@ export default function VirtualCreativityScreen() {
     selectedTool,
     handModeLayerIds,
   ]);
+
+  const drawingStartedLoggedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (activeCanvasLayerId && !drawingStartedLoggedRef.current) {
+      logDrawingStarted("virtual");
+      drawingStartedLoggedRef.current = true;
+    }
+  }, [activeCanvasLayerId]);
+
   const activeOrderLayerId = selectedSubLayerId;
   const canDeleteLayer = !!selectedSubLayerId;
   const isLayerSelectionMode = viewMode === "composite" && !isZoomMode;
@@ -613,6 +626,7 @@ export default function VirtualCreativityScreen() {
     try {
       const uri = await captureCanvasSnapshot(1);
       if (uri) {
+        logDrawingCompleted("virtual");
         try {
           const persistedUris = Array.from(
             new Set(

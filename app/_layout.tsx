@@ -2,6 +2,7 @@ import { FONT_ASSETS } from "@/constants/fonts";
 import { ProfileProvider } from "@/context/profile-context";
 import QueryProvider from "@/context/query-provider";
 import { IAPProvider } from "@/context/iap-context";
+import { AppUpdateModal } from "@/components/app-update-modal";
 import {
   ThemeProvider as CustomThemeProvider,
   useTheme,
@@ -11,6 +12,11 @@ import { initializeApiAuth } from "@/hooks/api/use-auth-api";
 import { ensureMobileAdsInitialized } from "@/services/mobile-ads-service";
 import { preloadRewardedAds } from "@/services/rewarded-ad-service";
 import { handleVersionTracking } from "@/services/version-tracking-service";
+import { logAppOpen } from "@/services/analytics-service";
+import {
+  checkForStoreUpdate,
+  startStoreUpdate,
+} from "@/services/app-update-service";
 import { useCommonHeaderOptions } from "@/utils/header-config";
 import { toastConfig } from "@/utils/toast-config";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -22,7 +28,7 @@ import {
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -61,10 +67,16 @@ function ThemedNavigator() {
 function MainNavigator() {
   const { isDark } = useTheme();
   const headerOptions = useCommonHeaderOptions();
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [latestStoreVersion, setLatestStoreVersion] = useState<string | null>(
+    null,
+  );
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     initAuth();
     // initVersionTracking();
+    void initStoreVersionCheck();
   }, []);
 
   const initAuth = async () => {
@@ -83,6 +95,37 @@ function MainNavigator() {
     }
   };
 
+  const initStoreVersionCheck = async () => {
+    try {
+      const updateInfo = await checkForStoreUpdate();
+      if (!updateInfo?.isAvailable) {
+        return;
+      }
+
+      setLatestStoreVersion(updateInfo.latestVersion ?? null);
+      setUpdateAvailable(true);
+    } catch (error) {
+      console.error("Error checking store update:", error);
+    }
+  };
+
+  const handlePressUpdate = async () => {
+    if (isUpdating) {
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const updated = await startStoreUpdate();
+      if (!updated) {
+        setIsUpdating(false);
+      }
+    } catch (error) {
+      console.error("Failed to start store update:", error);
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <>
       <StatusBar
@@ -98,11 +141,6 @@ function MainNavigator() {
         <Stack.Screen name="splash" options={{ animation: "fade" }} />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        {/* <Stack.Screen name="setting" options={{ headerShown: true }} /> */}
-        {/* <Stack.Screen name="drawing/guide" /> */}
-        {/* <Stack.Screen name="drawing/canvas" /> */}
-        {/* <Stack.Screen name="drawing/preview" /> */}
-
         <Stack.Screen
           name="privacy-policy"
           options={{ ...headerOptions, title: "Privacy Policy" }}
@@ -117,6 +155,13 @@ function MainNavigator() {
         />
         <Stack.Screen name="+not-found" />
       </Stack>
+
+      <AppUpdateModal
+        visible={updateAvailable}
+        latestVersion={latestStoreVersion ?? undefined}
+        isUpdating={isUpdating}
+        onUpdatePress={handlePressUpdate}
+      />
     </>
   );
 }
@@ -135,6 +180,7 @@ export default function RootLayout() {
   }, [loaded]);
 
   useEffect(() => {
+    logAppOpen();
     ensureMobileAdsInitialized().catch((error) => {
       console.error("[Ads] Failed to initialize Mobile Ads SDK", error);
     });
