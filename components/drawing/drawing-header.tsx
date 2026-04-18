@@ -9,9 +9,13 @@ import { Pressable } from "../themed";
 
 interface DrawingHeaderProps {
   onComplete?: () => void;
+  hideGuideButton?: boolean;
 }
 
-const DrawingHeader: React.FC<DrawingHeaderProps> = ({ onComplete }) => {
+const DrawingHeader: React.FC<DrawingHeaderProps> = ({
+  onComplete,
+  hideGuideButton = false,
+}) => {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
 
@@ -27,21 +31,23 @@ const DrawingHeader: React.FC<DrawingHeaderProps> = ({ onComplete }) => {
           />
         </Pressable>
 
-        <Pressable
-          style={styles.iconButton}
-          onPress={() =>
-            router.push({
-              pathname: "/drawing/guide",
-              params: { ...params, fromEdit: "true" },
-            })
-          }
-        >
-          <Image
-            source={ic_guide}
-            style={[styles.iconStyle, { width: 25, height: 25 }]}
-            contentFit="contain"
-          />
-        </Pressable>
+        {!hideGuideButton && (
+          <Pressable
+            style={styles.iconButton}
+            onPress={() =>
+              router.push({
+                pathname: "/drawing/guide",
+                params: { ...params, fromEdit: "true" },
+              })
+            }
+          >
+            <Image
+              source={ic_guide}
+              style={[styles.iconStyle, { width: 25, height: 25 }]}
+              contentFit="contain"
+            />
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.rightContainer}>

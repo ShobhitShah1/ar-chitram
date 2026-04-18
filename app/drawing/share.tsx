@@ -1,4 +1,3 @@
-// Placeholder
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect } from "react";
 import {

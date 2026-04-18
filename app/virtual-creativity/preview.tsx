@@ -30,6 +30,17 @@ const VirtualCreativityPreview = () => {
     });
   };
 
+  const handleTrace = () => {
+    clearDrawingHistorySnapshots();
+    router.push({
+      pathname: "/drawing/trace-canvas" as any,
+      params: {
+        imageUri: imageUri,
+        originalImageUri: originalImageUri ?? imageUri,
+      },
+    });
+  };
+
   const displayImage = imageUri ? { uri: imageUri as string } : preview_1;
 
   return (
@@ -49,12 +60,20 @@ const VirtualCreativityPreview = () => {
       <View
         style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 40) }]}
       >
-        <PrimaryButton
-          title="Continue"
-          onPress={handleContinue}
-          style={styles.button}
-          colors={theme.drawingButton as any}
-        />
+        <View style={styles.buttonRow}>
+          <PrimaryButton
+            title="Trace"
+            onPress={handleTrace}
+            style={styles.button}
+            colors={theme.drawingButton as any}
+          />
+          <PrimaryButton
+            title="Draw"
+            onPress={handleContinue}
+            style={styles.button}
+            colors={theme.drawingButton as any}
+          />
+        </View>
       </View>
     </View>
   );
@@ -76,8 +95,14 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   button: {
-    width: 160,
+    width: 140,
     borderRadius: 100,
     height: 50,
   },

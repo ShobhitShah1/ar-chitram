@@ -13,6 +13,8 @@ interface HistoryControlsProps {
   canRedo?: boolean;
   undoCount?: number;
   redoCount?: number;
+  buttonBackgroundColor?: string;
+  iconTintColor?: string;
 }
 
 const HistoryControls: React.FC<HistoryControlsProps> = ({
@@ -22,17 +24,32 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
   canRedo,
   undoCount = 0,
   redoCount = 0,
+  buttonBackgroundColor,
+  iconTintColor,
 }) => {
   return (
     <View style={styles.container}>
       <Pressable
         onPress={onUndo}
         disabled={!canUndo}
-        style={[styles.button, styles.leftButton, !canUndo && styles.disabled]}
+        style={[
+          styles.button,
+          styles.leftButton,
+          !canUndo && styles.disabled,
+          buttonBackgroundColor
+            ? { backgroundColor: buttonBackgroundColor }
+            : null,
+        ]}
       >
         <Image
           source={ic_redo}
-          style={[styles.iconStyle, { transform: [{ scaleX: 1 }] }]}
+          style={[
+            styles.iconStyle,
+            { transform: [{ scaleX: 1 }] },
+            iconTintColor
+              ? { tintColor: iconTintColor }
+              : { tintColor: canUndo ? "white" : undefined },
+          ]}
           contentFit="contain"
         />
         {undoCount > -1 && (
@@ -45,11 +62,24 @@ const HistoryControls: React.FC<HistoryControlsProps> = ({
       <Pressable
         onPress={onRedo}
         disabled={!canRedo}
-        style={[styles.button, styles.rightButton, !canRedo && styles.disabled]}
+        style={[
+          styles.button,
+          styles.rightButton,
+          !canRedo && styles.disabled,
+          buttonBackgroundColor
+            ? { backgroundColor: buttonBackgroundColor }
+            : null,
+        ]}
       >
         <Image
           source={ic_redo}
-          style={[styles.iconStyle, { transform: [{ scaleX: -1 }] }]}
+          style={[
+            styles.iconStyle,
+            { transform: [{ scaleX: -1 }] },
+            iconTintColor
+              ? { tintColor: iconTintColor }
+              : { tintColor: canRedo ? "white" : undefined },
+          ]}
           contentFit="contain"
         />
         {redoCount > -1 && (
