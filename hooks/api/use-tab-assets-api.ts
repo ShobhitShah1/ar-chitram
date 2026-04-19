@@ -502,14 +502,11 @@ const useCreateFlowAssetPickerController = (
   }, [categoryOptions, selectedCategoryId]);
 
   const displayAssets = useMemo(() => {
-    if (
-      selectedSourceId !== ALL_FILTER_ID ||
-      selectedCategoryId !== ALL_FILTER_ID
-    ) {
+    if (selectedCategoryId !== ALL_FILTER_ID) {
       return filteredAssets;
     }
     return shuffleItemsSeeded(filteredAssets, shuffleSeed);
-  }, [filteredAssets, shuffleSeed, selectedSourceId, selectedCategoryId]);
+  }, [filteredAssets, shuffleSeed, selectedCategoryId]);
 
   const refetch = useCallback(async () => {
     await Promise.allSettled(sourceQueries.map((query) => query.refetch()));

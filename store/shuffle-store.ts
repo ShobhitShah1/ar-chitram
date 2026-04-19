@@ -26,9 +26,7 @@ export const useShuffleStore = create<ShuffleState>()(
       shuffleSeeds: {},
       toggleShuffle: (screenId: string) =>
         set((state) => {
-          const currentSeed = state.shuffleSeeds[screenId] || 0;
-          const newSeed =
-            currentSeed === 0 ? Math.floor(Math.random() * 1000000) + 1 : 0;
+          const newSeed = Math.floor(Math.random() * 1000000) + 1;
 
           const updatedSeeds = { ...state.shuffleSeeds, [screenId]: newSeed };
 
@@ -43,11 +41,6 @@ export const useShuffleStore = create<ShuffleState>()(
         }),
       refreshShuffle: (screenId: string) =>
         set((state) => {
-          const currentSeed = state.shuffleSeeds[screenId] || 0;
-          if (currentSeed === 0) {
-            return state;
-          }
-
           const newSeed = Math.floor(Math.random() * 1000000) + 1;
           const updatedSeeds = { ...state.shuffleSeeds, [screenId]: newSeed };
 

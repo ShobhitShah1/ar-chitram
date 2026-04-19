@@ -90,13 +90,11 @@ interface ImageGridProps {
   data: GridAssetItem[];
   onPress: (item: GridAssetItem) => void;
   isUnlocked?: (item: GridAssetItem) => boolean;
-  isUnlocked?: (item: GridAssetItem) => boolean;
   ListHeaderComponent?: React.ReactNode;
   ListEmptyComponent?: React.ReactNode;
   contentContainerStyle?: any;
   refreshing?: boolean;
   onRefresh?: () => void;
-  numColumns?: 2 | 3;
   numColumns?: 2 | 3;
   useStaticVideoPoster?: boolean;
   ListFooterComponent?: React.ReactNode;
@@ -159,7 +157,14 @@ const ImageGridItem = React.memo(
                   placeholder={item.placeholder}
                   contentFit="contain"
                   style={imageStyle}
-                  transition={200}
+                  transition={100}
+                  priority="high"
+                  cachePolicy="memory-disk"
+                  recyclingKey={
+                    typeof item.image === "string"
+                      ? item.image
+                      : String(item.id)
+                  }
                 />
               )}
               {item.mediaType === "video" && <VideoPoster />}

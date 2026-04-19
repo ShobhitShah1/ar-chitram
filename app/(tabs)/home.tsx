@@ -98,6 +98,9 @@ const HomeWinnerCard = memo(({ winner, onPress }: HomeWinnerCardProps) => {
         style={styles.winnerImage}
         contentFit="cover"
         cachePolicy="memory-disk"
+        priority="high"
+        recyclingKey={winner.image}
+        transition={100}
       />
       <View style={styles.winnerGradient} />
       <View style={styles.winnerCardFooter}>
@@ -108,6 +111,7 @@ const HomeWinnerCard = memo(({ winner, onPress }: HomeWinnerCardProps) => {
               style={styles.winnerAvatar}
               contentFit="cover"
               cachePolicy="memory-disk"
+              priority="high"
             />
           ) : (
             <View style={styles.winnerAvatarFallback} />
@@ -212,7 +216,9 @@ const HomeAssetGrid = memo(
                     style={imageStyle}
                     contentFit="contain"
                     cachePolicy="memory-disk"
-                    transition={200}
+                    transition={100}
+                    priority="high"
+                    recyclingKey={item.image}
                   />
                   {item.isPremium && !isUnlocked ? (
                     <View pointerEvents="none" style={styles.premiumBadgeWrap}>
