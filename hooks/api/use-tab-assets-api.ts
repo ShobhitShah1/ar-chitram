@@ -17,9 +17,9 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { InteractionManager } from "react-native";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShuffleStore } from "@/store/shuffle-store";
+import { shuffleItemsSeeded } from "@/utils/shuffle";
 
 const ASSETS_STALE_TIME = 15 * 60 * 1000;
 const ASSETS_GC_TIME = 30 * 60 * 1000;
@@ -35,12 +35,39 @@ const getDefaultAssetsQueryOptions = () => ({
 const useHasAuthSession = () =>
   useAuthStore((state) => Boolean(state.accessToken && state.user?.id));
 
+const generateSeed = () => Math.floor(Math.random() * 1_000_000) + 1;
+
+const computeActiveSeed = (
+  isAll: boolean,
+  shuffleSeed: number,
+  localAllSeed: number,
+) => (shuffleSeed > 0 ? shuffleSeed : isAll ? localAllSeed : 0);
+
+const deriveQueryStatus = (
+  queries: Array<{
+    data?: unknown;
+    isLoading: boolean;
+    isFetching: boolean;
+    isError: boolean;
+    error?: unknown;
+  }>,
+) => {
+  const hasResolvedData = queries.some((q) => q.data !== undefined);
+  return {
+    hasResolvedData,
+    isLoading: queries.some((q) => q.isLoading) && !hasResolvedData,
+    isFetching: queries.some((q) => q.isFetching),
+    isError: queries.every((q) => q.isError) && !hasResolvedData,
+    error: queries.find((q) => q.error)?.error ?? null,
+  };
+};
+
 export const useHomeTabAssets = () => {
   const isAuthenticated = useHasAuthSession();
+  const [localAllSeed] = useState(generateSeed);
   const shuffleSeed = useShuffleStore(
     (state) => (state.shuffleSeeds && state.shuffleSeeds.home) || 0,
   );
-  const isShuffleActive = shuffleSeed > 0;
 
   const query = useQuery({
     queryKey: apiQueryKeys.assets.home,
@@ -50,19 +77,20 @@ export const useHomeTabAssets = () => {
   });
 
   const shuffledData = useMemo(() => {
-    if (!query.data || !isShuffleActive) return query.data;
+    if (!query.data) return undefined;
+    const activeSeed = shuffleSeed > 0 ? shuffleSeed : localAllSeed;
+    
     return {
       ...query.data,
-      homeGridItems: shuffleItemsSeeded(query.data.homeGridItems, shuffleSeed),
+      homeGridItems: shuffleItemsSeeded(query.data.homeGridItems ?? [], activeSeed),
     };
-  }, [query.data, isShuffleActive]);
+  }, [query.data, shuffleSeed, localAllSeed]);
 
-  return { ...query, data: shuffledData };
+  return { ...query, data: shuffledData ?? query.data };
 };
 
 export const useColorsTabAssets = () => {
   const isAuthenticated = useHasAuthSession();
-
   return useQuery({
     queryKey: apiQueryKeys.assets.colors,
     queryFn: fetchColorsTabAssets,
@@ -73,7 +101,6 @@ export const useColorsTabAssets = () => {
 
 export const useDrawingsTabAssets = () => {
   const isAuthenticated = useHasAuthSession();
-
   return useQuery({
     queryKey: apiQueryKeys.assets.drawings,
     queryFn: fetchDrawingsTabAssets,
@@ -84,7 +111,6 @@ export const useDrawingsTabAssets = () => {
 
 export const useSketchesTabAssets = () => {
   const isAuthenticated = useHasAuthSession();
-
   return useQuery({
     queryKey: apiQueryKeys.assets.sketches,
     queryFn: fetchSketchesTabAssets,
@@ -92,8 +118,6 @@ export const useSketchesTabAssets = () => {
     ...getDefaultAssetsQueryOptions(),
   });
 };
-
-import { shuffleItemsSeeded } from "@/utils/shuffle";
 
 interface TabGridControllerResult {
   categories: string[];
@@ -128,6 +152,7 @@ const useTabGridController = (
   screenId: string = "default",
 ): TabGridControllerResult => {
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [localAllSeed, setLocalAllSeed] = useState(generateSeed);
   const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
   const refreshShuffle = useShuffleStore((state) => state.refreshShuffle);
   const shuffleSeed = useShuffleStore(
@@ -142,30 +167,14 @@ const useTabGridController = (
   useFocusEffect(
     useCallback(() => {
       refreshShuffle(screenId);
+      setLocalAllSeed(generateSeed());
     }, [refreshShuffle, screenId]),
   );
 
   const categories = useMemo(() => {
-    const apiCategories =
-      queryData?.categories.map((category) => category.name) ?? [];
+    const apiCategories = queryData?.categories.map((c) => c.name) ?? [];
     return ["All", ...apiCategories];
   }, [queryData]);
-
-  const rawItems = useMemo(() => {
-    if (!queryData) {
-      return [];
-    }
-
-    if (selectedCategory === "All") {
-      return queryData.flatAssets;
-    }
-
-    return (
-      queryData.categories.find(
-        (category) => category.name === selectedCategory,
-      )?.assets ?? []
-    );
-  }, [queryData, selectedCategory]);
 
   useEffect(() => {
     if (!categories.includes(selectedCategory)) {
@@ -174,20 +183,31 @@ const useTabGridController = (
   }, [categories, selectedCategory]);
 
   const displayItems = useMemo(() => {
-    if (selectedCategory !== "All") {
-      return rawItems;
-    }
-    return shuffleItemsSeeded(rawItems, shuffleSeed);
-  }, [rawItems, shuffleSeed, selectedCategory]);
+    if (!queryData) return [];
+
+    const rawItems =
+      selectedCategory === "All"
+        ? queryData.flatAssets
+        : (queryData.categories.find((c) => c.name === selectedCategory)
+            ?.assets ?? []);
+
+    const activeSeed = computeActiveSeed(
+      selectedCategory === "All",
+      shuffleSeed,
+      localAllSeed,
+    );
+
+    if (activeSeed === 0) return rawItems;
+    return shuffleItemsSeeded(rawItems, activeSeed);
+  }, [queryData, shuffleSeed, localAllSeed, selectedCategory]);
 
   const handleSetSelectedCategory = useCallback(
     (category: string) => {
-      if (category === "All") {
-        refreshShuffle(screenId);
-      }
+      if (shuffleSeed > 0) refreshShuffle(screenId);
+      if (category === "All") setLocalAllSeed(generateSeed());
       setSelectedCategory(category);
     },
-    [refreshShuffle, screenId],
+    [refreshShuffle, screenId, shuffleSeed],
   );
 
   return {
@@ -203,10 +223,7 @@ const prefixAssets = (
   assets: readonly TabAssetItem[],
   prefix: string,
 ): TabAssetItem[] =>
-  assets.map((asset) => ({
-    ...asset,
-    id: `${prefix}-${asset.id}`,
-  }));
+  assets.map((asset) => ({ ...asset, id: `${prefix}-${asset.id}` }));
 
 const mergeTabAssetSources = (
   sources: Array<{ prefix: string; data?: CategorizedTabAssets }>,
@@ -215,19 +232,17 @@ const mergeTabAssetSources = (
   const flatAssets: TabAssetItem[] = [];
 
   for (const source of sources) {
-    if (!source.data) {
-      continue;
-    }
+    if (!source.data) continue;
 
     flatAssets.push(...prefixAssets(source.data.flatAssets, source.prefix));
 
     for (const category of source.data.categories) {
       const categoryName = category.name?.trim() || "Uncategorized";
       const nextAssets = prefixAssets(category.assets, source.prefix);
-      const existingCategory = categoryMap.get(categoryName);
+      const existing = categoryMap.get(categoryName);
 
-      if (existingCategory) {
-        existingCategory.assets.push(...nextAssets);
+      if (existing) {
+        existing.assets.push(...nextAssets);
         continue;
       }
 
@@ -239,14 +254,9 @@ const mergeTabAssetSources = (
     }
   }
 
-  if (flatAssets.length === 0 && categoryMap.size === 0) {
-    return undefined;
-  }
+  if (flatAssets.length === 0 && categoryMap.size === 0) return undefined;
 
-  return {
-    categories: Array.from(categoryMap.values()),
-    flatAssets,
-  };
+  return { categories: Array.from(categoryMap.values()), flatAssets };
 };
 
 const buildPickerAssets = (
@@ -255,18 +265,16 @@ const buildPickerAssets = (
 ): CreateFlowPickerAssetItem[] => {
   const items: CreateFlowPickerAssetItem[] = [];
 
-  sourceConfigs.forEach((source, index) => {
-    const data = sourceQueries[index]?.data as CategorizedTabAssets | undefined;
-    if (!data) {
-      return;
-    }
+  for (const [index, source] of sourceConfigs.entries()) {
+    const data = sourceQueries[index]?.data;
+    if (!data) continue;
 
-    data.categories.forEach((category, categoryIndex) => {
+    for (const [categoryIndex, category] of data.categories.entries()) {
       const categoryName =
         category.name?.trim() || `Category ${categoryIndex + 1}`;
       const categoryId = `${source.sourceId}-${category.id}`;
 
-      category.assets.forEach((asset) => {
+      for (const asset of category.assets) {
         items.push({
           ...asset,
           id: `${source.sourceId}-${asset.id}`,
@@ -275,9 +283,9 @@ const buildPickerAssets = (
           categoryId,
           categoryName,
         });
-      });
-    });
-  });
+      }
+    }
+  }
 
   return items;
 };
@@ -290,7 +298,6 @@ const getCategoryFilterId = (
     ? `all-category:${asset.categoryName}`
     : asset.categoryId;
 
-// Add new asset servers here for create/upload picker flows.
 export const CREATE_FLOW_ASSET_SOURCES: readonly TabAssetSourceConfig[] = [
   {
     sourceId: "drawing",
@@ -338,28 +345,19 @@ const useMergedTabAssetsGrid = (
   );
 
   const gridController = useTabGridController(mergedData, "create");
-  const hasResolvedData = sourceQueries.some(
-    (query) => query.data !== undefined,
-  );
+  const status = deriveQueryStatus(sourceQueries);
 
   const refetch = useCallback(async () => {
-    await Promise.allSettled(sourceQueries.map((query) => query.refetch()));
+    await Promise.allSettled(sourceQueries.map((q) => q.refetch()));
   }, [sourceQueries]);
-
-  const isLoading =
-    sourceQueries.some((query) => query.isLoading) && !hasResolvedData;
-  const isFetching = sourceQueries.some((query) => query.isFetching);
-  const isError =
-    sourceQueries.every((query) => query.isError) && !hasResolvedData;
-  const error = sourceQueries.find((query) => query.error)?.error ?? null;
 
   return {
     ...gridController,
     data: mergedData,
-    isLoading,
-    isFetching,
-    isError,
-    error,
+    isLoading: status.isLoading,
+    isFetching: status.isFetching,
+    isError: status.isError,
+    error: status.error,
     refetch,
   };
 };
@@ -371,37 +369,34 @@ const useCreateFlowAssetPickerController = (
   const isAuthenticated = useHasAuthSession();
   const [selectedSourceId, setSelectedSourceId] = useState(ALL_FILTER_ID);
   const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_FILTER_ID);
+  const [localAllSeed, setLocalAllSeed] = useState(generateSeed);
   const toggleShuffle = useShuffleStore((state) => state.toggleShuffle);
+  const refreshShuffle = useShuffleStore((state) => state.refreshShuffle);
   const shuffleSeed = useShuffleStore(
     (state) => (state.shuffleSeeds && state.shuffleSeeds[screenId]) || 0,
   );
-  const isShuffleActive = shuffleSeed > 0;
 
   const handleToggleShuffle = useCallback(
     () => toggleShuffle(screenId),
     [toggleShuffle, screenId],
   );
 
-  const refreshShuffle = useShuffleStore((state) => state.refreshShuffle);
-
   const handleSetSelectedSourceId = useCallback(
     (sourceId: string) => {
-      if (sourceId === ALL_FILTER_ID) {
-        refreshShuffle(screenId);
-      }
+      if (shuffleSeed > 0) refreshShuffle(screenId);
+      if (sourceId === ALL_FILTER_ID) setLocalAllSeed(generateSeed());
       setSelectedSourceId(sourceId);
     },
-    [refreshShuffle, screenId],
+    [refreshShuffle, screenId, shuffleSeed],
   );
 
   const handleSetSelectedCategoryId = useCallback(
     (categoryId: string) => {
-      if (categoryId === ALL_FILTER_ID) {
-        refreshShuffle(screenId);
-      }
+      if (shuffleSeed > 0) refreshShuffle(screenId);
+      if (categoryId === ALL_FILTER_ID) setLocalAllSeed(generateSeed());
       setSelectedCategoryId(categoryId);
     },
-    [refreshShuffle, screenId],
+    [refreshShuffle, screenId, shuffleSeed],
   );
 
   const sourceQueries = useQueries({
@@ -419,108 +414,107 @@ const useCreateFlowAssetPickerController = (
   );
 
   const sourceOptions = useMemo<PickerFilterOption[]>(() => {
-    const nextOptions: PickerFilterOption[] = [
-      {
-        id: ALL_FILTER_ID,
-        label: "All",
-        count: allAssets.length,
-      },
+    const options: PickerFilterOption[] = [
+      { id: ALL_FILTER_ID, label: "All", count: allAssets.length },
     ];
-
     for (const source of sourceConfigs) {
-      nextOptions.push({
+      options.push({
         id: source.sourceId,
         label: source.label,
-        count: allAssets.filter((asset) => asset.sourceId === source.sourceId)
-          .length,
+        count: allAssets.filter((a) => a.sourceId === source.sourceId).length,
       });
     }
-
-    return nextOptions;
+    return options;
   }, [allAssets, sourceConfigs]);
 
-  const sourceScopedAssets = useMemo(() => {
-    if (selectedSourceId === ALL_FILTER_ID) {
-      return allAssets;
-    }
-
-    return allAssets.filter((asset) => asset.sourceId === selectedSourceId);
-  }, [allAssets, selectedSourceId]);
+  const sourceScopedAssets = useMemo(
+    () =>
+      selectedSourceId === ALL_FILTER_ID
+        ? allAssets
+        : allAssets.filter((a) => a.sourceId === selectedSourceId),
+    [allAssets, selectedSourceId],
+  );
 
   const categoryOptions = useMemo<PickerFilterOption[]>(() => {
     const categoryMap = new Map<string, PickerFilterOption>();
 
     for (const asset of sourceScopedAssets) {
-      const categoryFilterId = getCategoryFilterId(asset, selectedSourceId);
-      const existing = categoryMap.get(categoryFilterId);
-
+      const filterId = getCategoryFilterId(asset, selectedSourceId);
+      const existing = categoryMap.get(filterId);
       if (existing) {
         existing.count += 1;
         continue;
       }
-
-      categoryMap.set(categoryFilterId, {
-        id: categoryFilterId,
+      categoryMap.set(filterId, {
+        id: filterId,
         label: asset.categoryName,
         count: 1,
       });
     }
 
     return [
-      {
-        id: ALL_FILTER_ID,
-        label: "All",
-        count: sourceScopedAssets.length,
-      },
-      ...Array.from(categoryMap.values()).sort((left, right) =>
-        left.label.localeCompare(right.label),
+      { id: ALL_FILTER_ID, label: "All", count: sourceScopedAssets.length },
+      ...Array.from(categoryMap.values()).sort((a, b) =>
+        a.label.localeCompare(b.label),
       ),
     ];
   }, [selectedSourceId, sourceScopedAssets]);
 
-  const filteredAssets = useMemo(() => {
-    if (selectedCategoryId === ALL_FILTER_ID) {
-      return sourceScopedAssets;
-    }
-
-    return sourceScopedAssets.filter(
-      (asset) =>
-        getCategoryFilterId(asset, selectedSourceId) === selectedCategoryId,
-    );
-  }, [selectedCategoryId, selectedSourceId, sourceScopedAssets]);
+  const filteredAssets = useMemo(
+    () =>
+      selectedCategoryId === ALL_FILTER_ID
+        ? sourceScopedAssets
+        : sourceScopedAssets.filter(
+            (a) =>
+              getCategoryFilterId(a, selectedSourceId) === selectedCategoryId,
+          ),
+    [selectedCategoryId, selectedSourceId, sourceScopedAssets],
+  );
 
   useEffect(() => {
-    if (!sourceOptions.some((option) => option.id === selectedSourceId)) {
+    if (!sourceOptions.some((o) => o.id === selectedSourceId)) {
       setSelectedSourceId(ALL_FILTER_ID);
     }
   }, [selectedSourceId, sourceOptions]);
 
   useEffect(() => {
-    if (!categoryOptions.some((option) => option.id === selectedCategoryId)) {
+    if (!categoryOptions.some((o) => o.id === selectedCategoryId)) {
       setSelectedCategoryId(ALL_FILTER_ID);
     }
   }, [categoryOptions, selectedCategoryId]);
 
   const displayAssets = useMemo(() => {
-    if (selectedCategoryId !== ALL_FILTER_ID) {
-      return filteredAssets;
-    }
-    return shuffleItemsSeeded(filteredAssets, shuffleSeed);
-  }, [filteredAssets, shuffleSeed, selectedCategoryId]);
+    const rawItems =
+      selectedCategoryId === ALL_FILTER_ID
+        ? sourceScopedAssets
+        : sourceScopedAssets.filter(
+            (asset) =>
+              getCategoryFilterId(asset, selectedSourceId) ===
+              selectedCategoryId,
+          );
+
+    const activeSeed = computeActiveSeed(
+      selectedCategoryId === ALL_FILTER_ID,
+      shuffleSeed,
+      localAllSeed,
+    );
+
+    if (activeSeed === 0) return rawItems;
+    return shuffleItemsSeeded(rawItems, activeSeed);
+  }, [
+    sourceScopedAssets,
+    shuffleSeed,
+    localAllSeed,
+    selectedCategoryId,
+    selectedSourceId,
+  ]);
+
+
+  const status = deriveQueryStatus(sourceQueries);
 
   const refetch = useCallback(async () => {
-    await Promise.allSettled(sourceQueries.map((query) => query.refetch()));
+    await Promise.allSettled(sourceQueries.map((q) => q.refetch()));
   }, [sourceQueries]);
-
-  const hasResolvedData = sourceQueries.some(
-    (query) => query.data !== undefined,
-  );
-  const isLoading =
-    sourceQueries.some((query) => query.isLoading) && !hasResolvedData;
-  const isFetching = sourceQueries.some((query) => query.isFetching);
-  const isError =
-    sourceQueries.every((query) => query.isError) && !hasResolvedData;
-  const error = sourceQueries.find((query) => query.error)?.error ?? null;
 
   return {
     assets: displayAssets,
@@ -532,28 +526,22 @@ const useCreateFlowAssetPickerController = (
     selectedCategoryId,
     setSelectedCategoryId: handleSetSelectedCategoryId,
     shuffle: handleToggleShuffle,
-    isLoading,
-    isFetching,
-    isError,
-    error,
+    isLoading: status.isLoading,
+    isFetching: status.isFetching,
+    isError: status.isError,
+    error: status.error,
     refetch,
   };
 };
 
 export const useColorsTabGrid = () => {
   const query = useColorsTabAssets();
-  return {
-    ...query,
-    ...useTabGridController(query.data, "colors"),
-  };
+  return { ...query, ...useTabGridController(query.data, "colors") };
 };
 
 export const useDrawingsTabGrid = () => {
   const query = useDrawingsTabAssets();
-  return {
-    ...query,
-    ...useTabGridController(query.data, "drawings"),
-  };
+  return { ...query, ...useTabGridController(query.data, "drawings") };
 };
 
 export const useCreateFlowTabAssetsGrid = () =>
@@ -566,10 +554,7 @@ export const useColorsAndDrawingsTabGrid = () => useCreateFlowTabAssetsGrid();
 
 export const useSketchesTabGrid = () => {
   const query = useSketchesTabAssets();
-  return {
-    ...query,
-    ...useTabGridController(query.data, "sketches"),
-  };
+  return { ...query, ...useTabGridController(query.data, "sketches") };
 };
 
 export const prefetchCoreTabAssets = async (
@@ -599,20 +584,20 @@ export const prefetchCoreTabAssets = async (
   ]);
 };
 
-const withTimeout = async (promise: Promise<void>, timeoutMs: number) => {
-  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-
+const withTimeout = async (
+  promise: Promise<void>,
+  timeoutMs: number,
+): Promise<void> => {
+  let handle: ReturnType<typeof setTimeout> | null = null;
   try {
     await Promise.race([
       promise,
       new Promise<void>((resolve) => {
-        timeoutHandle = setTimeout(resolve, timeoutMs);
+        handle = setTimeout(resolve, timeoutMs);
       }),
     ]);
   } finally {
-    if (timeoutHandle) {
-      clearTimeout(timeoutHandle);
-    }
+    if (handle) clearTimeout(handle);
   }
 };
 
@@ -622,18 +607,14 @@ export const useWarmCoreTabAssets = () => {
   return useCallback(
     async (options?: { timeoutMs?: number }) => {
       const { accessToken, user } = useAuthStore.getState();
-      if (!accessToken || !user?.id) {
-        return;
-      }
+      if (!accessToken || !user?.id) return;
 
-      const warmupPromise = prefetchCoreTabAssets(queryClient);
-
+      const warmup = prefetchCoreTabAssets(queryClient);
       if (options?.timeoutMs && options.timeoutMs > 0) {
-        await withTimeout(warmupPromise, options.timeoutMs);
+        await withTimeout(warmup, options.timeoutMs);
         return;
       }
-
-      await warmupPromise;
+      await warmup;
     },
     [queryClient],
   );
@@ -644,12 +625,7 @@ export const useScheduleCoreTabAssetsPrefetch = () => {
 
   return useCallback(() => {
     const { accessToken, user } = useAuthStore.getState();
-    if (!accessToken || !user?.id) {
-      return;
-    }
-
-    InteractionManager.runAfterInteractions(() => {
-      void prefetchCoreTabAssets(queryClient);
-    });
+    if (!accessToken || !user?.id) return;
+    requestIdleCallback(() => void prefetchCoreTabAssets(queryClient));
   }, [queryClient]);
 };
