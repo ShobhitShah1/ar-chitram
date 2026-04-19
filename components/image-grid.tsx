@@ -20,6 +20,8 @@ import { Pressable } from "./themed";
 import { useTheme } from "@/context/theme-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { FontFamily } from "@/constants/fonts";
+import { useState } from "react";
+import { GracefulImage } from "./graceful-image";
 
 const { width } = Dimensions.get("window");
 
@@ -66,12 +68,14 @@ const VideoThumbnail = React.memo(
     }, [uri]);
 
     return (
-      <Image
-        source={thumbnail ? { uri: thumbnail } : undefined}
-        contentFit="cover"
-        style={imageStyle}
-        transition={200}
-      />
+      <View style={imageStyle}>
+        <GracefulImage
+          source={thumbnail ? { uri: thumbnail } : undefined}
+          contentFit="cover"
+          style={StyleSheet.absoluteFill}
+          borderRadius={10}
+        />
+      </View>
     );
   },
 );
@@ -148,7 +152,7 @@ const ImageGridItem = React.memo(
               {item.mediaType === "video" && typeof item.image === "string" ? (
                 <VideoThumbnail uri={item.image} imageStyle={imageStyle} />
               ) : (
-                <Image
+                <GracefulImage
                   source={
                     typeof item.image === "string"
                       ? { uri: item.image }
@@ -157,7 +161,7 @@ const ImageGridItem = React.memo(
                   placeholder={item.placeholder}
                   contentFit="contain"
                   style={imageStyle}
-                  transition={100}
+                  borderRadius={10}
                   priority="high"
                   cachePolicy="memory-disk"
                   recyclingKey={

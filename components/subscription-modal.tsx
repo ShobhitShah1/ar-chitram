@@ -22,6 +22,7 @@ import {
 import { FontFamily } from "@/constants/fonts";
 import { useGigglamIAPContext } from "@/context/iap-context";
 import { logPremiumClicked } from "@/services/analytics-service";
+import Animated from "react-native-reanimated";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
@@ -45,7 +46,6 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   // Responsive sizing
   const cardWidth = Math.min(screenWidth * 0.9, 380);
-  const cardHeight = Math.min(screenHeight * 0.75, 660);
 
   const features = ["Premium accessible", "Onetime purchase", "No Ads"];
   const subscriptionProduct = getProduct(GLOBAL_PREMIUM_UNLOCK_SKU);
@@ -99,7 +99,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
 
-        <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
+        <View style={[styles.card, { width: cardWidth }]}>
           {/* Diamond Badge */}
           <Image
             source={ic_diamond}
@@ -113,7 +113,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               style={styles.background}
               contentFit="cover"
             >
-              <View style={styles.content}>
+              <View style={styles.scrollContent}>
                 {/* Close Button */}
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                   <Image
@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   cardSurface: {
-    flex: 1,
     borderRadius: 36,
     overflow: "hidden",
     backgroundColor: "#fff",
@@ -237,12 +236,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   background: {
-    flex: 1,
+    width: "100%",
   },
-  content: {
-    flex: 1,
-    paddingTop: 40,
+  scrollContent: {
+    paddingTop: 30,
     paddingHorizontal: 20,
+    paddingBottom: 25,
     alignItems: "center",
   },
   closeButton: {
@@ -270,10 +269,10 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: "100%",
-    height: "45%",
+    height: 200,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 0,
   },
   girlImage: {
     width: "100%",
@@ -285,7 +284,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 15,
+    marginBottom: 10,
     position: "relative",
   },
   premiumGlow: {
@@ -300,13 +299,13 @@ const styles = StyleSheet.create({
   },
   premiumText: {
     fontFamily: FontFamily.bold,
-    fontSize: 26,
+    fontSize: 22,
     color: "#000",
   },
   featuresList: {
     width: "100%",
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   featureItem: {
     flexDirection: "row",
@@ -331,8 +330,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
-    marginTop: "auto",
-    marginBottom: 20,
+    marginTop: 10,
   },
   gradientBorder: {
     flex: 1,

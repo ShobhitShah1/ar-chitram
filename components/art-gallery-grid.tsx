@@ -12,6 +12,8 @@ import Animated, { LinearTransition } from "react-native-reanimated";
 
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
+import { useState } from "react";
+import { GracefulImage } from "./graceful-image";
 import { ArtCaptureGroup } from "@/features/gallery/services/local-gallery-service";
 
 const { width } = Dimensions.get("window");
@@ -34,7 +36,6 @@ interface ArtGalleryGridProps {
   onRefresh?: () => void;
   ListEmptyComponent?: React.ReactNode;
 }
-
 export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
   data,
   onPress,
@@ -137,6 +138,7 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
                             contentFit="cover"
                             style={styles.image}
                             cachePolicy="memory-disk"
+                            transition={200}
                           />
                         </View>
                       );
@@ -156,11 +158,10 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
                         },
                       ]}
                     >
-                      <Image
-                        source={{ uri: frontCapture.uri }}
-                        contentFit="cover"
+                      <ImageWithSkeleton
+                        uri={frontCapture.uri}
                         style={styles.image}
-                        cachePolicy="memory-disk"
+                        borderRadius={18}
                       />
 
                       {isFolder ? (
@@ -181,6 +182,26 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
         </View>
       )}
     </Animated.ScrollView>
+  );
+};
+
+const ImageWithSkeleton = ({
+  uri,
+  style,
+  borderRadius,
+}: {
+  uri: string;
+  style: any;
+  borderRadius: number;
+}) => {
+  return (
+    <GracefulImage
+      source={{ uri }}
+      contentFit="cover"
+      style={style}
+      borderRadius={borderRadius}
+      cachePolicy="memory-disk"
+    />
   );
 };
 

@@ -43,6 +43,10 @@ export interface Theme {
   drawingCardBackground: string;
   drawingCardShadow: string;
   drawingCardShadowDark: string;
+
+  // Skeleton colors
+  skeletonBase: string;
+  skeletonHighlight: string;
 }
 
 // Light theme (current/default)
@@ -106,6 +110,8 @@ export const lightTheme: Theme = {
   drawingCardBackground: "#FFFFFF",
   drawingCardShadow: "0px 0px 10px 0px rgba(0,0,0,0.05)",
   drawingCardShadowDark: "0px 0px 10px 0px rgba(0,0,0,0.05)",
+  skeletonBase: "#F2F2F2",
+  skeletonHighlight: "#FFFFFF",
 };
 
 // Dark theme (new)
@@ -164,6 +170,8 @@ export const darkTheme: Theme = {
   drawingCardBackground: "rgba(228,228,228,1)",
   drawingCardShadow: "0px 0px 20px 0px rgba(0,0,0,0.5)",
   drawingCardShadowDark: "0px 0px 20px 0px rgba(0,0,0,0.12)",
+  skeletonBase: "#BDBDBD",
+  skeletonHighlight: "#CECECE",
 };
 
 // Backward compatibility exports
