@@ -21,7 +21,7 @@ const VirtualLayerVisualComponent: React.FC<VirtualLayerVisualProps> = ({
       <View style={styles.textWrap} pointerEvents="none">
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.1}
+          minimumFontScale={0.45}
           numberOfLines={1}
           style={[
             styles.text,
@@ -63,11 +63,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 2,
+    paddingHorizontal: 32,
+    paddingVertical: 18,
+    overflow: "visible",
   },
   text: {
     width: "100%",
     textAlign: "center",
+    includeFontPadding: false,
   },
 });

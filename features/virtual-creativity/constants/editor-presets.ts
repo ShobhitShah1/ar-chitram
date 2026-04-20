@@ -26,6 +26,7 @@ export interface SignatureSelection {
   isArtistPreset: boolean;
   isTextAsLayer?: boolean;
   textLayerUri?: string;
+  presetImageSource?: number;
 }
 
 export const PATTERN_PRESETS: PatternPreset[] = PATTERN_TEXTURES.map(
@@ -76,11 +77,11 @@ export const SIGNATURE_FONT_PRESETS: SignatureFontPreset[] = [
     label: "Harlfiney",
     fontFamily: FontFamily.customHarlfiney,
   },
-  {
-    id: "font-marcelle",
-    label: "Marcelle",
-    fontFamily: FontFamily.customMarcelle,
-  },
+  // {
+  //   id: "font-marcelle",
+  //   label: "Marcelle",
+  //   fontFamily: FontFamily.customMarcelle,
+  // },
   {
     id: "font-messy-script",
     label: "Messy Script",

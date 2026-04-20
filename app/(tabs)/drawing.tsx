@@ -6,10 +6,13 @@ import TabsHeader from "@/components/tabs-header";
 import { useCommonThemedStyles } from "@/components/themed";
 import { useDrawingsTabGrid } from "@/hooks/api";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
+import { useNavigation } from "@react-navigation/native";
 import React, { useCallback } from "react";
-import { View } from "react-native";
+import { FlatList, View } from "react-native";
 
 const Drawing = () => {
+  const navigation = useNavigation();
+  const listRef = React.useRef<FlatList>(null);
   const commonStyles = useCommonThemedStyles();
   const {
     data,
@@ -65,6 +68,14 @@ const Drawing = () => {
     />
   ) : null;
 
+  React.useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("scrollToTopTab", () => {
+      listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <View style={commonStyles.container}>
       <TabsHeader isShuffle screenId="drawings" onShufflePress={shuffle} />
@@ -76,6 +87,7 @@ const Drawing = () => {
       />
 
       <ImageGrid
+        listRef={listRef}
         data={emptyState ? [] : gridItems}
         onPress={handleAssetPress}
         isUnlocked={isPremiumAssetUnlocked}

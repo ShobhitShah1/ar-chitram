@@ -6,7 +6,6 @@ import {
   joinContest,
   likeAndDislike,
 } from "@/services/api-service";
-import { useUser } from "@/context/user-context";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 interface JoinContestParams {
@@ -19,18 +18,9 @@ interface LikeContestImageParams {
 }
 
 export const useJoinContest = () => {
-  const { phoneNumber } = useUser();
-
   return useMutation({
     mutationFn: async ({ imageUri }: JoinContestParams) => {
-      // Use phone number from user context
-      const mobileNo = phoneNumber || "";
-
-      if (!mobileNo) {
-        throw new Error("Phone number is required to join contest");
-      }
-
-      const result = await joinContest(imageUri, mobileNo);
+      const result = await joinContest(imageUri);
 
       if (!result.success) {
         throw new Error(result.message);

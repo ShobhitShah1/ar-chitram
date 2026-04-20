@@ -102,6 +102,7 @@ interface ImageGridProps {
   numColumns?: 2 | 3;
   useStaticVideoPoster?: boolean;
   ListFooterComponent?: React.ReactNode;
+  listRef?: React.Ref<FlatList<GridRow>>;
 }
 
 const GAP = 12;
@@ -214,6 +215,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   onRefresh,
   numColumns = 3,
   ListFooterComponent,
+  listRef,
 }) => {
   const { theme, isDark } = useTheme();
 
@@ -276,6 +278,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
   return (
     <FlatList
+      ref={listRef}
       data={rows}
       keyExtractor={(item) => item.id}
       renderItem={renderRow}

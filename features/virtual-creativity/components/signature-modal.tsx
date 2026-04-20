@@ -25,7 +25,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Text as SvgText } from "react-native-svg";
 import { captureRef } from "react-native-view-shot";
 
 type SignatureTab = "artist" | "custom" | "text";
@@ -38,6 +37,33 @@ interface SignatureModalProps {
   onClose: () => void;
   onApply: (selection: SignatureSelection) => void;
 }
+
+const getPreviewFontSize = (
+  value: string,
+  largeSize: number,
+  minimumSize: number,
+) => {
+  const length = value.trim().length;
+
+  if (length <= 10) {
+    return largeSize;
+  }
+
+  if (length <= 16) {
+    return largeSize - 6;
+  }
+
+  if (length <= 22) {
+    return largeSize - 10;
+  }
+
+  return minimumSize;
+};
+
+const getCaptureTextWidth = (value: string) => {
+  const length = value.trim().length;
+  return Math.max(900, Math.min(3200, length * 110 + 240));
+};
 
 const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   visible,
@@ -53,7 +79,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
   const bottomSheetModalRef = React.useRef<BottomSheetModal>(null);
 
   const [tab, setTab] = React.useState<SignatureTab>("artist");
-  const [typedName, setTypedName] = React.useState(defaultName);
+  const [typedName, setTypedName] = React.useState("");
   const [selectedCustomFontId, setSelectedCustomFontId] = React.useState(
     SIGNATURE_FONT_PRESETS[0].id,
   );
@@ -95,6 +121,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
       setSelectedArtistId(ARTIST_SIGNATURE_PRESETS[0].id);
       setSelectedCustomFontId(SIGNATURE_FONT_PRESETS[0].id);
       setSelectedOutlineFontId(SIGNATURE_OUTLINE_FONT_PRESETS[0].id);
+      setTypedName("");
       return;
     }
 
@@ -107,13 +134,26 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     } else if (selectedSignatureId?.startsWith("text-")) {
       setTab("text");
     }
-    setTypedName(defaultName);
+    setTypedName("");
   }, [selectedSignatureId, visible, defaultName]);
 
+  const customTextCaptureRef = React.useRef<View>(null);
   const textSvgRef = React.useRef<View>(null);
   const [isCapturing, setIsCapturing] = React.useState(false);
 
   const customPreviewName = typedName.trim() || defaultName;
+  const customPreviewFontSize = React.useMemo(
+    () => getPreviewFontSize(customPreviewName, 30, 18),
+    [customPreviewName],
+  );
+  const textPreviewFontSize = React.useMemo(
+    () => getPreviewFontSize(customPreviewName, 28, 15),
+    [customPreviewName],
+  );
+  const captureTextWidth = React.useMemo(
+    () => getCaptureTextWidth(customPreviewName),
+    [customPreviewName],
+  );
 
   const selectedOutlineFont = React.useMemo(
     () =>
@@ -122,20 +162,34 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
       ) ?? SIGNATURE_OUTLINE_FONT_PRESETS[0],
     [selectedOutlineFontId],
   );
+  const selectedCustomFont = React.useMemo(
+    () =>
+      SIGNATURE_FONT_PRESETS.find((f) => f.id === selectedCustomFontId) ??
+      SIGNATURE_FONT_PRESETS[0],
+    [selectedCustomFontId],
+  );
 
   const handleApply = React.useCallback(async () => {
-    if (tab === "text") {
-      if (!textSvgRef.current || isCapturing) return;
+    if (tab === "text" || tab === "custom") {
+      const captureTarget =
+        tab === "text" ? textSvgRef.current : customTextCaptureRef.current;
+      const captureFontFamily =
+        tab === "text"
+          ? selectedOutlineFont.fontFamily
+          : selectedCustomFont.fontFamily;
+      const captureIdPrefix = tab === "text" ? "text" : selectedCustomFont.id;
+
+      if (!captureTarget || isCapturing) return;
       setIsCapturing(true);
       try {
-        const uri = await captureRef(textSvgRef.current, {
+        const uri = await captureRef(captureTarget, {
           format: "png",
           quality: 1,
         });
         onApply({
-          id: "text-" + Date.now(),
+          id: `${captureIdPrefix}-${Date.now()}`,
           value: customPreviewName,
-          fontFamily: selectedOutlineFont.fontFamily,
+          fontFamily: captureFontFamily,
           isArtistPreset: false,
           isTextAsLayer: true,
           textLayerUri: uri,
@@ -157,29 +211,18 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
         value: customPreviewName,
         fontFamily: selectedArtist.fontFamily,
         isArtistPreset: true,
+        presetImageSource: selectedArtist.icon,
       });
       return;
     }
-
-    const selectedFont =
-      SIGNATURE_FONT_PRESETS.find((item) => item.id === selectedCustomFontId) ??
-      SIGNATURE_FONT_PRESETS[0];
-    const value = typedName.trim() || defaultName;
-    onApply({
-      id: selectedFont.id,
-      value,
-      fontFamily: selectedFont.fontFamily,
-      isArtistPreset: false,
-    });
   }, [
-    defaultName,
     onApply,
     selectedArtistId,
-    selectedCustomFontId,
     tab,
-    typedName,
     isCapturing,
     customPreviewName,
+    selectedCustomFont.fontFamily,
+    selectedCustomFont.id,
     selectedOutlineFont.fontFamily,
   ]);
 
@@ -190,26 +233,32 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
         <Pressable
           onPress={() => setSelectedCustomFontId(item.id)}
           style={[
-            styles.signatureRow,
+            styles.customSignatureRow,
             selected ? styles.signatureRowSelected : styles.signatureRowFaded,
           ]}
         >
-          <Text
-            style={[
-              styles.signatureText,
-              { color: "#000", fontFamily: item.fontFamily, width: "100%" },
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit={true}
-            minimumFontScale={0.1}
-            selectable={false}
-          >
-            {customPreviewName}
-          </Text>
+          <View style={styles.customSignaturePreviewBox}>
+            <Text
+              style={[
+                styles.customSignatureText,
+                {
+                  color: "#000",
+                  fontFamily: item.fontFamily,
+                  fontSize: customPreviewFontSize,
+                },
+              ]}
+              adjustsFontSizeToFit
+              minimumFontScale={0.2}
+              numberOfLines={1}
+              selectable={false}
+            >
+              {customPreviewName}
+            </Text>
+          </View>
         </Pressable>
       );
     },
-    [customPreviewName, selectedCustomFontId],
+    [customPreviewFontSize, customPreviewName, selectedCustomFontId],
   );
 
   const renderArtistItem = React.useCallback(
@@ -239,9 +288,10 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
     [selectedArtistId],
   );
 
-  const sheetMaxHeight = Math.min(screenHeight, screenHeight * 0.97);
-
-  const snapPoints = React.useMemo(() => ["80%"], []);
+  const snapPoints = React.useMemo(
+    () => [isKeyboardVisible ? "92%" : screenHeight < 760 ? "88%" : "84%"],
+    [isKeyboardVisible, screenHeight],
+  );
   const listBottomPadding = insets.bottom + 14;
 
   const renderBackdrop = React.useCallback(
@@ -357,6 +407,54 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
           </View>
 
           <View style={[styles.contentArea, { flex: 1, minHeight: 0 }]}>
+            <View
+              style={{
+                position: "absolute",
+                left: -5000,
+                top: -5000,
+                opacity: 0,
+              }}
+              pointerEvents="none"
+            >
+              <View
+                ref={customTextCaptureRef}
+                collapsable={false}
+                style={[styles.captureTextCanvas, { width: captureTextWidth }]}
+              >
+                <Text
+                  style={[
+                    styles.captureText,
+                    {
+                      fontFamily: selectedCustomFont.fontFamily,
+                      width: captureTextWidth - 128,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {customPreviewName}
+                </Text>
+              </View>
+
+              <View
+                ref={textSvgRef}
+                collapsable={false}
+                style={[styles.captureTextCanvas, { width: captureTextWidth }]}
+              >
+                <Text
+                  style={[
+                    styles.captureText,
+                    {
+                      fontFamily: selectedOutlineFont.fontFamily,
+                      width: captureTextWidth - 128,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {customPreviewName}
+                </Text>
+              </View>
+            </View>
+
             {tab === "custom" ? (
               <View style={styles.customWrap}>
                 <View
@@ -365,7 +463,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   <BottomSheetTextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder="Type here..."
+                    placeholder={defaultName}
                     placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
                     style={[styles.input, { color: "#000" }]}
                   />
@@ -413,43 +511,10 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                   <BottomSheetTextInput
                     value={typedName}
                     onChangeText={setTypedName}
-                    placeholder="Type here..."
+                    placeholder={defaultName}
                     placeholderTextColor={isDark ? "#B8B8B8" : "#8F8F8F"}
                     style={[styles.input, { color: "#000" }]}
                   />
-                </View>
-
-                {/* Hidden region for capturing text as image layer */}
-                <View
-                  style={{
-                    position: "absolute",
-                    left: -1000,
-                    top: 0,
-                    opacity: 0,
-                  }}
-                >
-                  <View
-                    ref={textSvgRef}
-                    collapsable={false}
-                    style={styles.svgHolder}
-                  >
-                    <Svg
-                      width={Math.max(400, customPreviewName.length * 90)}
-                      height={250}
-                    >
-                      <SvgText
-                        x="50%"
-                        y="50%"
-                        textAnchor="middle"
-                        alignmentBaseline="central"
-                        fill="#000000"
-                        fontSize="150"
-                        fontFamily={selectedOutlineFont.fontFamily}
-                      >
-                        {customPreviewName}
-                      </SvgText>
-                    </Svg>
-                  </View>
                 </View>
 
                 <View style={styles.outlineFontWrap}>
@@ -466,7 +531,7 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                         <Pressable
                           onPress={() => setSelectedOutlineFontId(item.id)}
                           style={[
-                            styles.artistTile,
+                            styles.textPresetTile,
                             {
                               borderColor: selected
                                 ? "#1D1D1D"
@@ -475,21 +540,23 @@ const SignatureModalComponent: React.FC<SignatureModalProps> = ({
                             },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.outlineFontTileText,
-                              {
-                                fontFamily: item.fontFamily,
-                                width: "100%",
-                              },
-                              selected && { color: "#1D1D1D" },
-                            ]}
-                            numberOfLines={1}
-                            adjustsFontSizeToFit
-                            minimumFontScale={0.1}
-                          >
-                            {customPreviewName}
-                          </Text>
+                          <View style={styles.textSignaturePreviewBox}>
+                            <Text
+                              style={[
+                                styles.outlineFontTileText,
+                                {
+                                  fontFamily: item.fontFamily,
+                                  fontSize: textPreviewFontSize,
+                                },
+                                selected && { color: "#1D1D1D" },
+                              ]}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.18}
+                              numberOfLines={1}
+                            >
+                              {customPreviewName}
+                            </Text>
+                          </View>
                         </Pressable>
                       );
                     }}
@@ -590,16 +657,17 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
-  signatureRow: {
-    minHeight: 54,
+  customSignatureRow: {
+    minHeight: 76,
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: "transparent",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 2,
+    overflow: "visible",
   },
   signatureRowSelected: {
     backgroundColor: "rgba(29,29,29,0.06)",
@@ -608,10 +676,12 @@ const styles = StyleSheet.create({
   signatureRowFaded: {
     opacity: 0.75,
   },
-  signatureText: {
-    fontSize: 34,
-    lineHeight: 48,
+  customSignatureText: {
+    fontSize: 30,
+    lineHeight: 36,
     textAlign: "center",
+    includeFontPadding: false,
+    width: "100%",
   },
   artistList: {
     paddingBottom: 10,
@@ -622,13 +692,24 @@ const styles = StyleSheet.create({
   },
   artistTile: {
     width: "48.4%",
-    height: 70,
+    height: 88,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  textPresetTile: {
+    width: "48.4%",
+    minHeight: 78,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "visible",
   },
   textWrap: {
     flex: 1,
@@ -640,9 +721,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  svgHolder: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+  captureTextCanvas: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 64,
+    paddingVertical: 32,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  captureText: {
+    color: "#000000",
+    fontSize: 150,
+    lineHeight: 188,
+    includeFontPadding: false,
+    flexShrink: 0,
+    textAlign: "center",
   },
   outlineFontWrap: {
     flex: 1,
@@ -653,8 +746,24 @@ const styles = StyleSheet.create({
   },
   outlineFontTileText: {
     fontSize: 28,
+    lineHeight: 34,
     color: "#000",
     textAlign: "center",
-    width: "90%",
+    includeFontPadding: false,
+  },
+  customSignaturePreviewBox: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+    minHeight: 44,
+    paddingHorizontal: 4,
+  },
+  textSignaturePreviewBox: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+    minHeight: 34,
   },
 });

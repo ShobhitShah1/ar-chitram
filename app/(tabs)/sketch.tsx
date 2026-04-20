@@ -7,10 +7,13 @@ import { useCommonThemedStyles } from "@/components/themed";
 import { useSketchesTabGrid } from "@/hooks/api";
 import { useAppPermissions } from "@/hooks/use-app-permissions";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
+import { useNavigation } from "@react-navigation/native";
 import React, { useCallback } from "react";
-import { View } from "react-native";
+import { FlatList, View } from "react-native";
 
 export default function Sketch() {
+  const navigation = useNavigation();
+  const listRef = React.useRef<FlatList>(null);
   const commonStyles = useCommonThemedStyles();
   useAppPermissions();
   const {
@@ -67,6 +70,14 @@ export default function Sketch() {
     />
   ) : null;
 
+  React.useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("scrollToTopTab", () => {
+      listRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <View style={commonStyles.container}>
       <TabsHeader isShuffle screenId="sketches" onShufflePress={shuffle} />
@@ -78,6 +89,7 @@ export default function Sketch() {
       />
 
       <ImageGrid
+        listRef={listRef}
         data={emptyState ? [] : gridItems}
         onPress={handleAssetPress}
         isUnlocked={isPremiumAssetUnlocked}

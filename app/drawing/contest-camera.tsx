@@ -17,12 +17,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import * as MediaLibrary from "expo-media-library";
+import Toast from "react-native-toast-message";
 
 import { CameraPermissionView } from "@/components/camera/camera-permission-view";
 import PrimaryButton from "@/components/ui/primary-button";
 import { FontFamily } from "@/constants/fonts";
 import { useTheme } from "@/context/theme-context";
 import { persistExhibitionCaptureReference } from "@/features/gallery/services/local-gallery-service";
+import { useJoinContest } from "@/hooks/api/use-contest-api";
 import { clearAllLocalUploads } from "@/features/virtual-creativity/services/local-upload-asset-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
 import { apiQueryKeys } from "@/services/api/query-keys";
@@ -37,16 +39,13 @@ const ContestCamera = () => {
   const { theme } = useTheme();
   const params = useLocalSearchParams();
   const resetStore = useVirtualCreativityStore((state) => state.reset);
+  const joinContestMutation = useJoinContest();
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions({
     writeOnly: true,
     granularPermissions: ["photo"],
   });
   const cameraRef = useRef<CameraView>(null);
-  const overlayFrame = useStoryFrameSize({
-    maxWidthRatio: 0.9,
-    maxHeightRatio: 0.74,
-  });
 
   const [capturedUri, setCapturedUri] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -57,42 +56,6 @@ const ContestCamera = () => {
   const originalImageUri = Array.isArray(params.originalImageUri)
     ? params.originalImageUri[0]
     : params.originalImageUri;
-  const overlayOpacityParam = Array.isArray(params.overlayOpacity)
-    ? params.overlayOpacity[0]
-    : params.overlayOpacity;
-  const imageScaleParam = Array.isArray(params.imageScale)
-    ? params.imageScale[0]
-    : params.imageScale;
-  const imageTranslateXParam = Array.isArray(params.imageTranslateX)
-    ? params.imageTranslateX[0]
-    : params.imageTranslateX;
-  const imageTranslateYParam = Array.isArray(params.imageTranslateY)
-    ? params.imageTranslateY[0]
-    : params.imageTranslateY;
-  const imageRotationParam = Array.isArray(params.imageRotation)
-    ? params.imageRotation[0]
-    : params.imageRotation;
-
-  const overlayOpacity = useMemo(() => {
-    const parsed = Number(overlayOpacityParam);
-    return Number.isFinite(parsed) ? parsed : 0.5;
-  }, [overlayOpacityParam]);
-  const imageScale = useMemo(() => {
-    const parsed = Number(imageScaleParam);
-    return Number.isFinite(parsed) ? parsed : 1;
-  }, [imageScaleParam]);
-  const imageTranslateX = useMemo(() => {
-    const parsed = Number(imageTranslateXParam);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }, [imageTranslateXParam]);
-  const imageTranslateY = useMemo(() => {
-    const parsed = Number(imageTranslateYParam);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }, [imageTranslateYParam]);
-  const imageRotation = useMemo(() => {
-    const parsed = Number(imageRotationParam);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }, [imageRotationParam]);
 
   const handleBackToHome = useCallback(() => {
     resetStore();
@@ -211,6 +174,7 @@ const ContestCamera = () => {
 
     try {
       setProcessing(true);
+      await joinContestMutation.mutateAsync({ imageUri: capturedUri });
 
       try {
         const hasMediaPermission = await ensureGalleryPermission();
@@ -235,6 +199,12 @@ const ContestCamera = () => {
       void queryClient.invalidateQueries({
         queryKey: apiQueryKeys.assets.localUploads,
       });
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKeys.contest.winners,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: apiQueryKeys.contest.winning,
+      });
       resetStore();
 
       try {
@@ -246,15 +216,30 @@ const ContestCamera = () => {
         console.warn("Store review prompt failed", error);
       }
 
+      Toast.show({
+        type: "success",
+        text1: "Contest Joined",
+        text2: "Your image was submitted successfully.",
+      });
+
       router.push({
         pathname: "/drawing/share",
         params: { imageUri: capturedUri },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to join contest.";
+      Toast.show({
+        type: "error",
+        text1: "Join Contest Failed",
+        text2: message,
       });
     } finally {
       setProcessing(false);
     }
   }, [
     capturedUri,
+    joinContestMutation,
     originalImageUri,
     overlayImageUri,
     ensureGalleryPermission,

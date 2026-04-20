@@ -40,6 +40,7 @@ import {
 } from "@/features/virtual-creativity/services/smart-fill-path-service";
 import {
   createMainImageLayer,
+  createSignatureImageLayer,
   createSignatureTextLayer,
   createSubImageLayer,
 } from "@/features/virtual-creativity/services/virtual-layer-service";
@@ -1225,10 +1226,14 @@ export default function VirtualCreativityScreen() {
       setSelectedSignatureId(selection.id);
       setSignatureModalVisible(false);
 
-      if (selection.isTextAsLayer && selection.textLayerUri) {
-        if (!hasMainLayer) {
-          const overlayLayers = allLayersSorted.filter(
-            (layer) => layer.id !== "main-image",
+      const existingSignatureLayer = allLayersSorted.find((layer) =>
+        layer.id.startsWith("signature-"),
+      );
+
+        if (selection.isTextAsLayer && selection.textLayerUri) {
+          if (!hasMainLayer) {
+            const overlayLayers = allLayersSorted.filter(
+              (layer) => layer.id !== "main-image",
           );
           setLayers(
             [createMainImageLayer(selection.textLayerUri), ...overlayLayers],
@@ -1239,26 +1244,104 @@ export default function VirtualCreativityScreen() {
           warmSmartFillLookup(selection.textLayerUri);
           setViewMode("composite");
           return;
+          }
+
+          try {
+            const signatureImageLayer = await createSignatureImageLayer(
+              selection.textLayerUri,
+              existingSignatureLayer?.zIndex ?? allLayersSorted.length + 1,
+              layers,
+            );
+
+            setHandModeLayerIds((prev) => {
+              const next = new Set(prev);
+              if (existingSignatureLayer) {
+                next.delete(existingSignatureLayer.id);
+              }
+              next.delete(signatureImageLayer.id);
+              return next;
+            });
+
+            if (existingSignatureLayer) {
+              updateLayer(existingSignatureLayer.id, {
+                type: "image",
+                uri: signatureImageLayer.uri,
+                text: undefined,
+                fontFamily: undefined,
+                fontSize: undefined,
+                color: undefined,
+                width: signatureImageLayer.width,
+                height: signatureImageLayer.height,
+                x: signatureImageLayer.x,
+                y: signatureImageLayer.y,
+                opacity: signatureImageLayer.opacity,
+                scale: signatureImageLayer.scale,
+                rotation: signatureImageLayer.rotation,
+              });
+              selectLayerForPlacement(existingSignatureLayer.id);
+            } else {
+              addLayer(signatureImageLayer);
+              selectLayerForPlacement(signatureImageLayer.id);
+            }
+            warmSmartFillLookup(signatureImageLayer.uri);
+          } catch (error) {
+            console.error("Failed to create sub image from text layer:", error);
+          }
+          return;
+        }
+
+      if (selection.isArtistPreset && selection.presetImageSource) {
+        const presetUri = RNImage.resolveAssetSource(
+          selection.presetImageSource,
+        ).uri;
+
+        if (!presetUri) {
+          return;
         }
 
         try {
-          const subLayer = await createSubImageLayer(
-            selection.textLayerUri,
-            allLayersSorted.length + 1,
+          const signatureImageLayer = await createSignatureImageLayer(
+            presetUri,
+            existingSignatureLayer?.zIndex ?? allLayersSorted.length + 1,
             layers,
           );
-          addLayer(subLayer);
-          selectLayerForPlacement(subLayer.id);
-          warmSmartFillLookup(subLayer.uri);
+
+          setHandModeLayerIds((prev) => {
+            const next = new Set(prev);
+            if (existingSignatureLayer) {
+              next.delete(existingSignatureLayer.id);
+            }
+            next.delete(signatureImageLayer.id);
+            return next;
+          });
+
+          if (existingSignatureLayer) {
+            updateLayer(existingSignatureLayer.id, {
+              type: "image",
+              uri: signatureImageLayer.uri,
+              text: undefined,
+              fontFamily: undefined,
+              fontSize: undefined,
+              color: undefined,
+              width: signatureImageLayer.width,
+              height: signatureImageLayer.height,
+              x: signatureImageLayer.x,
+              y: signatureImageLayer.y,
+              opacity: signatureImageLayer.opacity,
+              scale: signatureImageLayer.scale,
+              rotation: signatureImageLayer.rotation,
+            });
+            selectLayerForPlacement(existingSignatureLayer.id);
+          } else {
+            addLayer(signatureImageLayer);
+            selectLayerForPlacement(signatureImageLayer.id);
+          }
         } catch (error) {
-          console.error("Failed to create sub image from text layer:", error);
+          console.error("Failed to create artist signature image layer:", error);
         }
         return;
       }
 
-      const existingSignatureLayer = allLayersSorted.find(
-        (layer) => layer.type === "text",
-      );
       const signatureLayer = createSignatureTextLayer(
         selection,
         existingSignatureLayer?.zIndex ?? allLayersSorted.length + 1,
@@ -1277,6 +1360,8 @@ export default function VirtualCreativityScreen() {
 
       if (existingSignatureLayer) {
         updateLayer(existingSignatureLayer.id, {
+          type: "text",
+          uri: undefined,
           text: signatureLayer.text,
           fontFamily: signatureLayer.fontFamily,
           fontSize: signatureLayer.fontSize,

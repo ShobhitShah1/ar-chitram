@@ -46,6 +46,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
 import { FontFamily } from "@/constants/fonts";
@@ -241,6 +242,8 @@ const HomeAssetGrid = memo(
 );
 
 export default function Home() {
+  const navigation = useNavigation();
+  const scrollRef = React.useRef<Animated.ScrollView>(null);
   const resetVirtualCreativity = useVirtualCreativityStore(
     (state) => state.reset,
   );
@@ -401,6 +404,14 @@ export default function Home() {
     setSelectedWinner(null);
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("scrollToTopTab", () => {
+      scrollRef.current?.scrollTo?.({ y: 0, animated: true });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <ThemedView
       style={{ paddingTop: (StatusBar.currentHeight ?? 0) + 10, flex: 1 }}
@@ -422,6 +433,7 @@ export default function Home() {
         />
 
         <Animated.ScrollView
+          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}

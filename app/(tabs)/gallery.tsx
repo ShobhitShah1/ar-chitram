@@ -14,8 +14,10 @@ import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/v
 import { useShuffleStore } from "@/store/shuffle-store";
 import * as MediaLibrary from "expo-media-library";
 import { router, useFocusEffect } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Animated from "react-native-reanimated";
+import { FlatList } from "react-native";
 import { shuffleItemsSeeded } from "../../utils/shuffle";
 
 const GALLERY_FILTERS = ["Exhibition", "Art", "Recording"] as const;
@@ -23,6 +25,9 @@ const GALLERY_FILTERS = ["Exhibition", "Art", "Recording"] as const;
 type GalleryFilter = (typeof GALLERY_FILTERS)[number];
 
 function GalleryScreen() {
+  const navigation = useNavigation();
+  const imageListRef = React.useRef<FlatList>(null);
+  const artScrollRef = React.useRef<Animated.ScrollView>(null);
   const commonStyles = useCommonThemedStyles();
   const setDrawingHistorySnapshots = useVirtualCreativityStore(
     (state) => state.setDrawingHistorySnapshots,
@@ -253,6 +258,19 @@ function GalleryScreen() {
     />
   );
 
+  useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("scrollToTopTab", () => {
+      if (selectedFilter === "Art") {
+        artScrollRef.current?.scrollTo?.({ y: 0, animated: true });
+        return;
+      }
+
+      imageListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+    });
+
+    return unsubscribe;
+  }, [navigation, selectedFilter]);
+
   return (
     <Animated.View style={commonStyles.container}>
       <TabsHeader screenId="gallery" />
@@ -266,6 +284,7 @@ function GalleryScreen() {
         <EmptyState showLoading={true} title="Loading gallery..." />
       ) : isExhibitionFilter ? (
         <ImageGrid
+          listRef={imageListRef}
           numColumns={2}
           data={displayExhibitionImages}
           onPress={(item) =>
@@ -277,6 +296,7 @@ function GalleryScreen() {
         />
       ) : isRecordingFilter ? (
         <ImageGrid
+          listRef={imageListRef}
           numColumns={2}
           data={displayRecordingItems}
           onPress={(item) =>
@@ -288,6 +308,7 @@ function GalleryScreen() {
         />
       ) : (
         <ArtGalleryGrid
+          scrollRef={artScrollRef}
           data={displayArtGroups}
           onPress={handleArtGroupPress}
           refreshing={refreshing}

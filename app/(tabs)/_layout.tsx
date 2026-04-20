@@ -55,6 +55,11 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
 
   const handleTabPress = useCallback(
     (routeName: string) => {
+      const route = state.routes.find((item: any) => item.name === routeName);
+      if (!route) {
+        return;
+      }
+
       if (routeName === "home") {
         if (state.index === 2) {
           onCreatePress();
@@ -63,8 +68,13 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
 
         const homeEvent = navigation.emit({
           type: "tabPress",
-          target: routeName,
+          target: route.key,
           canPreventDefault: true,
+        });
+
+        navigation.emit({
+          type: "scrollToTopTab",
+          target: route.key,
         });
 
         if (!homeEvent.defaultPrevented) {
@@ -77,8 +87,13 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
 
       const event = navigation.emit({
         type: "tabPress",
-        target: routeName,
+        target: route.key,
         canPreventDefault: true,
+      });
+
+      navigation.emit({
+        type: "scrollToTopTab",
+        target: route.key,
       });
 
       if (!event.defaultPrevented) {
@@ -87,7 +102,7 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({
         });
       }
     },
-    [state.index, navigation, onCreatePress],
+    [state.index, state.routes, navigation, onCreatePress],
   );
 
   return (

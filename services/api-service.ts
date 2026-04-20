@@ -466,7 +466,7 @@ const buildUploadFormData = (
   fileTo: "contest_image" | "profile_image",
   imageUri: string,
   fileNamePrefix: string,
-  extraFields: Record<string, string>,
+  extraFields: Record<string, string> = {},
 ): FormData => {
   const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
   const fileName = `${fileNamePrefix}_${Date.now()}.${fileExtension}`;
@@ -490,18 +490,28 @@ const buildUploadFormData = (
 
 export const joinContest = async (
   imageUri: string,
-  mobileNo: string,
 ): Promise<{ success: boolean; message: string; data?: UploadApiResponse }> => {
   try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error("Authentication token is required.");
+    }
+
     const formData = buildUploadFormData(
       "join_contest",
       "contest_image",
       imageUri,
       "contest_image",
-      { mobile_no: mobileNo },
     );
 
-    const response = await uploadApi.post<UploadApiResponse>("", formData);
+    const response = await axios.post<UploadApiResponse>(UPLOAD_API_URL, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        app_secret: APP_SECRET,
+        "Content-Type": "multipart/form-data",
+      },
+      timeout: 30000,
+    });
     return {
       success: true,
       message: response.data?.message || "Successfully joined contest.",

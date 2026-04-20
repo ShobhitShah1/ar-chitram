@@ -35,6 +35,7 @@ interface ArtGalleryGridProps {
   refreshing?: boolean;
   onRefresh?: () => void;
   ListEmptyComponent?: React.ReactNode;
+  scrollRef?: React.Ref<Animated.ScrollView>;
 }
 export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
   data,
@@ -42,12 +43,14 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
   refreshing = false,
   onRefresh,
   ListEmptyComponent,
+  scrollRef,
 }) => {
   const { theme, isDark } = useTheme();
   const isEmpty = data.length === 0;
 
   return (
     <Animated.ScrollView
+      ref={scrollRef}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[
         styles.container,

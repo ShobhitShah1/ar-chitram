@@ -11,9 +11,13 @@ const OVERLAY_MIN_HEIGHT = STORY_FRAME_WIDTH * 0.18;
 const SIGNATURE_BASE_FONT_SIZE = 56;
 const SIGNATURE_MIN_WIDTH = STORY_FRAME_WIDTH * 0.28;
 const SIGNATURE_MAX_WIDTH = STORY_FRAME_WIDTH * 0.92;
-const SIGNATURE_HEIGHT = SIGNATURE_BASE_FONT_SIZE * 2.5;
-const SIGNATURE_WIDTH_MULTIPLIER = 1.05;
-const SIGNATURE_HORIZONTAL_PADDING = 60;
+const SIGNATURE_HEIGHT = SIGNATURE_BASE_FONT_SIZE * 3.7;
+const SIGNATURE_WIDTH_MULTIPLIER = 1.45;
+const SIGNATURE_HORIZONTAL_PADDING = 110;
+const SIGNATURE_IMAGE_MIN_WIDTH = STORY_FRAME_WIDTH * 0.3;
+const SIGNATURE_IMAGE_MAX_WIDTH = STORY_FRAME_WIDTH * 0.72;
+const SIGNATURE_IMAGE_MAX_HEIGHT = STORY_FRAME_HEIGHT * 0.18;
+const SIGNATURE_IMAGE_FALLBACK_HEIGHT = STORY_FRAME_HEIGHT * 0.12;
 
 const clampValue = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -159,6 +163,61 @@ export const createSignatureTextLayer = (
     y: pos.y || (STORY_FRAME_HEIGHT - height - 2 * SIGNATURE_EDITOR_MARGIN) / 2,
     width,
     height,
+    rotation: 0,
+    scale: 1,
+    opacity: 1,
+    zIndex,
+  };
+};
+
+export const createSignatureImageLayer = async (
+  uri: string,
+  zIndex: number,
+  existingLayers: VirtualLayer[] = [],
+): Promise<VirtualLayer> => {
+  let width = SIGNATURE_IMAGE_MAX_WIDTH;
+  let height = SIGNATURE_IMAGE_FALLBACK_HEIGHT;
+
+  try {
+    const { width: sourceWidth, height: sourceHeight } = await getImageSize(uri);
+    if (sourceWidth > 0 && sourceHeight > 0) {
+      const scale = Math.min(
+        SIGNATURE_IMAGE_MAX_WIDTH / sourceWidth,
+        SIGNATURE_IMAGE_MAX_HEIGHT / sourceHeight,
+      );
+      width = clampValue(
+        sourceWidth * scale,
+        SIGNATURE_IMAGE_MIN_WIDTH,
+        SIGNATURE_IMAGE_MAX_WIDTH,
+      );
+      height = sourceHeight * (width / sourceWidth);
+
+      if (height > SIGNATURE_IMAGE_MAX_HEIGHT) {
+        const shrink = SIGNATURE_IMAGE_MAX_HEIGHT / height;
+        width *= shrink;
+        height = SIGNATURE_IMAGE_MAX_HEIGHT;
+      }
+    }
+  } catch {
+    // Fall back to a wide signature ratio if the asset size cannot be resolved.
+  }
+
+  const roundedWidth = Math.round(width * 10) / 10;
+  const roundedHeight = Math.round(height * 10) / 10;
+  const pos = findNonOverlappingPosition(
+    roundedWidth,
+    roundedHeight,
+    existingLayers,
+  );
+
+  return {
+    id: `signature-${Date.now()}-${zIndex}`,
+    type: "image",
+    uri,
+    x: pos.x,
+    y: pos.y,
+    width: roundedWidth,
+    height: roundedHeight,
     rotation: 0,
     scale: 1,
     opacity: 1,
