@@ -140,8 +140,7 @@ export const ArtGalleryGrid: React.FC<ArtGalleryGridProps> = ({
                             source={{ uri: capture.uri }}
                             contentFit="cover"
                             style={styles.image}
-                            cachePolicy="memory-disk"
-                            transition={200}
+                            transition={0}
                           />
                         </View>
                       );
@@ -203,7 +202,7 @@ const ImageWithSkeleton = ({
       contentFit="cover"
       style={style}
       borderRadius={borderRadius}
-      cachePolicy="memory-disk"
+      transition={0}
     />
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -74,7 +75,12 @@ export const GalleryImageCard: React.FC<GalleryImageCardProps> = ({
       onPressOut={handlePressOut}
       onPress={onPress}
     >
-      <Image source={{ uri: imageUrl }} style={styles.image} />
+      <Image 
+        source={{ uri: imageUrl }} 
+        style={styles.image} 
+        contentFit="cover"
+        transition={0}
+      />
 
       <View style={styles.overlay}>
         <AnimatedPressable

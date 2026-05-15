@@ -164,12 +164,7 @@ const ImageGridItem = React.memo(
                   style={imageStyle}
                   borderRadius={10}
                   priority="high"
-                  cachePolicy="memory-disk"
-                  recyclingKey={
-                    typeof item.image === "string"
-                      ? item.image
-                      : String(item.id)
-                  }
+                  transition={0}
                 />
               )}
               {item.mediaType === "video" && <VideoPoster />}
@@ -301,7 +296,6 @@ const ImageGrid: React.FC<ImageGridProps> = ({
           />
         ) : undefined
       }
-      removeClippedSubviews={true} // Performance optimization for large lists
       initialNumToRender={5}
       maxToRenderPerBatch={5}
       windowSize={5}

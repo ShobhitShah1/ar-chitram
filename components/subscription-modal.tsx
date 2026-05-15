@@ -13,7 +13,12 @@ import {
 import { Image, ImageBackground } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { ic_close, ic_glow_star, ic_diamond } from "@/assets/icons";
+import {
+  ic_close,
+  ic_glow_star,
+  ic_diamond,
+  ic_check_subscription,
+} from "@/assets/icons";
 import {
   ic_pro_image,
   ic_pro_modal_background,
@@ -142,27 +147,33 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     style={styles.premiumGlow}
                     contentFit="contain"
                   />
-                  <Image source={ic_glow_star} style={styles.starIcon} />
+
+                  <Image
+                    source={ic_glow_star}
+                    style={styles.starIcon}
+                    contentFit="cover"
+                  />
                   <Text style={styles.premiumText}>Premium Member</Text>
-                  <Image source={ic_glow_star} style={styles.starIcon} />
+                  <Image
+                    source={ic_glow_star}
+                    style={styles.starIcon}
+                    contentFit="cover"
+                  />
                 </View>
 
-                {/* Features List */}
                 <View style={styles.featuresList}>
                   {features.map((feature, index) => (
                     <View key={index} style={styles.featureItem}>
-                      <Ionicons
-                        name="checkmark"
-                        size={22}
-                        color="#FFB800"
+                      <Image
+                        source={ic_check_subscription}
                         style={styles.checkIcon}
+                        contentFit="contain"
                       />
                       <Text style={styles.featureText}>{feature}</Text>
                     </View>
                   ))}
                 </View>
 
-                {/* Subscribe Button with Gradient Border */}
                 <Pressable
                   onPress={handleSubscribe}
                   disabled={
@@ -184,7 +195,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                     >
                       <View />
                       <Text style={styles.buttonLabel}>
-                        {isUnlocked ? "Unlocked" : "Subscription"}
+                        {isUnlocked ? "Unlocked" : "Subscribe"}
                       </Text>
                       {isProductLoading && !dynamicPrice ? (
                         <ActivityIndicator size="small" color="#000000" />
@@ -229,8 +240,8 @@ const styles = StyleSheet.create({
   },
   heroBadge: {
     position: "absolute",
-    top: -25,
-    left: -15,
+    top: -30,
+    left: -20,
     width: 85,
     height: 85,
     zIndex: 10,
@@ -269,7 +280,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     width: "100%",
-    height: 200,
+    height: 250,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 0,
@@ -289,13 +300,13 @@ const styles = StyleSheet.create({
   },
   premiumGlow: {
     position: "absolute",
-    width: screenWidth * 1.5,
-    height: 180,
+    height: 150,
+    width: screenWidth,
   },
   starIcon: {
-    width: 28,
-    height: 28,
-    marginHorizontal: 10,
+    width: 45,
+    height: 45,
+    // marginHorizontal: 10,
   },
   premiumText: {
     fontFamily: FontFamily.bold,
@@ -304,8 +315,8 @@ const styles = StyleSheet.create({
   },
   featuresList: {
     width: "100%",
-    paddingHorizontal: 20,
     marginBottom: 10,
+    paddingHorizontal: 60,
   },
   featureItem: {
     flexDirection: "row",
@@ -313,16 +324,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   checkIcon: {
+    width: 18,
+    height: 18,
     marginRight: 15,
   },
   featureText: {
     fontFamily: FontFamily.bold,
-    fontSize: 18,
+    fontSize: 17,
     color: "#000",
   },
   subscribeButton: {
     width: "100%",
-    height: 60,
+    height: 55,
     borderRadius: 16,
     overflow: "hidden",
     shadowColor: "#FFB800",
@@ -350,7 +363,7 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.bold,
     fontSize: 18,
     color: "#000",
-    left: 10,
+    left: 25,
   },
   buttonPrice: {
     fontFamily: FontFamily.bold,

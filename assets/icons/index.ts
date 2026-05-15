@@ -116,6 +116,9 @@ export const ic_gold = require("@/assets/icons/ic_gold.webp");
 export const ic_search = require("@/assets/icons/ic_search.png");
 export const ic_pro = require("@/assets/icons/ic_pro.png");
 export const ic_glow_star = require("@/assets/icons/ic_glow_star.png");
+export const ic_check_subscription = require("@/assets/icons/ic_check_subscription.png");
+export const ic_unlock_Icon = require("@/assets/icons/ic_unlock_Icon.png");
+export const ic_lock_Icon = require("@/assets/icons/ic_lock_Icon.png");
 
 export const ARTIST_SIGN_ICONS = [
   require("@/assets/icons/signature/Sign_1.png"),

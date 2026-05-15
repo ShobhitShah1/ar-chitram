@@ -1,5 +1,5 @@
 import { apiQueryKeys } from "@/services/api/query-keys";
-import { useFocusEffect } from "expo-router";
+import { useNavigation } from "expo-router";
 import {
   CategorizedTabAssets,
   TabAssetCategory,
@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShuffleStore } from "@/store/shuffle-store";
 import { shuffleItemsSeeded } from "@/utils/shuffle";
+import { Image } from "expo-image";
 
 const ASSETS_STALE_TIME = 15 * 60 * 1000;
 const ASSETS_GC_TIME = 30 * 60 * 1000;
@@ -164,12 +165,16 @@ const useTabGridController = (
     [toggleShuffle, screenId],
   );
 
-  useFocusEffect(
-    useCallback(() => {
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsubscribe = (navigation as any).addListener("tabPress", () => {
       refreshShuffle(screenId);
       setLocalAllSeed(generateSeed());
-    }, [refreshShuffle, screenId]),
-  );
+      setSelectedCategory("All");
+    });
+    return unsubscribe;
+  }, [navigation, refreshShuffle, screenId]);
 
   const categories = useMemo(() => {
     const apiCategories = queryData?.categories.map((c) => c.name) ?? [];
@@ -560,7 +565,7 @@ export const useSketchesTabGrid = () => {
 export const prefetchCoreTabAssets = async (
   queryClient: QueryClient,
 ): Promise<void> => {
-  await Promise.allSettled([
+  const results = await Promise.allSettled([
     queryClient.ensureQueryData({
       queryKey: apiQueryKeys.assets.home,
       queryFn: fetchHomeTabAssets,
@@ -582,6 +587,42 @@ export const prefetchCoreTabAssets = async (
       ...getDefaultAssetsQueryOptions(),
     }),
   ]);
+
+  const urlsToPrefetch = new Set<string>();
+
+  const [homeRes, colorsRes, drawingsRes, sketchesRes] = results;
+
+  if (homeRes.status === "fulfilled" && homeRes.value) {
+    homeRes.value.homeGridItems?.forEach((item) => {
+      if (item.image) urlsToPrefetch.add(item.image);
+    });
+  }
+
+  if (colorsRes.status === "fulfilled" && colorsRes.value) {
+    colorsRes.value.flatAssets?.forEach((item) => {
+      if (item.image) urlsToPrefetch.add(item.image);
+    });
+  }
+
+  if (drawingsRes.status === "fulfilled" && drawingsRes.value) {
+    drawingsRes.value.flatAssets?.forEach((item) => {
+      if (item.image) urlsToPrefetch.add(item.image);
+    });
+  }
+
+  if (sketchesRes.status === "fulfilled" && sketchesRes.value) {
+    sketchesRes.value.flatAssets?.forEach((item) => {
+      if (item.image) urlsToPrefetch.add(item.image);
+    });
+  }
+
+  const uniqueUrls = Array.from(urlsToPrefetch);
+  
+  if (uniqueUrls.length > 0) {
+    // Prefetching a large chunk of images at once can slow down initial app load.
+    // Limit to the first 50 items for the most critical initial render.
+    Image.prefetch(uniqueUrls.slice(0, 50));
+  }
 };
 
 const withTimeout = async (

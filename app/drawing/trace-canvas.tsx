@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { StyleSheet, useWindowDimensions, View, Pressable } from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import {
   Gesture,
   GestureDetector,
@@ -19,26 +19,26 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
+import { ic_lock_Icon, ic_unlock_Icon } from "@/assets/icons";
 import { preview_1 } from "@/assets/images";
-import { ic_lock } from "@/assets/icons";
-import DrawingHeader from "@/components/drawing/drawing-header";
-import OpacitySlider from "@/components/drawing/opacity-slider";
-import HistoryControls from "@/components/drawing/history-controls";
-import { useTheme } from "@/context/theme-context";
-import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
-import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
-import { ENABLE_BOUNDARY_OVERFLOW } from "@/features/virtual-creativity/services/virtual-layer-transform";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Snapshot } from "@/components/drawing/capture-preview-modal";
+import DrawingHeader from "@/components/drawing/drawing-header";
+import HistoryControls from "@/components/drawing/history-controls";
+import OpacitySlider from "@/components/drawing/opacity-slider";
+import { useTheme } from "@/context/theme-context";
+import { ENABLE_BOUNDARY_OVERFLOW } from "@/features/virtual-creativity/services/virtual-layer-transform";
+import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
+import { useStoryFrameSize } from "@/hooks/use-story-frame-size";
 import {
-  logDrawingStarted,
   logDrawingCompleted,
+  logDrawingStarted,
 } from "@/services/analytics-service";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 const TraceCanvas = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const params = useLocalSearchParams();
@@ -343,9 +343,11 @@ const TraceCanvas = () => {
         style={[styles.uiOverlay, { paddingTop: 0, paddingBottom: 0 }]}
         pointerEvents="box-none"
       >
-        {!isLocked && (
-          <DrawingHeader onComplete={handleComplete} hideGuideButton />
-        )}
+        <DrawingHeader
+          onComplete={handleComplete}
+          hideGuideButton
+          backTintColor={"black"}
+        />
 
         <View style={styles.controlsContainer}>
           {!isLocked && (
@@ -376,8 +378,8 @@ const TraceCanvas = () => {
               ]}
             >
               <Image
-                source={ic_lock}
-                style={[styles.iconStyle, { tintColor: theme.textPrimary }]}
+                source={isLocked ? ic_lock_Icon : ic_unlock_Icon}
+                style={styles.iconStyle}
                 contentFit="contain"
               />
             </Pressable>
@@ -432,8 +434,11 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   iconButton: {
-    padding: 14,
-    borderRadius: 50,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -441,7 +446,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   iconStyle: {
-    width: 24,
-    height: 24,
+    width: 48,
+    height: 48,
   },
 });

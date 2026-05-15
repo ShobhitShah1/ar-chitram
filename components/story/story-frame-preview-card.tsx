@@ -40,7 +40,12 @@ export const StoryFramePreviewCard: React.FC<StoryFramePreviewCardProps> = ({
       ]}
     >
       <View style={styles.imageLayer} pointerEvents="none">
-        <Image source={source} style={styles.image} contentFit="contain" />
+        <Image 
+          source={source} 
+          style={styles.image} 
+          contentFit="contain" 
+          transition={0}
+        />
       </View>
       {children ? <View style={styles.overlay}>{children}</View> : null}
     </View>

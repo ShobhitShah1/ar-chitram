@@ -8,11 +8,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Pressable } from "../themed";
 
 interface DrawingHeaderProps {
+  backTintColor?: string;
   onComplete?: () => void;
   hideGuideButton?: boolean;
 }
 
 const DrawingHeader: React.FC<DrawingHeaderProps> = ({
+  backTintColor,
   onComplete,
   hideGuideButton = false,
 }) => {
@@ -27,7 +29,7 @@ const DrawingHeader: React.FC<DrawingHeaderProps> = ({
             source={ic_back}
             style={styles.iconStyle}
             contentFit="contain"
-            tintColor={"white"}
+            tintColor={backTintColor || "white"}
           />
         </Pressable>
 

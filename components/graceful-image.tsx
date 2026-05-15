@@ -1,5 +1,5 @@
 import { Image, ImageProps } from "expo-image";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { Skeleton } from "./skeleton";
 
@@ -15,6 +15,16 @@ export const GracefulImage: React.FC<GracefulImageProps> = (props) => {
   const [isLoading, setIsLoading] = useState(true);
   const { style, borderRadius = 10, ...rest } = props;
 
+  const sourceKey = typeof rest.source === 'object' && rest.source && 'uri' in rest.source 
+    ? rest.source.uri 
+    : typeof rest.source === 'string' 
+      ? rest.source 
+      : undefined;
+
+  useEffect(() => {
+    setIsLoading(true);
+  }, [sourceKey]);
+
   return (
     <View style={[style, styles.container, { borderRadius }]}>
       {isLoading && (
@@ -29,7 +39,7 @@ export const GracefulImage: React.FC<GracefulImageProps> = (props) => {
         {...rest}
         style={StyleSheet.absoluteFill}
         onLoad={() => setIsLoading(false)}
-        transition={props.transition || 250}
+        transition={props.transition !== undefined ? props.transition : 0}
       />
     </View>
   );
