@@ -15,6 +15,8 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import { Modal, StyleSheet, View } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import Share from "react-native-share";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -41,6 +43,25 @@ export const WinnerModal: React.FC<WinnerModalProps> = ({
 }) => {
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const likeScale = useSharedValue(1);
+
+  const handleShare = async () => {
+    try {
+      if (!backgroundImage) return;
+
+      const fileUri = `${FileSystem.cacheDirectory}winner-share.jpg`;
+      const { uri } = await FileSystem.downloadAsync(backgroundImage, fileUri);
+
+      const message =
+        "🏆 I just won the AR Chitram Contest! 🎉 Come join the fun, unleash your creativity, and let your art shine! ✨\n\nDownload AR Chitram now: https://play.google.com/store/apps/details?id=com.architram";
+
+      await Share.open({
+        url: uri,
+        message: message,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -172,6 +193,10 @@ export const WinnerModal: React.FC<WinnerModalProps> = ({
             </View>
           </View>
         </View>
+
+        <Pressable onPress={handleShare} style={styles.shareButton}>
+          <Ionicons name="share-social" size={28} color="black" />
+        </Pressable>
       </View>
     </Modal>
   );
@@ -240,5 +265,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
+  },
+  shareButton: {
+    marginTop: 20,
+    backgroundColor: "white",
+    width: 55,
+    height: 55,
+    borderRadius: 55,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

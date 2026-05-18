@@ -80,10 +80,13 @@ export const useHomeTabAssets = () => {
   const shuffledData = useMemo(() => {
     if (!query.data) return undefined;
     const activeSeed = shuffleSeed > 0 ? shuffleSeed : localAllSeed;
-    
+
     return {
       ...query.data,
-      homeGridItems: shuffleItemsSeeded(query.data.homeGridItems ?? [], activeSeed),
+      homeGridItems: shuffleItemsSeeded(
+        query.data.homeGridItems ?? [],
+        activeSeed,
+      ),
     };
   }, [query.data, shuffleSeed, localAllSeed]);
 
@@ -514,7 +517,6 @@ const useCreateFlowAssetPickerController = (
     selectedSourceId,
   ]);
 
-
   const status = deriveQueryStatus(sourceQueries);
 
   const refetch = useCallback(async () => {
@@ -617,7 +619,7 @@ export const prefetchCoreTabAssets = async (
   }
 
   const uniqueUrls = Array.from(urlsToPrefetch);
-  
+
   if (uniqueUrls.length > 0) {
     // Prefetching a large chunk of images at once can slow down initial app load.
     // Limit to the first 50 items for the most critical initial render.

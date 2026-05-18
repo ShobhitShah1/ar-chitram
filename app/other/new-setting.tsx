@@ -105,20 +105,22 @@ const NewSetting = () => {
   const { logout } = useUser();
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/(auth)/login");
+    if (__DEV__) {
+      Alert.alert("Logout", "Are you sure you want to logout?", [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      },
-    ]);
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            await logout();
+            router.replace("/(auth)/login");
+          },
+        },
+      ]);
+    }
   };
 
   const openInstagram = () => {
@@ -130,35 +132,37 @@ const NewSetting = () => {
   };
 
   const handleClearCache = () => {
-    Alert.alert(
-      "Remove Cache Storage",
-      "This will remove all downloaded images but keep your favorite packs. You can re-download them later.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              Toast.show({
-                type: "success",
-                text1: "Storage Cleaned",
-                text2: "All cached images deleted from phone storage",
-              });
-            } catch (error) {
-              Toast.show({
-                type: "error",
-                text1: "Error",
-                text2: "Failed to clear cache",
-              });
-            }
+    if (__DEV__) {
+      Alert.alert(
+        "Remove Cache Storage",
+        "This will remove all downloaded images but keep your favorite packs. You can re-download them later.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
           },
-        },
-      ],
-    );
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                Toast.show({
+                  type: "success",
+                  text1: "Storage Cleaned",
+                  text2: "All cached images deleted from phone storage",
+                });
+              } catch (error) {
+                Toast.show({
+                  type: "error",
+                  text1: "Error",
+                  text2: "Failed to clear cache",
+                });
+              }
+            },
+          },
+        ],
+      );
+    }
   };
 
   return (

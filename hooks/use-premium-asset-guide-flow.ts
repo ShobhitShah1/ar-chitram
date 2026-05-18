@@ -367,9 +367,19 @@ export const usePremiumAssetGuideFlow = (
         return false;
       }
 
+      const resolvedImages = (options?.preloadItems || [])
+        .map((i) => ({
+          id: i.id || String(Math.random()),
+          uri: resolveGridAssetUri(i),
+        }))
+        .filter((i) => i.uri);
+
       router.push({
         pathname: "/virtual-creativity/preview",
-        params: { imageUri },
+        params: {
+          imageUri,
+          images: JSON.stringify(resolvedImages),
+        },
       });
 
       return true;

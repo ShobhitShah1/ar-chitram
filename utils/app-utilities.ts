@@ -138,36 +138,29 @@ const openAppStore = async () => {
 
 export const shareAppWithFriends = async () => {
   try {
-    const bundleId = DeviceInfo.getBundleId();
-    const appName = await DeviceInfo.getApplicationName();
+    const message = `Check out Ar Chitram! 🎉
 
-    const appUrl =
-      Platform.OS === "ios"
-        ? Constants.expoConfig?.ios?.appStoreUrl ||
-          `https://apps.apple.com/app/${bundleId}`
-        : Constants.expoConfig?.android?.playStoreUrl ||
-          `https://play.google.com/store/apps/details?id=${bundleId}`;
+Create rooms, share images, and have fun with friends!
 
-    const message = `Check out ${appName}! 🎉\n\nCreate rooms, share images, and have fun with friends!\n\nDownload it here: ${appUrl}`;
+Download it here: https://play.google.com/store/apps/details?id=com.architram`;
 
     const shareOptions = {
-      title: `Share ${appName} with Friends`,
+      title: `Check out Ar Chitram`,
       message: message,
-      // url: appUrl,
-      subject: `Check out ${appName}!`,
+      subject: `Check out Ar Chitram!`,
     };
 
     try {
       await Share.open(shareOptions);
     } catch (shareError: any) {}
   } catch (error) {
-    console.error("Error sharing app:", error);
-
-    const appName = await DeviceInfo.getApplicationName();
-
     Alert.alert(
-      `Share ${appName}`,
-      `Check out ${appName}! 🎉\n\nCreate rooms, share images, and have fun with friends!`,
+      `Ar Chitram`,
+      `Check out Ar Chitram! 🎉
+
+Create rooms, share images, and have fun with friends!
+
+Download it here: https://play.google.com/store/apps/details?id=com.architram`,
       [
         { text: "OK", style: "default" },
         { text: "Cancel", style: "cancel" },

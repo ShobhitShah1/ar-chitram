@@ -1,42 +1,45 @@
 import { ic_pro_icon } from "@/assets/icons";
 import { EmptyState } from "@/components/empty-state";
+import { HorizontalGallery } from "@/components/horizontal-gallery";
 import { PremiumAssetModal } from "@/components/premium-asset-modal";
-import SubscriptionModal from "@/components/subscription-modal";
 import { StoryRow } from "@/components/story/story-row";
+import SubscriptionModal from "@/components/subscription-modal";
 import TabsHeader from "@/components/tabs-header";
 import { View as ThemedView } from "@/components/themed";
 import { WinnerModal } from "@/components/winner-modal";
+import { FontFamily } from "@/constants/fonts";
+import { GLOBAL_PREMIUM_UNLOCK_SKU } from "@/constants/subscription-config";
+import { useGigglamIAPContext } from "@/context/iap-context";
 import { useTheme } from "@/context/theme-context";
 import { useUser } from "@/context/user-context";
-import { HorizontalGallery } from "@/components/horizontal-gallery";
-import { likeAndDislike } from "@/services/api-service";
 import { ImageUploadFlowModal } from "@/features/virtual-creativity/components/image-upload-flow-modal";
 import { useImageUploadFlow } from "@/features/virtual-creativity/hooks/use-image-upload-flow";
-import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
 import {
   fetchLocalUploadTabAssets,
   persistLocalUploadAsset,
 } from "@/features/virtual-creativity/services/local-upload-asset-service";
-import { useShuffleStore } from "@/store/shuffle-store";
+import { createMainImageLayer } from "@/features/virtual-creativity/services/virtual-layer-service";
 import { useVirtualCreativityStore } from "@/features/virtual-creativity/store/virtual-creativity-store";
-import { logPremiumClicked } from "@/services/analytics-service";
-import { useGigglamIAPContext } from "@/context/iap-context";
-import { GLOBAL_PREMIUM_UNLOCK_SKU } from "@/constants/subscription-config";
 import { useHomeTabAssets } from "@/hooks/api";
+import { useAppPermissions } from "@/hooks/use-app-permissions";
 import { usePremiumAssetGuideFlow } from "@/hooks/use-premium-asset-guide-flow";
+import { logPremiumClicked } from "@/services/analytics-service";
+import { likeAndDislike } from "@/services/api-service";
 import { apiQueryKeys } from "@/services/api/query-keys";
 import {
   HomeWinnerItem,
   TabAssetItem,
 } from "@/services/api/tab-assets-service";
-import { useAppPermissions } from "@/hooks/use-app-permissions";
+import { useShuffleStore } from "@/store/shuffle-store";
 import { storage } from "@/utils/storage";
+import { useNavigation } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { memo, useCallback, useEffect, useState } from "react";
 import {
+  Button,
   Dimensions,
-  FlatList,
   Platform,
   Pressable,
   RefreshControl,
@@ -45,11 +48,9 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useNavigation } from "@react-navigation/native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Animated from "react-native-reanimated";
-import { FontFamily } from "@/constants/fonts";
+
 
 const WINNER_CARD_WIDTH = 176;
 const WINNER_CARD_HEIGHT = 224;
@@ -139,36 +140,6 @@ interface HomeWinnerSectionProps {
   onPress: (winner: HomeWinnerItem) => void;
 }
 
-const HomeWinnerSection = memo(
-  ({ title, winners, onPress }: HomeWinnerSectionProps) => {
-    const { theme } = useTheme();
-
-    const renderItem = useCallback(
-      ({ item }: { item: HomeWinnerItem }) => (
-        <HomeWinnerCard winner={item} onPress={onPress} />
-      ),
-      [onPress],
-    );
-
-    return (
-      <View style={styles.sectionBlock}>
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
-          {title}
-        </Text>
-        <FlatList
-          horizontal
-          data={winners}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.winnerListContent}
-          ItemSeparatorComponent={() => <View style={styles.inlineSpacer} />}
-        />
-      </View>
-    );
-  },
-);
-
 interface HomeAssetGridProps {
   items: TabAssetItem[];
   onPress: (item: TabAssetItem) => void;
@@ -251,7 +222,7 @@ export default function Home() {
   const clearPendingUploadUris = useVirtualCreativityStore(
     (state) => state.clearPendingUploadUris,
   );
-  const { syncProfile } = useUser();
+  const { syncProfile, userId } = useUser();
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const router = useRouter();
@@ -331,8 +302,13 @@ export default function Home() {
   const last7DaysWinners = data?.last7DaysWinners ?? [];
 
   useEffect(() => {
-    const todaysWinner = todayWinners[0];
-    if (!todaysWinner) {
+    const todaysWinner = todayWinners?.[0];
+
+    if (!todaysWinner || !todaysWinner.id) {
+      return;
+    }
+
+    if (todaysWinner.id !== userId) {
       return;
     }
 
@@ -344,7 +320,7 @@ export default function Home() {
 
     storage.setString(TODAY_WINNER_MODAL_STORAGE_KEY, marker);
     setSelectedWinner(todaysWinner);
-  }, [todayWinners]);
+  }, [todayWinners, userId]);
 
   const { isPurchased } = useGigglamIAPContext();
   const isPremium = isPurchased(GLOBAL_PREMIUM_UNLOCK_SKU);
@@ -405,9 +381,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = (navigation as any).addListener("scrollToTopTab", () => {
-      scrollRef.current?.scrollTo?.({ y: 0, animated: true });
-    });
+    const unsubscribe = (navigation as any).addListener(
+      "scrollToTopTab",
+      () => {
+        scrollRef.current?.scrollTo?.({ y: 0, animated: true });
+      },
+    );
 
     return unsubscribe;
   }, [navigation]);
