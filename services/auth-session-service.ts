@@ -1,10 +1,12 @@
 import { debugLog } from "@/constants/debug";
 import { useAuthStore, type AuthSessionPayload } from "@/store/auth-store";
 import {
+  registerUserWithDevice,
   registerUserWithEmail,
   clearApiAuthToken,
   setApiAuthToken,
 } from "./api-service";
+import { getDeviceId } from "@/utils/device-utils";
 import {
   signInWithGoogle,
   trySilentGoogleSignIn,
@@ -19,7 +21,8 @@ type SessionResult =
 const buildSessionFromGoogleUser = async (
   googleUser: GoogleAuthUser,
 ): Promise<AuthSessionPayload> => {
-  const response = await registerUserWithEmail(googleUser.email);
+  const deviceId = await getDeviceId();
+  const response = await registerUserWithEmail(googleUser.email, deviceId);
 
   if (response.code !== 200 || !response.data?.token) {
     throw new Error(response.message || "Unable to create app session.");
@@ -59,6 +62,36 @@ export const signInWithGoogleSession = async (): Promise<SessionResult> => {
     return {
       type: "error",
       message: error?.message || "Google login failed while creating session.",
+    };
+  }
+};
+
+export const signInWithDeviceSession = async (): Promise<SessionResult> => {
+  try {
+    const deviceId = await getDeviceId();
+    const response = await registerUserWithDevice(deviceId);
+
+    if (response.code !== 200 || !response.data?.token) {
+      throw new Error(response.message || "Unable to create guest session.");
+    }
+
+    const session: AuthSessionPayload = {
+      accessToken: response.data.token,
+      user: {
+        id: deviceId,
+        name: "Guest",
+        email: null,
+        photo: null,
+      },
+    };
+
+    applySession(session);
+    return { type: "success", session };
+  } catch (error: any) {
+    debugLog.error("Failed to create device session", error);
+    return {
+      type: "error",
+      message: error?.message || "Unable to continue without login.",
     };
   }
 };

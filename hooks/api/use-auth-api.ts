@@ -6,6 +6,7 @@ import {
   setApiAuthToken,
 } from "@/services/api-service";
 import { useAuthStore } from "@/store/auth-store";
+import { getDeviceId } from "@/utils/device-utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
@@ -115,7 +116,8 @@ export const useRegisterUser = () => {
         bypassOTP: BYPASS_OTP,
       });
 
-      const registerResponse = await registerUser(mobileNo);
+      const deviceId = await getDeviceId();
+      const registerResponse = await registerUser(mobileNo, deviceId);
 
       if (registerResponse.code !== 200 || !registerResponse.data.token) {
         throw new Error(registerResponse.message || "Registration failed");

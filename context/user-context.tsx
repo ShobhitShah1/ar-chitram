@@ -148,18 +148,27 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = async () => {
-    debugLog.info("[USER] Logging out and clearing data...");
-
-    // 1. Clear State
+  const clearLocalUserData = () => {
     setUserName("");
     setUserId("");
     setPhoneNumber(null);
     setProfileImage(null);
     setPurchasedSkus([]);
 
+    storage.removeItem("@username");
+    storage.removeItem("@userId");
+    storage.removeItem("@phoneNumber");
+    storage.removeItem("@profileImage");
+    storage.removeItem("@purchasedSkus");
+  };
+
+  const logout = async () => {
+    debugLog.info("[USER] Logging out and clearing data...");
+
+    clearLocalUserData();
+
     try {
-      GoogleSignin.signOut();
+      await GoogleSignin.signOut();
     } catch (error) {}
 
     useAuthStore.getState().clearAuthSession();
@@ -176,7 +185,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     // If switching users (id matches different user), we should clear first
     const currentStoredId = storage.getString("@userId");
     if (currentStoredId && currentStoredId !== id) {
-      await logout();
+      clearLocalUserData();
     }
 
     updateUserName(name);

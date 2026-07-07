@@ -29,7 +29,10 @@ export const getDeviceId = async (): Promise<string> => {
   } catch (error) {
     console.error("Error getting device ID:", error);
     // Fallback to a generated ID
-    return await generateFallbackId();
+    const fallbackId = await generateFallbackId();
+    storage.setString(DEVICE_ID_KEY, fallbackId);
+    setApiDeviceHeader(fallbackId);
+    return fallbackId;
   }
 };
 

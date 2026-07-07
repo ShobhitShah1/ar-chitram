@@ -79,6 +79,7 @@ export interface ApiEventRequestMap {
   app_user_register: {
     mobile_no?: string;
     email_id?: string;
+    device_id?: string;
   };
   get_profile: Record<never, never>;
   app_user_inapp: {

@@ -4,13 +4,16 @@ import SocialButton from "@/components/login/social-button";
 import { FontFamily } from "@/constants/fonts";
 import { useUser } from "@/context/user-context";
 import { useWarmCoreTabAssets } from "@/hooks/api";
-import { signInWithGoogleSession } from "@/services/auth-session-service";
+import {
+  signInWithDeviceSession,
+  signInWithGoogleSession,
+} from "@/services/auth-session-service";
 import { useAuthStore } from "@/store/auth-store";
 import { ImageBackground } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { StatusBar, StyleSheet, Text, View } from "react-native";
+import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
 import Toast from "react-native-toast-message";
 
 export default function Login() {
@@ -20,6 +23,7 @@ export default function Login() {
     (state) => !!state.accessToken && !!state.user?.id,
   );
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isSkipLoading, setIsSkipLoading] = useState(false);
 
   const completeGoogleLogin = useCallback(
     async (sessionUser: {
@@ -73,6 +77,40 @@ export default function Login() {
     }
   }, [completeGoogleLogin, isGoogleLoading, warmCoreTabAssets]);
 
+  const handleSkipLogin = useCallback(async () => {
+    if (isSkipLoading) {
+      return;
+    }
+
+    setIsSkipLoading(true);
+
+    try {
+      const result = await signInWithDeviceSession();
+
+      if (result.type === "success") {
+        await warmCoreTabAssets();
+        await completeGoogleLogin(result.session.user);
+        return;
+      }
+
+      if (result.type === "error") {
+        Toast.show({
+          type: "error",
+          text1: "Unable to Continue",
+          text2: result.message,
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Unable to Continue",
+        text2: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsSkipLoading(false);
+    }
+  }, [completeGoogleLogin, isSkipLoading, warmCoreTabAssets]);
+
   useEffect(() => {
     if (isAuthenticated) {
       router.replace("/(tabs)/home");
@@ -121,6 +159,15 @@ export default function Login() {
             isLoading={isGoogleLoading}
             loadingText="Signing in..."
           />
+          <Pressable
+            onPress={handleSkipLogin}
+            disabled={isSkipLoading || isGoogleLoading}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipButtonText}>
+              {isSkipLoading ? "Continuing..." : "Skip Login"}
+            </Text>
+          </Pressable>
           {/* <SocialButton
             title="Login with Facebook"
             imageSource={ic_welcome_facebook}
@@ -199,4 +246,16 @@ const styles = StyleSheet.create({
     color: "rgba(43, 43, 43, 1)",
   },
   subtitle: { fontSize: 15, textAlign: "center", color: "rgba(43, 43, 43, 1)" },
+  skipButton: {
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  skipButtonText: {
+    color: "rgba(43, 43, 43, 0.75)",
+    fontFamily: FontFamily.semibold,
+    fontSize: 13,
+    textDecorationLine: "underline",
+    textTransform: "uppercase",
+  },
 });

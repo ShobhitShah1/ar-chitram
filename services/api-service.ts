@@ -426,19 +426,34 @@ export const fetchAccounts = async (
 
 export const registerUser = async (
   mobileNo: string,
-): Promise<ApiResponse<RegisterResponse>> =>
-  makeApiRequest<"app_user_register">({
+  deviceId?: string,
+): Promise<ApiResponse<RegisterResponse>> => {
+  return makeApiRequest<"app_user_register">({
     eventName: "app_user_register",
     mobile_no: mobileNo,
+    device_id: deviceId,
   });
+};
 
 export const registerUserWithEmail = async (
   email: string,
-): Promise<ApiResponse<RegisterResponse>> =>
-  makeApiRequest<"app_user_register">({
+  deviceId?: string,
+): Promise<ApiResponse<RegisterResponse>> => {
+  return makeApiRequest<"app_user_register">({
     eventName: "app_user_register",
     email_id: email,
+    device_id: deviceId,
   });
+};
+
+export const registerUserWithDevice = async (
+  deviceId: string,
+): Promise<ApiResponse<RegisterResponse>> => {
+  return makeApiRequest<"app_user_register">({
+    eventName: "app_user_register",
+    device_id: deviceId,
+  });
+};
 
 export const getProfile = async (): Promise<ApiResponse<ProfileResponseData>> =>
   makeApiRequest<"get_profile">({
